@@ -1,0 +1,21 @@
+; make a custom KERNEL32.LIB
+; file your_kernel32.def
+LIBRARY 'KERNEL32.DLL'
+EXPORTS
+_SetFilePointerEx@20 = SetFilePointerEx
+
+LIBRARY 'USER32.DLL'
+EXPORTS
+_SetLayeredWindowAttributes@16 = SetLayeredWindowAttributes
+; end of file your_kernel32.def
+
+;run in the command line:
+;implib.exe your_kernel32.lib your_kernel32.def
+
+;then link with your_kernel32.lib and the kernel32.lib comes with DMC
+
+;implib.exe is "Digital Mars Import Library Manager".
+;It comes with DMC or can be download from D page
+;ftp://ftp.digitalmars.com/bup.zip
+
+;http://www.digitalmars.com/d/archives/digitalmars/D/learn/1524.html

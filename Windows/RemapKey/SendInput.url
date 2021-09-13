@@ -1,0 +1,8 @@
+[DEFAULT]
+BASEURL=http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/winui/windowsuserinterface/userinput/keyboardinput/keyboardinputreference/keyboardinputfunctions/sendinput.asp
+[DOC#7#9#10#8#9]
+BASEURL=http://msdn.microsoft.com/library/shared/searchtab/search.asp?stcfg=/library/searchtabconfig.xml&dtcfg=/library/deeptreeconfig.xml&url=/library/en-us/winui/winui/windowsuserinterface/userinput/keyboardinput/keyboardinputreference/keyboardinputfunctions/sendinput.asp?frame=true
+ORIGURL=/library/shared/searchtab/search.asp?stcfg=/library/searchtabconfig.xml&dtcfg=/library/deeptreeconfig.xml&url=/library/en-us/winui/winui/windowsuserinterface/userinput/keyboardinput/keyboardinputreference/keyboardinputfunctions/sendinput.asp?frame=true
+[InternetShortcut]
+URL=http://msdn.microsoft.com/library/default.asp?url=/library/en-us/winui/winui/windowsuserinterface/userinput/keyboardinput/keyboardinputreference/keyboardinputfunctions/sendinput.asp
+Modified=10A9305AC33AC60107

@@ -1,0 +1,11 @@
+#MCell 2.50
+#GAME User DLL
+#RULE Triad
+#BOARD 200x200
+#SPEED 100
+#WRAP 1
+#CCOLORS 6
+#D "Triad" rule oscillators
+#D 
+#D Mirek Wojtowicz, December 1999
+#L 12.C$EC11.E$A12.A

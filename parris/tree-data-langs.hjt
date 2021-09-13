@@ -1,0 +1,934 @@
+<Treepad version 2.7>
+dt=Text
+<node>
+tree-data-langs
+0
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Goals
+1
+Create both a parser and interchange language that:
+
+Supports conversion between supported langs.
+Supports sufficient semantics for round tripping.
+- Preserves ordering.
+- Preserves semantics (branch, attribute, array, function call, comment).
+Allows any key name.
+Allows any value data (escaping if needed).
+Supports textual and binary data (encoded in text form)
+Preserves indentation and line numbers when desired
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Questions
+1
+Character selection?
+    Which characters to allow for key names?
+    Allow any binary keys?
+    Which for values?
+    Which are special delimiters?
+To embed data?
+    How to escape characters?
+    Allow superquoting?
+    Allow anything in quotes until next quote?
+    Support binary, like base64, netstrings?
+Structure?
+    Support heirarchy?
+    Named opening? (anonymous containers)
+    Named closure?
+    Can hold duplicates?
+    Preserves ordering? (for the sake of OGDL)
+    Indentation significant?
+    End of line terminates tags?
+    How to treat whitespace?
+    Support comments?
+
+
+Beliefs:
+trailing semicolons superfluous
+non-preservation of whitespace in text is annoying
+line breaks should generally be irrelevant
+will not impose mandatory indentation (but I'm okay with it in Python)
+closing tags unnecessary in well-formed data
+closing tags useful for debugging
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Data embedding
+2
+
+Escape sequences:
+\u200B\u299C\u060C/Hello \amp\lt/
+\u200B u299C u060C/Hello \amp lt/
+\200B\299C\060C/Hello \amp\lt/
+<200B><299C><060C>Hello <amp><lt>
+
+&#200B;&#299C;&#060C;Hello &amp;&lt;
+<#200B><#299C><#060C>Hello<&amp><&lt>
+
+
+Jack &amp; Jill
+Jack <amp> Jill
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Formats
+1
+SDL:
+namespace:name values attributes {
+    children...
+}
+
+ONX:
+:name{
+    children...
+}
+
+Ttril:
+namespace:name{
+    attributes
+    values
+    children...
+}
+
+XML:
+<namespace:name attributes=value>
+    <children />...
+</namespace:name>
+
+Bencoding:
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Ttril
+2
+Possible names:
+treil - tree interchange language
+ttril - textual tree interchange language
+datt - data text tree
+ted - textual data
+dats - data tree syntax
+tted - text tree data
+txdl - text data language
+sheid - serialized heirarchical data
+heites - heirarchical textual settings
+textre - text tree
+
+This is the entire set of rules for datt files used by parsh? (in EBNF): 
+RootNode ::= NodeList
+NodeList ::= (ValueNode S+ | ContainerNode)* (ValueNode | ContainerNode)?
+ContainerNode ::= (BranchNode | ArrayNode)
+BranchNode ::= Name '{' S* NodeList S* ('/' Name)? '}'
+ArrayNode  ::= Name '[' S* NodeList S* ('/' Name)? ']'
+ValueNode ::= Attribute | Value
+Attribute ::= Name S* '=' S* Value
+Value ::= (QuotedValue | Name)
+QuotedValue ::= '"' [0x00–0xFF]* '"'
+Name ::= (UnquotableChar)*
+CommentNode ::= (CommentSingleLine | CommentMultiline)
+CommentSingleLine ::= '//' [0x00–0xFF]* [eol/eot]
+CommentMultiline ::= '/*' [!"*/"]* '*/'
+
+Should support these for round tripping and retaining semantics:
+"x=y" for round tripping with XML and convenience.
+"x[...]" for round tripping with JSON and ONX. No significant meaning to ttril.
+"x(...)" for function calls in CSS and PovRay
+"x={...}" for CSS assignment?
+
+
+Explicitly disallowed:
+Must have something after equals or empty quote ""
+    abc= hello=}
+
+Comment can not go between keyword and following = [ { opener
+    hello // comment here
+    {
+
+Anonymous branches must have at least an empty quote ""
+    a {...} b
+    a ""{...} b
+Or I could say that openers must always immediately follow their token?
+So that this would be illegal:
+    a
+    {
+       b
+    }
+Or maybe an empty equal sign?
+    a ={...} b
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Bencoding
+2
+Example:
+d4:spaml1:a1:bee
+
+Issue:
+Heirarchy is unclear at glance. It could easily be made more human readable (would aid debugging) without compromising any efficiency.
+
+Better B-encoding:
+1. "spam"=["a" "bc"]
+d4:spaml1:a1:bee  ->  {4:spam[1:a2:bc]}
+
+2. 3 5 "cat"
+i3ei5e3:cat  ->  3#5#3:cat
+
+3. "bar"="spam" "foo"=42
+d3:bar4:spam3:fooi42ee  ->  {3:bar4:spam3:foo42#}
+
+Replace 'd' with '{' and trailing e with '}'
+Replace 'a' with '[' and trailing e with ']'
+Replace 'i'...'e' with postfix ...'#' to shorten
+Optionally replace ':' with additional characters to increase semantic possibilities, such as $ to indicate string vs binary data.
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+ONX
+2
+This is the entire set of rules for ONX (in EBNF): 
+RootNode ::= ':onx{' (S | Node)* '}onx'
+Node ::= ValueNode | ContainerNode
+ContainerNode ::= ':' Name '{' (S | Node)* '}' (Name)?
+ValueNode ::= ':' Name '[' (S | Value)* ']' (Name)?
+Name ::= (Letter | '_') (NameChar)?
+NameChar ::= (Letter | Digit | '_' )+
+Letter ::= ['A'-'Z'] | ['a'-'z'] | [0xC0-0xD6] | [0xD8-0xF6] | [0xF8-0xFF]
+Digit ::= ['0'-'9']
+Value ::= '"' [0x00–0xFF]* '"'
+S ::= (0x09 | 0x0A | 0x0D | 0x20)+
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+XML
+2
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+SDL
+2
+http://www.ikayzo.org/confluence/display/SDL/Language+Guide
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Property list
+2
+plist - http://developer.apple.com/documentation/Cocoa/Conceptual/PropertyLists/Articles/OldStylePListsConcept.html#//apple_ref/doc/uid/20001012-BBCBDBJE
+
+NSString
+
+A string is enclosed in double quotation marks, for example: "This is a string"
+
+The quotation marks can be omitted if the string is composed strictly of alphanumeric characters and contains no white space (numbers are handled as strings in property lists). Though the property list format uses ASCII for strings, note that Cocoa uses Unicode. Since string encodings vary from region to region, this representation makes the format fragile. You may see strings containing unreadable sequences of ASCII characters; these are used to represent Unicode characters.
+
+NSData
+
+Binary data is enclosed in angle brackets and encoded in hexadecimal ASCII. Spaces are ignored. For example: <0fbd777 1c2735ae>
+
+NSArray
+
+An array is enclosed in parentheses, with the elements separated by commas. For example: ("San Francisco", "New York", "Seoul", "London", "Seattle", "Shanghai")
+
+The items don’t all have to be of the same type (for example, all strings) - but they normally are. Arrays can contain strings, binary data, other arrays, or dictionaries.
+
+NSDictionary
+
+A dictionary is enclosed in curly braces, and contains a list of keys with their values. Each key-value pair ends with a semicolon. For example: { user = wshakesp; birth = 1564; death = 1616; }
+
+Note the omission of quotation marks for single-word alphanumeric strings. Values don’t all have to be the same type, because their types are usually defined by whatever program uses them. Dictionaries can contain strings, binary data, arrays, and other dictionaries.
+
+Below is a sample of a more complex property list. The property list itself is a dictionary with keys "AnimalSmells", "AnimalSounds", and so on; each value is also a dictionary, with key-value pairs.
+
+{
+    AnimalSmells = { pig = piggish; lamb = lambish; worm = wormy; };
+    AnimalSounds = { pig = oink; lamb = baa; worm = baa;
+                    Lisa = "Why is the worm talking like a lamb?"; }
+    AnimalColors = { pig = pink; lamb = black; worm = pink; }
+}
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+JSON
+2
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+POV
+2
+#include "colors.inc"
+
+global_settings {
+  //max_trace_level 10
+  assumed_gamma 2.2
+  hf_gray_16
+}
+
+#declare TunnelHeight = 8;
+#declare TunnelLength = 16;
+#declare TunnelWidth = 6;
+
+#declare CameraPath = spline {
+  linear_spline
+  0,<0,2,0>
+  1,<0,2,TunnelLength*TunnelSegments + TunnelWidth/2>
+  2,<TunnelLength*TunnelSegments + TunnelWidth,2,TunnelLength*TunnelSegments+TunnelWidth/2>
+  3,<TunnelLength*TunnelSegments + TunnelWidth,2,TunnelLength*(TunnelSegments+1)+TunnelWidth/2>
+  4,<TunnelLength*TunnelSegments + TunnelWidth,2,TunnelLength*(TunnelSegments+2)+TunnelWidth/2>
+}
+
+camera {
+  angle 60
+  up <0,1,0>
+  right <image_width/image_height*1,0,0>
+  location CameraPath(clock) //- <0,0,50>
+  look_at CameraPath(clock+.3)+<0,0,.0001>
+}
+
+light_source {
+  <1,10,-10> color 1 //shadowless
+  //spotlight radius 20 falloff 40 tightness 10 point_at 0
+}
+
+polygon {
+  5,
+  <TunnelWidth/-2,0,0>,<TunnelWidth/2,0,0>,
+  <TunnelWidth/2,0,TunnelLength>,<TunnelWidth/-2,0,TunnelLength>,
+  <TunnelWidth/-2,0,0>
+  pigment { checker Red,Yellow}
+  translate <0,.01,0>
+}
+
+object {PyramidTunnelSection translate <0,0,-TunnelLength+20>}
+
+// long tunnel
+#switch (0)
+#case (0)
+  #local i=0;
+  #local xp=0;
+  #local zp=0;
+  #while (i < TunnelSegments)
+    object {PyramidTunnelSection translate <xp,0,zp> }
+    #local zp=zp+TunnelLength;
+    #local i=i+1;
+  #end
+  object {PyramidTunnelCorner translate <xp,0,zp>}
+
+  box {
+    <-1, -1, -1>, < 1,  1,  1>
+    rotate <0, -20, 0>
+    finish {
+      ambient 0.1
+      diffuse 0.6
+    }
+    pigment { Green }
+  }
+
+        color_map {
+            [0.000 rgb <0.725, 0.659, 0.455>]
+            [0.171 rgb <0.682, 0.549, 0.420>]
+            [0.274 rgb <0.557, 0.451, 0.322>]
+            [0.393 rgb <0.725, 0.659, 0.455>]
+            [0.564 rgb <0.682, 0.549, 0.420>]
+            [0.701 rgb <0.482, 0.392, 0.278>]
+            [1.000 rgb <0.725, 0.659, 0.455>]
+            }
+
+plane { <0,0,1>, 1
+  hollow
+  pigment {granite
+    color_map {
+          [0.0 color <.9,.9,.8,1>]
+          [0.0 color <.9,.9,.8,1>]
+          [1.0 color <.5,.5,0,1>]
+        }
+    scale 1
+  }
+}
+
+  #declare Steps = array[6][6] {
+    {-1/2,1/2,1, 25,0,17.5},
+    {0/2,1/2, 0, 25,0,18},
+    {1/2,1/2, 1, 25,0,18.5},
+    {2/2,1/2, 0, 25,0,19},
+    {3/2,1/2, 1, 25,0,19.5},
+    {4/2,1/2, 0, 25,0,20}
+  }
+
+  SetCharFeetToWalkPath(Steps, clock-19)
+
+  object {
+    cylinder {
+      <0,0,-10000>,<0,0,10000>,.1*1000
+      open
+      hollow
+      Reorient_Trans(<0,0,1>, Wormhole(cclock+sinc)-Wormhole(cclock))
+      //#local zdif = Wormhole(cclock+sinc).z-Wormhole(cclock).z;
+      //rotate <(Wormhole(cclock+sinc).x-Wormhole(cclock).x) / zdif,
+      //        (Wormhole(cclock+sinc).y-Wormhole(cclock).y) / zdif,
+      //        0>
+      translate Wormhole(cclock)
+      texture {WormholeTexture}
+      //pigment {rgb <0,1,0,.5>}
+      #local nvector = Wormhole(cclock)-Wormhole(cclock+.0001);
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+CSS
+2
+body {
+  font-family: arial, helvetica, sans-serif;
+  font-size: 0.75em;
+  color: #FFFFFF;
+  background: #001628 url(pics/backgrounds/gradient98175256.png) repeat-x top left;
+  margin: 0 0 0 0;
+}
+
+a:hover {  
+  text-decoration: underline;
+  border-bottom: 1px solid #DEFF00;
+  color: #DEFF00;
+}
+
+a img {
+  padding: 20px;
+  border: 1px solid #DEFF00;
+  border-bottom: 0px;
+  text-decoration: none;
+}
+
+#mainContainer {
+  width: 770px;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: #00FF00;
+  background: #000000 url(pics/backgrounds/mist-dark.jpg) top left;
+}
+
+#content p:first-letter
+{
+  font-size: 200%;
+  font-style: italic;
+  font-weight: bold;
+  float: left
+}
+
+h1 a:before, h2 a:before {
+  content: "more"
+}
+
+a.path {
+  text-transform: uppercase;
+  border: 0px;
+}
+
+.menuBar a:hover, .menuBar a.current {
+  color: #DEFF00;
+  background: #00517C;
+}
+
+
+
+
+
+body {
+  font-family[ arial helvetica sans-serif ]
+  font-size[ 0.75em ]
+  color[ #FFFFFF ]
+  background[ #001628 url("pics/backgrounds/gradient98175256.png") repeat-x top left ]
+  margin[ 0 0 0 0 ]
+}
+
+
+
+<body>
+  <font-family>arial helvetica sans-serif</font-family>
+  <font-size>0.75em</font-size>
+  <color>#FFFFFF</color>
+  <background>#001628 url("pics/backgrounds/gradient98175256.png") repeat-x top left</background>
+  <margin>0 0 0 0</margin>
+</body>
+
+<body>
+  <font-family><value>arial</value><value>helvetica</value><value>sans-serif</value></font-family>
+  <font-size value="0.75em"/>
+  <color value="#FFFFFF"/>
+  <background>#001628 url("pics/backgrounds/gradient98175256.png") repeat-x top left</background>
+  <margin>0 0 0 0</margin>
+</body>
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+EBML
+2
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+RIFF
+2
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+OGDL
+2
+http://ogdl.sourceforge.net/spec/
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Example comparisons
+1
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Address
+2
+JSON:
+"addressbook": {
+  "name": "Mary Lebow",
+  "address": {
+      "street": "5 Main Street"
+      "city": "San Diego, CA",
+      "zip": 91912
+  },
+  "phoneNumbers": [
+      "619 332-3452",
+      "664 223-4667"
+  ]
+}
+
+XML:
+<addressbook>
+ <name>Mary Lebow</name>
+ <address> 
+    <street>5 Main Street</street>
+    <city zip="91912"> San Diego, CA </city>
+    <phoneNumbers>
+      <_>619 332-3452</_>
+      <_>664 223-4667</_>
+    </phoneNumbers>
+ </address>
+</addressbook>
+
+Ttril:
+addressbook{
+  name="Mary Lebow"
+    address{
+        street="5 Main Street"
+        city="San Diego, CA"
+        zip=91912
+    },
+    phoneNumbers[
+        "619 332-3452"
+        "664 223-4667"
+    ]
+ }
+}
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+URI regex
+2
+var myJSONObject = {"bindings": [
+        {"ircEvent": "PRIVMSG", "method": "newURI", "regex": "^http://.*"},
+        {"ircEvent": "PRIVMSG", "method": "deleteURI", "regex": "^delete.*"},
+        {"ircEvent": "PRIVMSG", "method": "randomURI", "regex": "^random.*"}
+    ]
+};
+bindings{
+    0{ircEvent=PRIVMSG method=newURI regex="^http://.*"}
+    1{ircEvent=PRIVMSG method=deleteURI regex="^delete.*"}
+    2{ircEvent=PRIVMSG method=randomURI regex="^random.*"}
+}
+bindings{
+    _{ircEvent=PRIVMSG method=newURI regex="^http://.*"}
+    _{ircEvent=PRIVMSG method=deleteURI regex="^delete.*"}
+    _{ircEvent=PRIVMSG method=randomURI regex="^random.*"}
+}
+
+var myJSONObject = {"bindings": {
+        "0": {"ircEvent": "PRIVMSG", "method": "newURI", "regex": "^http://.*"},
+        "1": {"ircEvent": "PRIVMSG", "method": "deleteURI", "regex": "^delete.*"},
+        "2": {"ircEvent": "PRIVMSG", "method": "randomURI", "regex": "^random.*"}
+    }
+};
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Person record
+2
+<!-- XML representation of a person record -->
+<person created="2006-11-11T19:23" modified="2006-12-31T23:59">
+    <firstName>Robert</firstName>
+    <lastName>Smith</lastName>
+    <address type="home">
+        <street>12345 Sixth Ave</street>
+        <city>Anytown</city>
+        <state>CA</state>
+        <postalCode>98765-4321</postalCode>
+    </address>
+</person>
+
+/* JsonML representation of a person record */
+["person", {"created":"2006-11-11T19:23", "modified":"2006-12-31T23:59"},
+    ["firstName", "Robert"],
+    ["lastName", "Smith"],
+    ["address", {"type":"home"},
+        ["street", "12345 Sixth Ave"],
+        ["city", "Anytown"],
+        ["state", "CA"],
+        ["postalCode", "98765-4321"]
+    ]
+]
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Ethernet config
+2
+eth0      
+          physical 'Ethernet', HWaddr 00:10:5A:F1:79:41
+          ip 192.168.106.201, bcast 192.168.106.255, mask 255.255.255.0
+          flags ( UP, BROADCAST, RUNNING, MULTICAST )
+          MTU 1500, Metric 1
+          rx ( packets 20123, bytes 6333249, errors 0, dropped 0, overruns 0, frame 0 )
+          tx ( packets 3528, bytes 439192, errors 0, dropped 0, overruns 0, frame 0 )
+          collisions 0, txqueuele 100
+          interrupt 11, base_address 0xdc00
+
+Ttril:
+eth0{
+  physical="Ethernet" HWaddr=00:10:5A:F1:79:41
+  ip=192.168.106.201 bcast=192.168.106.255 mask=255.255.255.0
+  flags{UP BROADCAST RUNNING MULTICAST}
+  MTU=1500 Metric=1
+  rx{packets=20123 bytes=6333249 errors=0 dropped=0 overruns=0 frame=0}
+  tx{packets=3528 bytes=439192 errors=0 dropped=0 overruns=0 frame=0}
+  collisions=0 txqueuele=100
+  interrupt=11 base_address=0xdc00
+}
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Calendar event
+2
+:onx{
+    :calendar{
+        :entry{
+            :date["2003" "1" "1"]
+            :type["event"]
+            :note["Happy New Year!"]
+        }
+        :entry{
+            :date["2003" "3" "8"]
+            :type["birthday"]
+            :note["Buy self a present..."]
+        }
+    }calendar
+}onx
+
+onx{
+    calendar{
+        entry{
+            date{2003 1 1}
+            type{event}
+            note{"Happy New Year!"}
+        /entry}
+        entry{
+            date{2003 3 8}
+            type{birthday}
+            note{"Buy self a present..."}
+        /entry}
+    /calendar}
+/onx}
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Bookmark settings
+2
+<bridgecfg version="1.0">
+   <browser>
+      <descrip>Internet Explorer Bookmarks</descrip>
+      <name>Internet Explorer</name>
+      <bookmarks>C:\Users\Piken\Favorites</bookmarks>
+      <ordinal>41</ordinal>
+      <browsernum>1</browsernum>
+   </browser>
+   <browser>
+      <descrip>Opera Bookmarks</descrip>
+      <name>Opera</name>
+      <bookmarks>C:\Programs\Opera/defaults/operadef6.adr</bookmarks>
+      <ordinal>18467</ordinal>
+      <browsernum>3</browsernum>
+      <readonly/>
+   </browser>
+   <sources>
+      <source>41</source>
+      <source>18467</source>
+   </sources>
+   <destinations>
+      <destination>41</destination>
+      <destination>18467</destination>
+   </destinations>
+</bridgecfg>
+
+
+bridgecfg{
+   version=1.0
+   browser{
+      descrip="Internet Explorer Bookmarks"
+      name="Internet Explorer"
+      bookmarks="C:\Users\Piken\Favorites"
+      ordinal=41
+      browsernum=1
+   }
+   browser{
+      descrip="Opera Bookmarks"
+      name="Opera"
+      bookmarks="C:\Programs\Opera/defaults/operadef6.adr"
+      ordinal=18467
+      browsernum=3
+      readonly=true
+   }
+   sources{
+      source=41
+      source=18467
+   }
+   destinations{
+      destination=41
+      destination=18467
+   }
+}
+
+bridgecfg
+   version: 1.0
+   browser
+      descrip: "Internet Explorer Bookmarks"
+      name: "Internet Explorer"
+      bookmarks: "C:\Users\Piken\Favorites"
+      ordinal: 41
+      browsernum: 1
+   browser
+      descrip: "Opera Bookmarks"
+      name: "Opera"
+      bookmarks: "C:\Programs\Opera/defaults/operadef6.adr"
+      ordinal: 18467
+      browsernum: 3
+      readonly: true
+   sources
+      source: 41
+      source: 18467
+   destinations
+      destination: 41
+      destination: 18467
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Links
+1
+http://en.wikipedia.org/wiki/Category:Data_serialization_formats
+http://en.wikipedia.org/wiki/Lightweight_markup_language
+http://www.ikayzo.org/confluence/display/SDL/Language+Guide
+http://ogdl.sourceforge.net/spec/
+http://developer.apple.com/documentation/Cocoa/Conceptual/PropertyLists/Articles/OldStylePListsConcept.html
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Conversion
+1
+Mapping from one to another losslessly is not possible, unless you store some metadata with the translation. Mapping from XML to JSON and vice-versa lose potentially important qualities, like the order of elements, the distinction between arrays vs objects, or the difference between attributes vs child elements. Other less important attributes like indentation can be safely lost without changing semantics.
+
+Potential errors:
+Tag length invalid (PNG only accepts four byte tags)
+related: Anonymous tags not allowed
+Arrays unsupported
+Data length too long
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+JSON and XML
+2
+http://www.xml.com/pub/a/2006/05/31/converting-between-xml-and-json.html?page=3
+
+XML:
+<ol class="xoxo">
+  <li>Subject 1
+    <ol>
+        <li>subpoint a</li>
+        <li>subpoint b</li>
+    </ol>
+  </li>
+  <li><span>Subject 2</span>
+    <ol compact="compact">
+        <li>subpoint c</li>
+        <li>subpoint d</li>
+    </ol>
+  </li>
+</ol>
+
+JSON:
+ol": {
+  "li": [ 
+    {
+      "#text": "Subject 1",
+      "ol": {
+        "li": ["subpoint a", "subpoint b"]
+      }
+    },
+    {
+      "span": "Subject 2",
+      "ol": {
+        "@compact": "compact",
+        "li": ["subpoint c", "subpoint d"]
+      }
+    }
+  ]
+}
+
+Ttril:
+ol[
+  li{
+      "Subject 1"
+      ol[
+        li{"subpoint a"}
+        li{"subpoint b"}
+      ]
+  }
+  li{
+      span{"Subject 2"}
+      ol[
+        @compact="compact"
+        li{"subpoint c"}
+        li{"subpoint d"}
+      ]
+    }
+  }
+}
+
+
+A single structured XML element might come in seven flavors:
+1. an empty element
+2. an element with pure text content
+3. an empty element with attributes
+4. an element with pure text content and attributes
+5. an element containing elements with different names
+6. an element containing elements with identical names
+7. an element containing elements and contiguous text
+
+The following table shows the corresponding conversion patterns between XML and JSON.Pattern 	XML 	JSON 	Access 
+1
+	<e/>
+	"e": null
+	e{}
+2
+	<e>text</e>
+	"e": "text"
+	e{"text"}
+3
+	<e name="value" />
+	"e":{"@name": "value"}
+	e{name="value}
+4
+	<e name="value">text</e>
+	"e": { "@name": "value", "#text": "text" }
+	e{name="value" "text"}
+5
+	<e> <a>text</a> <b>text</b> </e>
+	"e": { "a": "text", "b": "text" }
+	e{ a{"text"} b{"text"}}
+6
+	<e> <a>text</a> <a>text</a> </e>
+	"e": { "a": ["text", "text"] }
+	e{ a{"text"} a{"text"}}
+7
+	<e> text <a>text</a> </e>
+	"e": { "#text": "text", "a": "text" }
+	e{" text " a{"text"}}
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Parser
+1
+Priorities:
+1. JSON, SDL, ONX, XML, CSS, INI, OGDL, X, POV
+2. EBML (.mkv), RIFF, PNG, Bencoding (.torrent), BVH
+3. SOX, SLiP
+
+Not supporting:
+YAML
+
+Possible names:
+strepar - serialized tree parser
+stelr - serialized text language reader
+trepar - tree parser
+partre - parse trees
+parsh - parse heirarchy
+
+Words to use:
+tree, data, syntax/language, text, heirarchy, format, lexical, grammar
+
+<end node> 5P9i0s8y19Z
+dt=Text
+<node>
+Process
+2
+Phases of parsing:
+character conversion (utf8 utf16 ansi8)
+raw node tree
+reordered node tree
+
+raw node:
+first child
+next
+name
+length
+type
+
+ordered node:
+first child
+?count
+name
+length
+type
+  subtype
+  datatype?
+    number
+      int
+      uint
+      float
+    text
+    raw binary
+flags
+  has children containers
+
+app passes buffer
+app gets an existing buffer
+app makes reader allocate buffer and return
+
+
+
+Main types:
+branch open, branch close, value, comment, out-of-band processing instruction
+
+Subtypes: (for round-tripping)
+branch{}, attribute=, array[], function(), value/text, comment
+
+<end node> 5P9i0s8y19Z

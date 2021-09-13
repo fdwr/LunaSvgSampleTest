@@ -1,0 +1,108 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winresrc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_MAIN DIALOGEX 0, 0, 280, 85
+STYLE DS_MODALFRAME | DS_SETFOREGROUND | DS_3DLOOK | DS_NOFAILCREATE | 
+    WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Random DoS"
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL         "Target Name: ",-1,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE | WS_GROUP,4,4,52,12,WS_EX_RIGHT | 
+                    WS_EX_STATICEDGE
+    EDITTEXT        IDC_TARGET_NAME,60,4,168,12,ES_AUTOHSCROLL | NOT 
+                    WS_BORDER,WS_EX_CLIENTEDGE
+    CONTROL         "Target IP: ",-1,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE | WS_GROUP,4,20,52,12,WS_EX_RIGHT | 
+                    WS_EX_STATICEDGE
+    EDITTEXT        IDC_TARGET_IP,60,20,168,12,ES_AUTOHSCROLL | NOT 
+                    WS_BORDER,WS_EX_CLIENTEDGE
+    CONTROL         "Deliver: ",-1,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE | WS_GROUP,4,36,52,12,WS_EX_RIGHT | 
+                    WS_EX_STATICEDGE
+    COMBOBOX        IDC_ATTACK_TYPE,60,36,168,12,CBS_DROPDOWNLIST | 
+                    WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "Start",IDOK,236,4,40,14,BS_LEFT | BS_FLAT
+    PUSHBUTTON      "Stop",IDCANCEL,236,20,40,14,BS_LEFT | BS_FLAT | 
+                    WS_DISABLED
+    PUSHBUTTON      "About",IDHELP,236,36,40,14,BS_LEFT | BS_FLAT
+    CONTROL         "<status messages here>",IDC_STATUS,"msctls_statusbar32",
+                    0x0,0,72,280,12
+    PUSHBUTTON      "Close",IDCLOSE,236,52,40,14,BS_LEFT | BS_FLAT
+END
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""winresrc.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_MAIN                ICON    DISCARDABLE     "Msnpnwrk.ico"
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,47 @@
+config
+file
+parser
+reader
+efficient
+abstract
+multi
+syntax
+
+parsany
+parini
+pariff
+pahrif
+parcon
+finipar
+flipar
+cofip
+heirarchical abstract config file parser.
+hacor
+casper
+musipa
+confile
+confilar heaper
+chaper
+parcon
+
+text based, no mixed content, easy to read and parse, compact, contain binary?
+
+colon separated, space separated, equals separated, XML, Perl code, Windows INI, BIND9 and irssi style config files
+yaml
+
+does not know semantics. Types and default values must be specified.
+preserve comments and unknown keys
+preserve order of unknown elements.
+reorder specified elements.
+handle out of order keys
+line continuation?
+error reporting
+each branch unique, could be differerent format
+random query
+stream recursive descent
+filtering
+bool, int, float, string, string lists
+true false, yes no, on off
+-http://www.eyrie.org/~eagle/software/inn/docs-2.4/config-syntax.html
+
+BIND, gated, ISC DHCP, JUNOS(tm)

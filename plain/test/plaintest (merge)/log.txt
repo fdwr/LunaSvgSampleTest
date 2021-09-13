@@ -1,0 +1,41 @@
+2005-11-09
+	Finally resolved conflict of primitive type defs by making them both packaged and importing at package scope.
+	Created PlainButton.
+	Added more types and functions to PgfxDefs.
+	Got first simple button to appear in window, using Pgfx library.
+2005-11-10
+	Added more code to main window procedure.
+	Filled in more window code.
+	Started root window.
+	Moved several enum flags around in the heirarchy. Twas bothering me.
+2005-11-13
+	Clips and draws items inside other windows. Fixed clipping bug.
+	Button owners work correctly.
+	Mouse events confirmed to cascade down.
+2005-11-14
+	Added main window dragging.
+	Fixed initial mouse negative boundary.
+	Added color keying for layered windows (disabled for now). Struggled adding import defs fro NT funcs.
+	Fixed loss of mouse capture on dialog display. Messed with dragging of main window.
+2005-11-15
+	Mouse can be captured. Moving main window only happens on mouse moves if grabbed.
+	Added setting key focus of containers.
+	Added message cracking for key events and fixed keypress sending bug in root.
+	Added virtual key constants.
+	Added text control. Near full editing support for single line text (insert,delete,seek) (4 hours). No copy/paste. No mouse support. No text longer than box.
+	Fixed difficult bug that drew graphic static when layer flag never terminated sequence.
+	Added conditional layer drawing based on state in DrawLayers
+	Created default style for buttons in PlainStyleData.asm.
+	Added more concise constants to specify alignment of layer's four borders. Rearranged xorg, yorg fields for image.
+	Separated build process into three batch files and one response file (build.brf)
+2005-11-19
+	Worked on Island Pastels theme more.
+2005-11-20
+	Added Island Pastels style, and icon.
+2005-11-21
+	Added PlainLabel.
+	Added message to Vue: extents, textSet, textGet, valueSet, valueGet.
+	Added PlainEdit modified flag, implemented invalid flag, and do change event for owner.
+2005-11-22
+	Added PlainList with only basic drawing functionality.
+	

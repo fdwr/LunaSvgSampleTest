@@ -1,0 +1,50 @@
+Comment
+{
+Each exercise consists of at least two items, a title and text. The
+text for those items are enclosed between curly brackets. To add more
+exercises, just add these two items after the last one or between some.
+
+Other items that can be included are:
+Name -    for now is unused but is intended to uniquely identify a page.
+Title -   title of exercise, seen above the text.
+Image -   optional image that goes along with text
+Sound -   wave file that holds a listing of the words
+Comment - ignored by program, just meant for other people to read.
+Text -    the actual exercise. Each cloze word (up to 12 per exercise) is
+          enclosed in square brackets and will appear in a card below. The
+          exercise text will automatically wrap if longer than the width,
+          but you can also explicitly put line breaks in the exercise text
+          if you need to. It is important that this be the last item in an
+          exercise, since the program expects the next exercise to be
+          immediately after it.
+}
+
+Name {start}
+Title {Instructions}
+Text {To complete an exercise, simply grab the word and drop it into the sentence where it belongs. If the location is right, it will merge into the sentence, else it will jump back. If missed three times, the word will automatically float to where it belongs.
+
+When no words are left, you can either retry the exercise, proceed to the next, or leave to the menu.
+
+Try it now, by grabbing the word below and moving it ([here]).}
+
+Text {Below are some more sample words. Note that you can use any word, multiple words, or puncuation. All blanks are set to the same size so that word length is not a clue. Also, all words are set to lower case to prevent the first word of sentence being too obvious. Finally, all the words are scrambled each time.
+
+Single ([word]), Multiple ([two words]), Special ([Dr.]), Puncuation, ([;])}
+
+Text {The program name for Cloze Exercises is "eslcloze.exe". The exercises are stored in the file "exercise.txt". To create your own, just edit this file with a text editor like Notepad and follow the standards given. That's all... Click Menu for some real exercises.}
+
+Title {Exercise by an ESL student}
+Image {bench.gif}
+Text {The man [and] a little child [are] sitting on the bench because [they] are always tired and hungry. And the child is very [sad]. She looks at the [gate] and [sees] rich people walk [toward] them; and asks the [man] to talk to the rich people to ask [them] to help buy some food. [So] the man asks the rich people, but they [don't] want to help.}
+
+Title {}
+Text {Sorry, I do not know the name of the student who wrote that exercise...
+
+Click on the menu button to return a list of more exercises.}
+
+Title {Oregon State Interships}
+Sound {ding.wav}
+Text {Submit a letter of [application] explaining [your] interest in communications or [journalism] and how your education and experience would be [helpful] to our office. Also submit a current [resume] with [two] references, and two recent [writing] samples (1 to 4 [pages] each).}
+
+Title {}
+Text {Applicants will be [subject] to both a [Computerized] Criminal History and Driver and [Motor Vehicle] Services check as well as a [thorough] background investigation.  [Adverse] background data [may] be grounds for [immediate] disqualification.}

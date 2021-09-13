@@ -1,0 +1,50 @@
+#include "windows.h"
+#include "TapTempo.resource.h"
+
+
+/////////////////////////////////////////////////////////////////////////////
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+;PRODUCTVERSION 2,0,0,0
+;FILEFLAGSMASK 0x0000003FL
+;FILEFLAGS 0x0000000BL
+;FILEOS 0x00010001L
+;FILETYPE 0x00000001L
+;FILESUBTYPE 0x00000000L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", "1.0"
+            VALUE "FileDescription","TapTempoClone"
+            VALUE "LegalCopyright","Copyright\251 2007 Dwayne Robinson"
+            VALUE "Company Name", "PikenSoft"
+            VALUE "Author Address", "FDwR@hotmail.com\r\nhttp://pikensoft.com/"
+        END
+    END
+    ;BLOCK "VarFileInfo"
+    ;BEGIN
+    ;    VALUE "Translation", 0x0409,1252
+    ;END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+1   ICON    DISCARDABLE     "StopWatch.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+1 DIALOG 66, 50, 190, 34
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE | WS_MINIMIZEBOX
+CAPTION "TapTempo (clone of AnalogX's)"
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+{
+   CONTROL "-", IdcTempoAverage, STATIC, SS_RIGHT | WS_CHILD | WS_VISIBLE | WS_GROUP, 12-5, 17, 40, 8 
+   CONTROL "Tempo (bpm)", -1, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 5, 5, 60, 25 
+   CONTROL "-", IdcTempoPrevious, STATIC, SS_RIGHT | WS_CHILD | WS_VISIBLE | WS_GROUP, 73-5, 17, 40, 8 
+   CONTROL "Last Tempo", -1, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 64, 5, 61, 25 
+   CONTROL "-", IdcIntervalAverage, STATIC, SS_RIGHT | WS_CHILD | WS_VISIBLE | WS_GROUP, 133-5, 17, 40, 8 
+   CONTROL "Interval (ms)", -1, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 124, 5, 60, 25 
+}

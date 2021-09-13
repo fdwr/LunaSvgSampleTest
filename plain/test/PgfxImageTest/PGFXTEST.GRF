@@ -1,0 +1,13 @@
+\temp\pgfxtest.obj
+\temp\pgfx.obj
+\temp\AtrbList.obj
+\temp\pgfxtest.res
+
+kernel32.dll
+user32.dll
+gdi32.dll
+comctl32.dll
+zlib.dll
+
+;/console
+

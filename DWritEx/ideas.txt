@@ -1,0 +1,119 @@
+CreateTextLayout(overload with measuring mode)
+GetDefaultGlyphs UTF16
+CreateFlowLayout
+GetFirstMatchingFont(fontCollection, “FamilyName”)
+CreateFontMapping(fontCollection
+Open EOT
+OpenGL + DWrite
+Grayscale alpha texture
+
+
+Wavy text?
+
+CreateTextLayout(overload with measuring mode)
+CreateFlowLayout
+
+GetAlphaTexture
+DrawAlphaTexture
+DrawGlyphRun(arbitrary HDC
+GetFontFeatures/Enumerate
+
+
+We don’t supply a simple function to maps bidi-level logical indices to visual indices for visual reordering of runs (to fill the role of Uniscribe’s ScriptLayout function). This simple but invaluable function (~100 lines) can be found in one of our SDK samples (and our layout code itself), but it would be best just placed in DirectWrite. The implementation is already tested, and it would take 1 dev day to expose it.
+// This is similar to Uniscribe's ScriptLayout, except that you don't need to pointlessly
+// extract an array of bidi levels into a temp array (unless they are in a linked list).
+// The function provides a mapping from sequential to visual (but how about the reverse ?
+// I've honestly never needed it even for hit-testing).
+//
+HRESULT IDWriteTextAnalyzer::GetBidiVisualOrdering(
+    __in_ecount(bidiLevelsCount) uint8_t const* bidiLevels,
+    uint32_t bidiLevelsStride,
+    uint32_t bidiLevelsCount,
+    __out_ecount(bidiLevelsCount) uint32_t* visualOrdering
+) throw();
+
+ 
+
+GetBidiVisualOrdering(&runs[firstRun].bidiLevel, sizeof(runs[0]), runCount, &visualOrdering[0]);
+
+
+ 
+
+A function like Uniscribe’s ScriptCPtoX to map character positions to X coordinates would also be useful (as this is surely done in our own layout). While this one can realistically be done with a few lines code by people knowledgeable of the subtleties, the more compelling reason to include it would just be so those people who don’t would get it right for both LTR and RTL, rather than dealing with the glyph cluster map and summing glyph advances.
+// This is similar to Uniscribe's ScriptCPtoX.
+//
+HRESULT IDWriteTextAnalyzer::MapTextPositionToCoordinate(
+    __range(0,textCount) uint32_t textPosition,
+    __in_ecount(glyphCount) float* glyphAdvances,
+    __in_ecount(textCount) uint16_t* clusterMap,
+uint32_t glyphCount
+    uint32_t textCount,
+DWRITE_READING_DIRECTION readingDirection,
+    float width,
+    __out float* x
+) throw();
+
+
+ 
+
+ 
+
+// khyph - Kind of hyphenation
+
+typedef enum tagKHYPH
+{
+        khyphNil,                       // No Hyphenation
+        khyphNormal,                    // Normal Hyphenation
+        khyphAddBefore,                 // Add letter before hyphen
+        khyphChangeBefore,              // Change letter before hyphen
+        khyphDeleteBefore,              // Delete letter before hyphen
+        khyphChangeAfter,               // Change letter after hyphen
+        khyphDelAndChange               // Delete letter before hyphen and change
+                                        //    letter preceding hyphen
+} KHYPH;
+
+ 
+
+typedef struct hyphresult
+{
+        KHYPH khyph;                    // Kind of hyphenation
+        long  ichHyph;                  // Character which was hyphenated
+        WCHAR chHyph;                   // Depending on hyphenation type, character added, changed, etc.
+} HYPHRESULT;
+
+ 
+
+void WINAPI HyphenateProc(__in WCHAR *pszWord, LANGID langid, long ichExceed, HYPHRESULT *phyphresult);
+typedef struct tagHyphenateInfo
+{
+        SHORT cbSize;                   // Size of HYPHENATEINFO structure
+        SHORT dxHyphenateZone;  // If a space character is closer to the margin
+                                                        //  than this value, don't hyphenate (in TWIPs)
+        void (WINAPI* pfnHyphenate)(WCHAR*, LANGID, long, HYPHRESULT*);
+} HYPHENATEINFO;
+
+ 
+
+(note these constants mostly mirror and probably came from the Line Services definitions for LSKYSR, but they lack the lshyphenquality value for prioritization)
+
+ 
+
+void IDWriteFontFace::GetSimpleGlyphs(
+    UINT32 tableTag,                            // can be GSUB or GPOS
+    UINT32 desiredFeaturesCount,
+    __in_ecount(desiredFeaturesCount) DWRITE_FONT_FEATURE_TAG const* desiredFeatures,
+    BOOL preserveExistingBits,                  // preserve the existing inout bits, otherwise cleared
+    UINT32 glyphBitsSize,
+    __in_bcount(glyphBitsSize) UINT8 const* interestedGlyphBits,
+    __inout_bcount(glyphBitsSize) UINT8* simpleGlyphBits
+);
+
+ 
+
+HRESULT IDWriteTextAnalyzer::AlignGlyphsToGrid(
+FLOAT gridCellWidth,
+    DWRITE_READING_DIRECTION readingDirection,
+BOOL centerAllScripts, // center non-CJK scripts too
+__inout FLOAT* glyphAdvances,
+__inout DWRITE_GLYPH_OFFSET* glyphOffsets
+);

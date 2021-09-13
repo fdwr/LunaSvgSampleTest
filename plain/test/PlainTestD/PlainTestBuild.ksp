@@ -1,0 +1,16 @@
+-op
+-Iz:\apps\dmd\src\phobos\
+-IZ:\src\plaintest\
+-IZ:\src\plaintest\plain\
+-IZ:\src\plaintest\pgfx\
+PlainTestBuild.def
+phobos.lib
+-ofPlainTestBuild.exe
+pgfx\PgfxDefs.obj
+plain\PlainVue.obj
+PlainTestBuild.obj
+PlainTest.obj
+PlainConfig.obj
+plain\stdint.obj
+plain\PlainDefs.obj
+PgfxConfig.obj

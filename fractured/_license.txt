@@ -1,0 +1,6 @@
+<< license >>
+
+* Freely rip any code snippets from this project and use
+  them however you want.
+* If you create a derivative of or extend the project, keep
+  my name and homepage URL somewhere in the credits.

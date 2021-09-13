@@ -1,0 +1,5 @@
+"button","TopBtn",24,84,12,68,0,"Top"
+"window","TopWnd",4,136,52,180,0,""
+"button","CenterBtn",72,184,12,68,0,"Center"
+"button","BtmBtn",144,84,12,68,0,"Bottom"
+"window","BtmWnd",100,136,96,180,1,""

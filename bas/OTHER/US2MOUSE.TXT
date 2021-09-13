@@ -1,0 +1,579 @@
+			  U S E F U L 2 . B A S - mouse functions
+			  =====================
+      
+(Introductory notes as in USEFUL2.TXT)
+Dave Burbridge (d.burbridge@ic.ac.uk)
+  
+  Contents:
+    2. List of routines
+    3. Details of each routine
+    Appendix A: Use of MousePoll
+    Appendix B: DOS Mouse Function (INT 33H) sub-functions
+    Appendix C: Default values for mouse
+    Appendix D: Effect of screen & cursor mask combinations
+    Appendix E: Screen data for characters
+
+2. Short list of routines
+=========================
+    (summary at head of each routine in MOUSEDJB.TXT):
+
+    (S) = SUB, (F) = FUNCTION
+
+      (S) MouseBorder: Limits the mouse movement (character).
+      (F) MouseCheck: Similar to MouseInit, but returns status.
+      (S) MouseClear: Waits until neither mouse button is pressed.
+      (S) MouseDriver: General interrupt routine for mouse.
+      (S) MouseHide: Removes mouse cursor from screen.
+      (S) MouseInfo: Returns mouse info.
+      (S) MouseInit: Mouse driver's initialisation routine.
+      (S) MouseLimit: Limits the mouse movement (graphics).
+      (S) MousePoll: Polls mouse driver, then sets parameters accordingly.
+      (S) MousePos: Returns graphics position of mouse.
+      (S) MouseShow: Shows mouse cursor.
+      (S) MouseTextPos: Returns character position of mouse.
+      
+      NB: MS's MouseBorder is not included, owing to the limited use it can
+	  offer owing to the way it has been written: it requires text
+	  co-ords (col/row) whereas the most common need for it would be in a
+	  graphics window. If you need to set a border for the mouse travel,
+	  use MouseLimit.
+
+3. Details of each routine: 
+===========================
+
+SUB MouseBorder (row1%, col1%, row2%, col2%)
+    Short desc:   Limits the mouse movement (character).
+    What it does: Limits mouse to moving in a text window defined by
+		  (row1%, col1%)-(row2%, col2%).
+    Notes:        This routine can now be used in any mode (unlike MS's
+		  version). The values passed have to be within the limits
+		  set by the last SCREEN/WIDTH statement.
+		  This routine would not normally be used, since in most
+		  applications, limiting the mouse is only required for
+		  graphics routines.
+    Example:      MouseBorder row1%, col1%, row2%, col2%
+    How it works: [A comprehensive discussion of the use of DOS/BIOS function
+		  calls is beyond the scope of these notes, but the following
+		  books may be useful:
+		    DOS Programmer's Reference: Dettmann & Johnson (Que)
+		    Advanced MS DOS Programming: Ray Duncan (Microsoft Press)
+		    ...]
+		  Two BIOS interrupt routines are used to determine the
+		  current screen mode, and the character position transformed
+		  into a pixel position.
+		  MouseDriver is then called, with sub-functions 7 (set hor
+		  limits) and 8 (set ver limits).
+
+FUNCTION MouseCheck% ()
+    Short desc:   Similar to MouseInit, but returns status.
+    What it does: Tries to initialise the mouse.
+		  Returns -1 if the mouse is present, or 0 otherwise.
+    Notes:        This only needs to be called once, at the beginning of your
+		  programme.
+    Example:      MouseAttached% = MouseCheck%
+    How it works: The MouseDriver SUB is used to call the DOS mouse function
+		  &H0. This sets an internal flag, the value of which is then
+		  returned to the caller.
+      
+SUB MouseClear
+    Short desc:   Waits until neither mouse button is pressed.
+    What it does: Pauses programme execution, until both mouse buttons are
+		  released.
+    Notes:        This is similar to the keyboard buffer clearing routine
+		  DO: LOOP UNTIL INKEY$ = "", operating instead on the mouse.
+    Example:      MouseClear
+    How it works: The MousePoll SUB is used in a DO: LOOP to check the status
+		  of both buttons continuously until both are released.
+      
+SUB MouseDriver (m0%, m1%, m2%, m3%) STATIC
+    Short desc:   General interrupt routine for mouse.
+    What it does: Calls the DOS mouse function (INT &H33) with the parameters
+		  m0%, m1%, m2% and m3%, where
+		    m0% = value to put in processor register AX
+		    m1% = value to put in processor register BX
+		    m2% = value to put in processor register CX
+		    m3% = value to put in processor register DX
+		  and then sends the parameters back with the values returned
+		  by the mouse function.
+    Notes:        This does not in general have to be called directly from
+		  your programme, since the most common mouse functions
+		  already have their own routines in this module. 
+		  programme.
+		  [A comprehensive discussion of the use of DOS/BIOS function
+		  calls is beyond the scope of these notes, but the following
+		  books may be useful:
+		    DOS Programmer's Reference: Dettmann & Johnson (Que)
+		    Advanced MS DOS Programming: Ray Duncan (Microsoft Press)
+		    ...]
+		  A short list of available sub-functions appears in Appendix
+		  B.
+    Example:      MouseDriver 3, Button%, Col%, Row%
+    How it works: If MouseDriver has not yet been called (MouseChecked = 0),
+		  then it looks to see if a mouse is attached (using PEEK).
+		  If there is no mouse, then the MouseChecked flag is set,
+		  the MousePresent flag is cleared, and control passed back 
+		  to the calling routine. Any further calls to MouseDriver
+		  will now bypass the routine.
+		  If a mouse is present, then both the MousePresent and
+		  MouseChecked flags are set.
+		  If the MousePresent flag is set then the parameters m0%,
+		  m1%, m2% and m3% are put into their corresponding processor
+		  registers as above, and Interrupt &H33 is called. The new
+		  processor register values are read back into m0%, m1%, m2%
+		  and m3%, and control is passed back to the calling routine.
+
+SUB MouseHide
+    Short desc:   Removes mouse cursor from screen.
+    What it does: Makes mouse cursor invisible.
+    Notes:        
+    Example:      MouseHide
+    How it works: MouseDriver is called, with sub-function 2 (decr internal
+		  cursor flag).
+      
+SUB MouseInfo (MouseVers!, MouseType$, MouseIRQ)
+    Short desc:   Returns mouse info.
+    What it does: Returns version of mouse driver, type of mouse, and the
+		  mouse IRQ.
+    Notes:        
+    Example:      MouseInfo MouseVers!, MouseType$, MouseIRQ
+    How it works: MouseDriver is called, with sub-function &H24 (get info).
+
+SUB MouseInit 
+    Short desc:   Mouse driver's initialisation routine.
+    What it does: Initialises mouse
+    Notes:        This or the function MouseCheck MUST be called before you
+		  start to use the other mouse functions in your programme.
+    Example:      MouseInit
+    How it works: MouseDriver is called, with sub-function 0 (reset mouse).
+
+SUB MouseLimit (XMin%, YMin%, XMax%, YMax%)
+    Short desc:   Limits the mouse movement.
+    What it does: Limits mouse to moving in a window defined by
+		  (XMin%, YMin%)-(XMax%, YMax%).
+    Notes:        This function can be used in text mode (SCREEN 0), but the
+		  values passed still have to be in pixels: a screen size of
+		  200 x 640 is assumed for modes 0, 1, 2, 7, 8 & 13, 350 x
+		  640 for modes 9 & 10, and 480 x 640 for modes 11 & 12 (see 
+		  note at end).
+		  This does almost the same as MouseBorder in MS's MOUSE.BAS,
+		  but in a less error prone way!!
+    Example:      MouseLimit XMin%, YMin%, XMax,% YMax%
+    How it works: MouseDriver is called, with sub-functions 7 (set hor
+		  limits) and 8 (set ver limits).
+
+SUB MousePoll (row%, col%, lButton%, rButton%) STATIC
+    Short desc:   Polls mouse driver, then sets parameters accordingly.
+    What it does: Reads the current mouse position (text: row%, col%) and the
+		  button status (lButton%/rButton%, -1 for down (clicked) and
+		  0 for up).
+    Notes:        MS, in their wisdom, decided that this routine should
+		  return the TEXT postition of the mouse, no matter what the 
+		  screen mode. 
+		  This routine is provided merely for compatibility. For a
+		  less error prone routine, use MousePos or MouseTextPos for
+		  graphics and text positions respectively.
+		  For further information, see Appendix A: Use of MousePoll
+    Example:      MousePoll Row%, Col%, LButton%, RButton%
+    How it works: MouseDriver is called with sub-function 3, returning the
+		  current pixel position, and the button status. This is then
+		  decoded into left/right buttons and returned to the calling
+		  routine.
+      
+SUB MousePos (XPos%, YPos%, lButton%, rButton%) STATIC
+    Short desc:   Returns graphics position of mouse.
+    What it does: Reads the current mouse position and the button status
+		  (lButton%/rButton%, -1 for down (clicked) and 0 for up).
+    Notes:        Replacement for MousePoll to give graphics position.
+    Example:      MousePos XPos%, YPos%, lButton%, rButton%
+    How it works: MouseDriver is called with sub-function 3, returning the
+		  current pixel position, and the button status. This is then
+		  decoded into left/right buttons and returned to the calling
+		  routine.
+
+SUB MouseShow
+    Short desc:   Shows mouse cursor.
+    What it does: Makes mouse cursor visible.
+    Notes:        Occasionally in text mode, you may find that the mouse does
+		  not actually appear until you move it, and then leaves a
+		  neat one character sized hole in your display. I have been
+		  unable to trace the cause of this, but it is not a serious
+		  problem, merely one of aesthetics.
+    Example:      MouseShow
+    How it works: MouseDriver is called, with sub-function 1 (incr internal
+		  cursor flag).
+
+SUB MouseTextPos (row%, col%, lButton%, rButton%) STATIC
+    Short desc:   Returns character position of mouse.
+    What it does: Reads the current mouse position and the button status
+		  (lButton%/rButton%, -1 for down (clicked) and 0 for up).
+    Notes:        Replacement for MousePoll to give character position.
+    Example:      MouseTextPos row%, col%, lButton%, rButton%
+    How it works: [A comprehensive discussion of the use of DOS/BIOS function
+		  calls is beyond the scope of these notes, but the following
+		  books may be useful:
+		    DOS Programmer's Reference: Dettmann & Johnson (Que)
+		    Advanced MS DOS Programming: Ray Duncan (Microsoft Press)
+		    ...]
+		  MouseDriver is called with sub-function 3, returning the
+		  current pixel position, and the button status. Two BIOS 
+		  interrupt routines are then used to determine the current
+		  screen mode, and the pixel position transformed into a
+		  character position. The button status is decoded into
+		  left/right buttons and the whole lot returned to the
+		  calling routine.
+
+Appendix A: Use of MousePoll
+============================
+
+	MS, in their wisdom, decided that this routine should return the TEXT
+postition of the mouse, no matter what the screen mode. 
+	So you cannot use this for e.g. asking the user to pick a point on
+the screen. Furthermore, in order to convert pixel positions to character
+locations, MS have simply divided the x/y variables by 8 - thus making the
+routine useless for any screen mode where the number of pixels across/down is
+not 8x the number of character columns/rows.
+	After extensive testing, I can confirm that there are no modes under
+which this routine will always work.
+		Modes 0 & 2 require WIDTH 80, ?? (default 80, 25).
+		Mode 1 requires WIDTH 80, ?? (default 40, 25).
+		Mode 7 requires WIDTH 80, 25 (default 40, 25).
+		Mode 8 requires WIDTH 80, 25 (default).
+		Modes 9 & 10 require WIDTH 80, 43 (default 80, 25).
+		Modes 11 & 12 require WIDTH 80, 60 (default 80, 30).
+	(The list of SCREEN modes given in the QBX help file is economical
+with the truth: all modes that will work in 80x25 format will also work in0
+40x25 format, & vice versa. At least, they do on a VGA screen.)
+MousePoll will not work correctly under mode 13 at all.
+Note that under modes 9, 10, 11 and 12, the (col, row) returned sometimes
+exceeds the legal limit (sounds like it's got a drink problem...), due to
+rounding errors. You will have to check for this too.
+	I have rewritten this to try to eliminate some of these anomalies:
+the new routine is MousePos for the graphics position, and MouseTextPos for
+the character position. Even so, in a mode using 80x43, the row is sometimes
+returned as 44. Also, in some modes, the mouse is limited to moving in the 
+top portion of the screen.
+	Please also note that in modes 1, 7 and 13, the actual DOS mouse
+driver (nothing to do with QuickBasic, but I expect MS is at the bottom of it
+again!) assumes a screen size of 200 x 640. In fact, it is 200 x 320, again
+causing unexpected effects. If you are using these modes, and using
+MouseDriver dircetly, you will have to divide the x-value (col) by 2 to 
+obtain the real position. MousePos and MouseTextPos already have this built
+into them.
+
+Appendix B: DOS Mouse Function (INT 33H) sub-functions
+======================================================
+	
+	When using the MouseDriver routine from MOUSE.BAS or MOUSEDJB.BAS,
+the syntax is:
+
+	m0% = [value to enter in AX register]
+	m1% = [value to enter in BX register]
+	m2% = [value to enter in CX register]
+	m3% = [value to enter in DX register]
+	
+	MouseDriver m0%, m1%, m2%, m3%
+	
+	[value returned in AX register] = m0%
+	[value returned in BX register] = m1%
+	[value returned in CX register] = m2%
+	[value returned in DX register] = m3%
+
+*****************************************************************************
+**The following information applies to PDS only                            **
+**(For QBasic, just copy InterruptX & related code into your programme, &  **
+** use InterruptX as described in USEFUL2.TXT)                             **
+*****************************************************************************
+	
+	When using the Interrupt routine directly, you will first have to
+ensure that you have loaded the QBX.QLB library when you started QBX, and 
+also  have the line
+	'$INCLUDE 'general.bi'
+at the head of your module. The syntax then is:
+
+	[Initialise the mouse using one of the following:
+	   MouseInit
+	   MouseAttached% = MouseCheck%
+	   MouseDriver 0, 0, 0, 0
+	   Interrupt &H33, regs, regs  'Use this one after setting
+				       ' up the regs with DIM regs AS RegType
+				       ' and setting them ax, bx, cx, &dx to 
+				       ' 0.
+	 at some point in your programme. Then:]
+
+	DIM regs AS RegType
+	
+	regs.ax = [value to enter in AX register]
+	regs.bx = [value to enter in BX register]
+	regs.cx = [value to enter in CX register]
+	regs.dx = [value to enter in DX register]
+	
+	Interrupt &H33, regs, regs
+	
+	[value returned in AX register] = regs.ax
+	[value returned in BX register] = regs.bx
+	[value returned in CX register] = regs.cx
+	[value returned in DX register] = regs.dx
+	
+*****************************************************************************
+**End of PDS-specific info                                                 **
+*****************************************************************************
+
+	The following is a potted list of the subfunctions available when
+using this interrupt.
+_____________________________________________________________________________
+|      |                |                         |                         |
+|  AX  |  What it does: | Set other registers to: |  Returns:               |
+|(Sub- |                |                         |                         |
+| func)|                |                         |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   0  | Reset mouse/   |           --            | AX: 0 = Not installed   |
+|      | check mouse    |                         |     1 = Installed       |
+|      | installed      |                         | BX: Number of buttons   |
+|      |                |                         |       (2 for MS)        |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   1  | Show cursor    |           --            |            --           |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   2  | Hide cursor    |           --            |            --           |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   3  | Get mouse      |           --            | BX: Button status:      |
+|      | position &     |                         |       0 = Neither down  |
+|      | button status  |                         |       1 = Left down     |
+|      |                |                         |       2 = Right down    |
+|      |                |                         |       3 = Both down     |
+|      |                |                         | CX: Horizontal position |
+|      |                |                         | DX: Vertical position   |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   4  | Set mouse      | CX: Horizontal position |            --           |
+|      | position       | DX: Vertical position   |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   5  | Get button     | BX: Button ID:          | AX: Button status:      |
+|      | presses        |       0 = Left          |       0 = Neither down  |
+|      |                |       1 = Right         |       1 = Left down     |
+|      |                |                         |       2 = Right down    |
+|      |                |                         |       3 = Both down     |
+|      |                |                         | BX: Number of times     |
+|      |                |                         |       button [ID] has   |
+|      |                |                         |       been pressed since|
+|      |                |                         |       last call to this |
+|      |                |                         |       function (0 ->    |
+|      |                |                         |       32767)            |
+|      |                |                         | CX: Horizontal position |
+|      |                |                         |       at last press     |
+|      |                |                         | DX: Vertical position at|
+|      |                |                         |       last press        |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   6  | Get button     | BX: Button ID:          | AX: Button status:      |
+|      | releases       |       0 = Left          |       0 = Neither down  |
+|      |                |       1 = Right         |       1 = Left down     |
+|      |                |                         |       2 = Right down    |
+|      |                |                         |       3 = Both down     |
+|      |                |                         | BX: Number of times     |
+|      |                |                         |       button [ID] has   |
+|      |                |                         |       been released     |
+|      |                |                         |       since last call to|
+|      |                |                         |       this function (0  |
+|      |                |                         |       -> 32767)         |
+|      |                |                         | CX: Horizontal position |
+|      |                |                         |       at last release   |
+|      |                |                         | DX: Vertical position at|
+|      |                |                         |       last release      |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   7  | Set min/max    | CX: Minimum position    |             --          |
+|      | horizontal     | DX: Maximum position    |                         |
+|      | movement       | {Automatically swapped  |                         |
+|      |                |    if CX > DX}          |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   8  | Set min/max    | CX: Minimum position    |             --          |
+|      | vertical       | DX: Maximum position    |                         |
+|      | movement       | {Automatically swapped  |                         |
+|      |                |    if CX > DX}          |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|   9  | Set graphics   | BX: Horizontal hotspot  |             --          |
+|      | cursor block   |       (-16 -> +16)      |                         |
+|      |                | CX: Vertical hotspot    |                         |
+|      | [See one of    |       (-16 -> +16)      |                         |
+|      | books listed   | DX: Offset of pointer   |                         |
+|      | above for more |       to screen/cursor  |                         |
+|      | information on |       masks             |                         |
+|      | using this.]   | ES: Segment of pointer  |                         |
+|      |                |       to screen/cursor  |                         |
+|      |                |       masks             |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  10  | Set text       | BX: Type of cursor:     |             --          |
+|      | cursor         |       0 = Software      |                         |
+|      |                |       1 = Hardware      |                         |
+|      | [See one of    | If Software cursor then |                         |
+|      | books listed   |   CX: Screen mask       |                         |
+|      | above for more |   DX: Cursor mask       |                         |
+|      | information on | otherwise               |                         |
+|      | using this.]   |   CX: Start of scan     |                         |
+|      |                |         line            |                         |
+|      |                |   DX: End of scan       |                         |
+|      |                |         line            |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  11  | Read motion    |           --            | CX: Horizontal count    |
+|      | counters       |                         | DX: Vertical count      |
+|      |                |                         |       (both -32768 ->   |
+|      |                |                         |       +32767: values are|
+|      |                |                         |       in mickeys moved  |
+|      |                |                         |       since last call to|
+|      |                |                         |       this function,    |
+|      |                |                         |       where 1 mickey =  |
+|      |                |                         |       1/200")           |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  12  | Set user-      | CX: Call mask           |                         |
+|      | defined sub-   | DX: Offset of pointer   |                         |
+|      | routine input  |       to sub-routine    |                         |
+|      | mask           | ES: Segment of pointer  |                         |
+|      |                |       to sub-routine    |                         |
+|      | [See one of    |                         |                         |
+|      | above for more | The sub-routine is      |                         |
+|      | above for more | called when any of the  |                         |
+|      | information on | following conditions is |                         |
+|      | using this.]   | met, AND its bit in the |                         |
+|      |                | call mask is 1:         |                         |
+|      |                |                         |                         |
+|      |                |  Bit 0: Cursor pos      |                         |
+|      |                |           changes       |                         |
+|      |                |      1: left button     |                         |
+|      |                |           pressed       |                         |
+|      |                |      2: left button     |                         |
+|      |                |           released      |                         |
+|      |                |      3: right button    |                         |
+|      |                |           pressed       |                         |
+|      |                |      4: right button    |                         |
+|      |                |           released      |                         |
+|      |                |      5 -> 15: NOT USED  |                         |
+|      |                |                         |                         |
+|      |                | The sub-routine is      |                         |
+|      |                | passed:                 |                         |
+|      |                |                         |                         |
+|      |                | AX: Call mask with      |                         |
+|      |                |       condition bit set |                         |
+|      |                |       that triggered    |                         |
+|      |                |       the call          |                         |
+|      |                | BX: Button status:      |                         |
+|      |                |       ??                |                         |
+|      |                |       ??                |                         |
+|      |                | CX: Horizontal position |                         |
+|      |                | DX: Vertical position   |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  13  | Set light pen  |           --            |            --           |
+|      | emulation on   |                         |                         |
+|      |                | (Both buttons down =    |                         |
+|      |                |    pen down             |                         |
+|      |                |  Both buttons up =      |                         |
+|      |                |    pen up)              |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  14  | Set light pen  |           --            |            --           |
+|      | emulation off  |                         |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  15  | Set mickey-    | CX: Horizontal ratio    |            --           |
+|      | pixel ratio    | DX: Vertical ratio      |                         |
+|      |                |                         |                         |
+|      |                | (Values can be 1 ->     |                         |
+|      |                |  32767)                 |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  16  | Conditional    | CX: Upper X value       |            --           |
+|      | off            | DX: Upper Y value       |                         |
+|      |                | SI: Lower X value       |                         |
+|      |                | DI: Lower Y value       |                         |
+|      |                |                         |                         |
+|      |                | (Screen co-ordinates)   |                         |
+|      |                |                         |                         |
+|      |                | Mouse is hidden in this |                         |
+|      |                | region: use sub-        |                         |
+|      |                | function 1 to show it.  |                         |
+|      |                | You will need to use    |                         |
+|      |                | Interrupt directly for  |                         |
+|      |                | this function in order  |                         |
+|      |                | to enter the SI & DI    |                         |
+|      |                | values: MouseDriver can |                         |
+|      |                | only cope with AX, BX,  |                         |
+|      |                | CX & DX.                |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  17  | NOT USED       |           --            |            --           |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  18  | NOT USED       |           --            |            --           |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  19  | Set double     | DX: Threshold speed     |            --           |
+|      | speed          |                         |                         |
+|      | threshold      | (Values are in mickeys  |                         |
+|      |                | per second, where 1     |                         |
+|      |                | mickey = 1/200")        |                         |
+|______|________________|_________________________|_________________________|
+|      |                |                         |                         |
+|  36  | Get info       |           --            | AX: High: Major version |
+|      |                |                         |     Low: Minor version  |
+|      |                |                         | BX: High: Mouse type    |
+|      |                |                         |     Low: Mouse IRQ      |
+|______|________________|_________________________|_________________________|
+
+Appendix C: Default values for mouse
+====================================
+
+Cursor shown            No                      Hidden
+Cursor position         Screen centre           e.g. 320, 240 for SCREEN 12
+Min/max position hor    Varies                  Max width of last SCREEN
+Min/max position ver    Varies                  Max height of last SCREEN
+Graphics cursor         Hotspot -1, -1          Arrow
+Text cursor             ??                      Inverted box
+Interrupt call mask     All 0                   No interrupts
+Light pen emulation     Yes                     Enabled
+Mickey/pixel ratio hor  8:1 ??
+Mickey/pixel ratio ver  16:1 ??
+
+Appendix D: Effect of screen & cursor mask combinations
+=======================================================
+
+Screen mask bit         Cursor mask bit         Resultant screen bit
+---------------         ---------------         --------------------
+	0                       0                       0
+	0                       1                       1
+	1                       0                       Unchanged
+	1                       1                       Inverted
+
+Appendix E: Screen data for characters
+======================================
+
+Bit number              Description             Comments
+----------              -----------             --------
+15                      Blink flag              1 = Blink on
+12 -> 14                Background colour
+11                      Intensity flag          1 = High intensity
+8 -> 10                 Foreground colour
+0 -> 7                  Character code          (in ASCII)
+
+NB: When using SCREEN 0, you can set each of these using the COLOR statement:
+    this uses the syntax:
+
+	COLOR Foreground, Background
+
+    where: Foreground is a 5-bit number (0 -> 31); bit 4 (blink flag) goes
+	   into bit 15 in the table above; bit 3 (intensity flag) goes into
+	   bit 11 in the table above. The remaining 3 bits go into bits
+	   8 -> 10 as the actual colour.
+	   
+	   Background is a 4-bit number (0 -> 15); however, only the low three
+	   bits are actually used, being put into bits 12 -> 14 in the table
+	   above. Bit 3 is lost.

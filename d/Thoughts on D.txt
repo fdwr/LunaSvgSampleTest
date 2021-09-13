@@ -1,0 +1,62 @@
+----
+Cool
+----
+
+--Enum commas--
+
+Enum's final parameter can have a trailing comma without warning, which makes reordering them easier since you don't need to add or remove that pesky final comma after cutting/pasting. It's also nice to have the max property rather than adding a dummy constant just for the sake of determining the last element.
+
+--Intelligible Error Messages--
+
+Finally, a compiler exists that I can read the errors and make sense of what it's complaining. Why is it always so difficult for compiler writers to write useful, understandable error messages? Javac stinks. MSVC is helpless. MASM is crap.
+
+--Typeof for casting/construction--
+
+Now I don't need to search&replace so many casts or constructors when changing types or renaming the class.
+
+SomeClass sc1; // declare near top of function, file scope, or in structure
+// many lines down
+sc1 = new typeof(sc1)(); // then actually init here, but this line doesn't need editing later :)
+
+--Sensible types--
+
+New primitive types reduce the amount of unnecessary typing, for which every operating system header file or large package end up redefining anyway (Windows has BYTE and DWORD, OpenGL has GLByte and GLint, libpng has png_byte and png_uint_32). So it's about time that we could just type "ubyte" instead of "unsigned char" or just "ulong" rather than the ridiculous "unsigned long long". The selected names represent their types better anyway (we often use char* for byte data)
+
+---------------
+Inconsistencies
+---------------
+
+--Struct verse class properties--
+
+offsetof for classes only work with an instance, while offsetof for structs only work with the class name. Since the compiler can resolve any variable to its type, it should be able to use either the entity type or an variable instance of that entity.
+
+--Conditional compilation--
+
+version() is useable at module scope, but static if() is not? Seems like a very sad waste of such a powerful and useful statement. Version assignments can only be done at module scope, so static if's should certainly be allowed at that level. The static if() so much more capable than any pathetic C++ preprocessor, finally able to evaluate enums and other typed constants! (can avoid using #defines).
+
+--Pack bit arrays--
+
+Two adjacent single bits use two bytes. Two adjacent bit arrays of size 1 should also evaluate the same, but instead require 4x the size. The reason for this is obvious
+
+bit a; bit b - pack into two bytes
+bit[1] a; bit[1] b - uses eight bytes!
+
+Bit arrays could easily be packed, saving space and without any disadvantages. If the compiler internally uses either a bts or dword test instruction, the position of the bit makes no difference. If it tests using the 8bit form, that also makes no difference. It would also
+
+--Assembly--
+
+Opcodes are lowercase but registers are uppercase? I've seen thousands of lines of assembly, and while they may use lowercase or they may use uppercase, they are consistent. This is not only a very weird mix and match; it's awefully ugly. I don't care if you make them all "MOV EAX, 1234" or "mov eax, 1234", but match them. There seems no logical reason for this, since register names are not reserved keywords ("int eax;" or "int EBX;" are both valid declarations), and it's uncomfortable to constantly hold and release shift every few characters.
+
+The use of ptr seems inconsistent. Using a size qualifier shouldn't necessitate a redundant 'ptr' keyword.
+
+mov   EAX,[somevar]; // compiles fine without ptr, clearly inferring it from the brackets
+movzx EAX,byte [somevar]; // requires "ptr" even though the statement above inferred it automatically.
+
+Please refer to the beautiful syntax of NASM or FASM to see how x86 should shine (not like gcc's unpalatable AT&T or MASM's ugly mess).
+
+--Constness ignored--
+
+Oddly it compiles without error, but completely ignores the const property of variables.
+
+const static char c[10] = "test\0";
+c[0] = 'b'; // <- should not be allowed, right?

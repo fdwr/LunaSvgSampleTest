@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="7.10"
+	Name="test_atrblist"
+	ProjectGUID="{9643DB10-35EA-4527-BD47-ABA5D6AF7260}"
+	Keyword="Win32Proj">
+	<Platforms>
+		<Platform
+			Name="Win32"/>
+	</Platforms>
+	<Configurations>
+		<Configuration
+			Name="Debug|Win32"
+			OutputDirectory="$(TEMP)\$(ProjectName)$(ConfigurationName)"
+			IntermediateDirectory="$(TEMP)\$(ProjectName)$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="2">
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				OptimizeForWindowsApplication="TRUE"
+				AdditionalIncludeDirectories=".;..\plain;..\pgfx;..\common"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				MinimalRebuild="TRUE"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="5"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="TRUE"
+				DebugInformationFormat="4"/>
+			<Tool
+				Name="VCCustomBuildTool"/>
+			<Tool
+				Name="VCLinkerTool"
+				OutputFile="test_atrblist_dbg.exe"
+				LinkIncremental="2"
+				GenerateDebugInformation="TRUE"
+				ProgramDatabaseFile="$(OutDir)/test_atrblist.pdb"
+				SubSystem="2"
+				TargetMachine="1"/>
+			<Tool
+				Name="VCMIDLTool"/>
+			<Tool
+				Name="VCPostBuildEventTool"/>
+			<Tool
+				Name="VCPreBuildEventTool"/>
+			<Tool
+				Name="VCPreLinkEventTool"/>
+			<Tool
+				Name="VCResourceCompilerTool"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="$(TEMP)\$(ProjectName)$(ConfigurationName)"
+			IntermediateDirectory="$(TEMP)\$(ProjectName)$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="2">
+			<Tool
+				Name="VCCLCompilerTool"
+				OptimizeForWindowsApplication="TRUE"
+				AdditionalIncludeDirectories=".;..\plain;..\pgfx;..\common"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
+				RuntimeLibrary="4"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="TRUE"
+				DebugInformationFormat="3"/>
+			<Tool
+				Name="VCCustomBuildTool"/>
+			<Tool
+				Name="VCLinkerTool"
+				OutputFile="test_atrblist.exe"
+				LinkIncremental="1"
+				GenerateDebugInformation="TRUE"
+				SubSystem="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				TargetMachine="1"/>
+			<Tool
+				Name="VCMIDLTool"/>
+			<Tool
+				Name="VCPostBuildEventTool"/>
+			<Tool
+				Name="VCPreBuildEventTool"/>
+			<Tool
+				Name="VCPreLinkEventTool"/>
+			<Tool
+				Name="VCResourceCompilerTool"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+		</Configuration>
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+		<Filter
+			Name="Source Files"
+			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			<File
+				RelativePath=".\guioptions.h">
+			</File>
+			<File
+				RelativePath=".\main.cpp">
+			</File>
+			<File
+				RelativePath=".\main.h">
+			</File>
+			<File
+				RelativePath=".\pgfxoptions.h">
+			</File>
+			<File
+				RelativePath=".\resources.asm">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+		</Filter>
+		<Filter
+			Name="Header Files"
+			Filter="h;hpp;hxx;hm;inl;inc;xsd"
+			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+		</Filter>
+		<Filter
+			Name="Resource Files"
+			Filter="rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx"
+			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}">
+		</Filter>
+		<Filter
+			Name="[Plain] GUI Files"
+			Filter="">
+			<File
+				RelativePath="..\plain\cursors.asm">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\plain\guicode.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\guidefs.h">
+			</File>
+			<File
+				RelativePath="..\plain\guiobj.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\uceattriblist.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\uceborder.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucebutton.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucepreview.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucerootwindow.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucetitlebar.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucewindow.cpp">
+			</File>
+			<File
+				RelativePath="..\plain\ucewindowbg.cpp">
+			</File>
+		</Filter>
+		<Filter
+			Name="[Pgfx] Graphics Files"
+			Filter="">
+			<File
+				RelativePath="..\pgfx\pgfx.h">
+			</File>
+			<File
+				RelativePath="..\pgfx\pgfxhl.asm">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\pgfx\pgfxlayr.asm">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\pgfx\pgfxlayr.h">
+			</File>
+			<File
+				RelativePath="..\pgfx\pgfxll.asm">
+				<FileConfiguration
+					Name="Debug|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32">
+					<Tool
+						Name="VCCustomBuildTool"
+						Description="Compiling $(InputName).asm"
+						CommandLine="nasmw.exe &quot;$(InputPath)&quot; -o &quot;$(IntDir)\$(InputName).obj&quot; -fwin32 -w+orphan-labels -i..\common\ -i..\pgfx\ -i..\plain\ -d_MSLINK -d_WINDOWS
+"
+						Outputs="$(IntDir)\$(InputName).obj"/>
+				</FileConfiguration>
+			</File>
+		</Filter>
+		<Filter
+			Name="Common files"
+			Filter="">
+			<File
+				RelativePath="..\common\basictypes.h">
+			</File>
+			<File
+				RelativePath="..\common\macros32.inc">
+			</File>
+			<File
+				RelativePath="..\common\string.c">
+			</File>
+			<File
+				RelativePath="..\common\winnasm.inc">
+			</File>
+		</Filter>
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>

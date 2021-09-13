@@ -1,0 +1,132 @@
+containerheader
+        DefWindow NullGuiItem,0,0
+        DefContainedItem mainbg
+
+containeritem
+        DefContainedItem [name]
+
+containerunknownitem
+        DefContainedItem [name] ;unknown item
+
+containerfooter
+        DefWindowEnd
+DefItem mainbg,MainBgCode,0,MainBgObj.DefFlags, 0,0,Screen.Height,Screen.Width
+        DefTitleBar Program.Title,Program.Title_size,TitleBarObj.HelpButton|TitleBarObj.CloseButton|TitleBarObj.MinButton
+
+generic
+DefItem [name],BorderCode,NullGuiItem,BorderObj.DefFlags, [top],[left],[height],[width]
+
+window
+DefItem [name],WindowCode,NullGuiItem,WindowObj.DefFlags, [top],[left],[height],[width]
+        DefWindow NullGuiItem,0,0
+        ;...
+        DefWindowEnd
+
+windowbg
+DefItem [name],WindowBgCode,0,WindowBgObj.DefFlags, 0,0,2048,2048
+
+button
+DefItem [name],ButtonCode,NullGuiItem,ButtonObj.DefFlags, [top],[left],[height],[width]
+        DefPushButton [name].Text,[textlen],0
+[trail]        [name].Text: db "[text]"
+[endtrail]
+
+titlebar
+DefItem [name],TitleBarCode,NullGuiItem,TitleBarObj.DefFlags, [top],[left],[height],[width]
+        DefTitleBar [name].Text,[textlen],TitleBarObj.HelpButton|TitleBarObj.CloseButton|TitleBarObj.MaxButton
+[trail]        [name].Text: db "[text]"
+[endtrail]
+
+textprompt
+        [name].MaxLen equ [textlen]+50
+DefItem [name],TextPromptCode,NullGuiItem,TextPromptObj.DefFlags, [top],[left],[height],[width]
+        DefTextPrompt [name].Text,[textlen],[name].MaxLen,0
+[trail]        [name].Text: db "[text]"
+        times 50 db 0
+[endtrail]
+
+label
+DefItem [name],LabelCode,0,LabelObj.DefFlags, [top],[left],[height],[width]
+        DefLabel [name].Text,[textlen],LabelObj.AlignLeft
+[trail]        [name].Text: db "[text]"
+[endtrail]
+
+labelr
+DefItem [name],LabelCode,0,LabelObj.DefFlags, [top],[left],[height],[width]
+        DefLabel [name].Text,[textlen],LabelObj.AlignRight
+[trail]        [name].Text: db "[text]"
+[endtrail]
+
+border
+DefItem [name],BorderCode,0,BorderObj.DefFlags, [top],[left],[height],[width]
+
+picture
+DefItem [name],ImageCode,0,ImageObj.DefFlags, [top],[left],[height],[width]
+        DefImage [name].Image,0
+[trail]        DefImageStruct [name].Image,[height],[width]
+        db [picbytes]
+[endtrail]
+
+atrlist
+DefItem [name],AtrListCode,NullGuiItem,AtrListObj.DefFlags, [top],[left],[height],[width]
+        DefAtrList NullGuiItem
+        ;...
+        DefAtrListEnd
+
+atrlistitem
+        DefAtrListItem [name].Name,[lenbefore]:,[name].Text,[lenafter]:, 0, 0,-1000,1000, 1,10,100
+[trail]        [name].Name: db "[textbefore]:"
+        [name].Text: db "[textafter]:"
+[endtrail]
+
+scroll
+DefItem [name],ScrollHandleCode,NullGuiItem,ScrollHandleObj.DefFlags, [top],[left],[height],[width]
+        DefScrollHandle 100,0,0,1,10
+
+mainbg
+DefItem [name],MainBgCode,0,GuiObj.NoKeyFocus|GuiObj.FixedLayer|GuiObj.FixedPosition, 0,0,Screen.Height,Screen.Width
+
+tabstrip
+DefItem [name],TabStripCode,NullGuiItem,TabStripObj.DefFlags, [top],[left],[height],[width]
+        DefTabStrip
+        ;...
+        DefTabStripEnd
+
+tab
+        DefTabStripItem [name].Name,[textlen],0,[height]
+[trail]        [name].Name: db "[text]"
+[endtrail]
+
+atrbar
+DefItem [name],AtrBarCode,NullGuiItem,TabStripObj.DefFlags, [top],[left],[height],[width]
+        DefTabStrip
+        ;...
+        DefTabStripEnd
+
+atrbaritem
+        DefTabStripItem [name].Name,[textlen],0,[width]
+[trail]        [name].Name: db "[text]"
+[endtrail]
+
+list
+DefItem [name],ListCode,NullGuiItem,ListObj.DefFlags, [top],[left],[height],[width]
+        ;DefList ...
+
+menu
+DefItem [name],FloatMenuCode,NullGuiItem,FloatMenuObj.DefFlags, 0,0,[height],[width]
+        DefMenuObj sub[name]
+        DefSubmenu sub[name],IgnoreMsg
+        ;...
+        DefSubmenuEnd
+
+submenuitem
+        DefSubmenuItem 0, [name].Text,[textlen], 0
+[trail]        [name].Text: db "[text]"
+        ;DefImageStruct [name].Image,0,0
+[endtrail]
+
+unused
+[name]: DefSomeItem [name].Text,[name].TextLen...
+[trail]        [name].Text: db "[text]"
+        [name].TextLen equ $-[name].Text
+[endtrail]

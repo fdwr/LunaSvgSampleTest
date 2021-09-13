@@ -1,0 +1,373 @@
+========
+  Tilemap Viewer .187 (c)2002 PeekinSoüt
+  File pattern viewer (speedy and tiny)
+  By Dwayne Robinson, using Nasm/WDOSX/Alink
+  http://fdwr.tripod.com/snes.htm
+  FDwR at hotmail.com
+
+  1. Changes
+  2. About
+  3. Requirements
+  4. Features
+  5. Using the viewing window
+  6. Command line parameters
+  7. Other utilites
+  8. History
+
+========
+Changes
+========
+- Colored cell backgrounds behind numbers in hex-view.
+- Automatically loads VRAM when viewing a savestate. Press "g" for goto, then
+  type "bg#" to see any bg layer 1-4.
+- Changed the scrolling keys yet again. It easier to control now and makes
+  more sense - or at least in my opinion.
+- Improved spc sample view slightly by putting the end of sample bar at right
+  side of the sample and highlighting the wave tips.
+- Fixed 4x4 tile table problem (was actually 2x4).
+- Added spc sample view (mode 6).
+- Number keys now change mode (1-6).
+
+- Increased length of help screen. Now use up/down arrow keys to scroll.
+- Goto bg added. To go bg2 in a savestate for example, press 'g' and then type
+  "bg2".
+- Added alternate sideways orientation (down/right instead of right/down) for
+  DKC levels and Zelda dungeon fragments. Press 'o' to toggle.
+- Added tile table mode. Accepts variable size tile tables, such as 2x2 Zelda
+  and 4x4 DKC. Unfortunately tile tables can be difficult to find and don't
+  always work correctly (Mario World is the prime example), so maybe someday
+  user editable tile tables will be added. Use '-t' switch to load a tile
+  table from a ROM.
+
+
+========
+About
+========
+  TileView is a simple file viewer that displays a file's contents as small
+  colored blocks for the purpose of finding tilemaps and other types of array
+  structures. It can be set to any wrap width and view either bytes or words.
+  In addition, there are also hex-number and ASCII characters modes. Although
+  it can actually view any file (dat,dll,exe,smc,fig,wad..), it is specially
+  written for ZSNES savestates (zst), automatically setting the offset to WRAM
+  for quicker location of tilemaps.
+
+  Ever browsed through a file with a hex-editor and noticed curious patterns
+  in it? You knew they were part of something, graphics image, tilemap, sound
+  sample, or maybe pointer table, but didn't know exactly what. This program
+  won't tell you what they are, but it might help you to figure out by showing
+  the big picture. The problem with hexeditors was that all those little
+  numbers made my eyes glaze over when trying to look for patterns. So I took
+  advantage of the eye's ability to recognize patterns of colors, which not
+  only made it easier on the eyes, but also much faster to find what I was
+  looking for.
+
+  For the longest time, I wanted to map out all those classic console games
+  that provided me so many hours of fun. Thanks to emulation, I finally have
+  the chance to. All the levels you see while playing a game have to be stored
+  somewhere, and if you could just find where, you could get the complete
+  maps. Unfortunately, it's difficult to find them in the cartridge ROM since
+  each game stores its levels in different areas using its own compression
+  format. While the game is running though, everything is in an expanded state
+  in either memory (WRAM, SNES memory) for faster access or the scene itself
+  (VRAM). So what TileView does is help find level pieces by displaying the
+  memory in savestates (complete snapshots of the SNES state).
+
+  Some games store the entire current level in memory, like in "Mario 2",
+  "Mario 3", "Mario World", "Yoshi's Island", "Zelda:LTTP", and "Metroid 3".
+  They simply generate new parts of the scene based on the level in memory
+  when they need to (like when the scene is scrolled or you enter a new area).
+  Others insist on being a little more difficult to map, and store only
+  fragments or read directly from the ROM, which means mapping requires
+  visiting every little section of the level.
+
+  Although my favorite console is the Super Nintendo, you might find several
+  other systems which can be used for it, possibly even some computer games.
+  After all, tilemaps are tilemaps. Other data patterns by coincidence can
+  also be viewed with TileView, including mode 7 graphic tiles, fx chip
+  graphics, and even small 256 color bitmaps if set right.
+
+Disclaimer
+----------
+  This program is provided as freeware, in appreciation of all the free
+  utilities others have written which I enjoy. The only cost is suggestions
+  for improvement, bug reports, and maybe a letter of appreciation :)
+
+  Although this program does not have any known problems, it is not guaranteed
+  to be free of unknown ones. You use this program by your own choice. I
+  disclaim any responsibility from damage to your computer this program could
+  cause. If you do encounter anything, please tell me so it can be fixed!
+  After all, I use this on my computer too :)
+
+
+============
+Requirements
+============
+
+File to view
+------------
+  Simply include the file to view after the program name.
+
+    tmv metroid3.smc
+    tmv -v zelda.zs2
+    tmv h:\dw\emu\allstars.zs9
+    tmv c:\games\doom\doom1.wad
+    tmv -v zelda.zst -t 78000,2,2 zelda.smc
+
+System
+--------
+  This is such a tiny little program, I'm quite sure that you more than meet
+  its system needs. I wrote this to be used on my pitiful 25MHz 386, so
+  anything faster is more than enough.
+
+- PC 386+    You have that covered (unless you're a Mac user)
+- 4Mb        Filesize does not matter (1byte-2gb)
+- VGA        SVGA is not supported, just 320x200:256
+- Keyboard   These old things are still pretty useful, especially when a mouse
+             isn't supported
+
+========
+Features
+========
+- Byte/Word unit size
+- Variable tile wrap
+- Flexible scrolling
+- Hex/Dec offset
+- Relative/Absolute offset
+- Colored Blocks
+- Numeric display
+- ASCII Text display
+- Sideways Orientation
+- VRAM Tiles
+- Spc sample view
+- Other modes
+
+Byte/Word unit size
+-------------------
+  Tilemaps can use either bytes or words as their grid units, so you can
+  toggle between the two. For example, "Mario World" and "Mario All-Stars" use
+  bytes, while "Zelda:LTTP" and "Metroid 3" use words.
+
+Variable tile wrap
+------------------
+  Since tilemaps can come in any size width, it allows any variable wrap,
+  1-512 tiles. Common wraps include multiples of two (16,32,64) so there are
+  shortcut keys for doubling and halving the wrap. "Mario World" uses multiple
+  sections each 16 tiles wide, while "Zelda:LTTP" uses a large 64 tile wide
+  grid. Levels in "Metroid 3" and "Cybernator" (by Konami) do not have a fixed
+  wrap and can vary for each level. The largest one I have seen was 366 bytes
+  wide in "Cybernator".
+
+Fast Scrolling
+--------------
+  For easy movement through a file, you can scroll forward and backward in
+  several ways, including by a single row, single column, 16 rows, or 16
+  columns, bytes, or 32k banks. This is more versatile and allows more freedom
+  than most hex-editors and tile viewers. The 16 row jump was chosen to stay
+  better aligned to even kilobyte addresses, where tilemaps are most
+  frequently found. 32k bank jumps are useful for quickly scrolling through
+  huge files, like ROM images. You may also jump directly to any position with
+  goto.
+
+Hex/Dec offset
+--------------
+  Because some of us do not think well in hex, the offset can be shown as
+  hexadecimal (default) or more people friendly decimal.
+
+Relative/Absolute offset
+------------------------
+  It makes things easier to translate addresses in the file to memory
+  addresses in the when relative offset is used. For example, for obtaining
+  the in-memory SNES address of any offset, the base can be set to 3091 (which
+  is the file offset of WRAM in a ZSNES savestate) and it will show the offset
+  relative to it. That saves you from having to manually subtracting it
+  yourself each time. You can also toggle it on or off if you need to. You do
+  not need to set the base for ZSNES savestates, since they are detected and
+  it is automatically set. Bty, to obtain to the SNES memory address, just add
+  7E0000h to the hex offset (only 0-1FFFFh, anything after that is VRAM). All
+  other files are automatically assumed to be ROMs with a header and are set
+  to a base of 512.
+
+Colored Blocks
+--------------
+  Hundreds of little colored blocks to aid pattern recognization.
+
+Numeric display
+---------------
+  In case you want see what the actual hex values of the units.
+
+ASCII Text display
+------------------
+  Simply shows bytes as characters. In the case of uncompressed unicode (two
+  byte) characters, it only shows the lower byte. It does not display text in
+  alternate character sets or anything like Thingy or Hexpose do. So any
+  console game text that you can read (like DKC) is simply because the
+  designers chose to use the ASCII set.
+
+VRAM Tiles
+----------
+  Shows words as SNES graphic tiles. Useful for showing some tilemaps in
+  savestates or ROMs. Tiles will only be shown if VRAM was loaded from a
+  savestate. Colors are not correct yet.
+
+Sideways Orientation
+--------------------
+  Most tilemap structures proceed right then down, but some are arranged down
+  then right, like DKC levels and Zelda dungeon fragments. When sideways
+  orientation is turned on, the arrow keys are changed accordingly so that
+  scrolling doesn't become confusing.
+
+Spc Sample View
+---------------
+  Just a view of BRR (bit rate reduced) sound samples found in either ROMs,
+  savestates, or SPC files. Every sound sample block is nine bytes, one for
+  the header and eight sample bytes (16 nybbles), which explains the strange
+  banded pattern you see. Nothing will look right though if you aren't aligned
+  correctly to the header byte. Often between samples you will need to
+  realign. It is easier to spot and align to the header bytes in color block
+  mode. Then you can switch to BRR sample view to see the actual waves. The
+  end of each sample is indicated by a vertical line. Note that in switching
+  to this view, the wrap is automatically changed to 9 bytes and orientation
+  is switched to sideways.
+
+Other modes
+-----------
+  By coincidence, TileView can display mode 7 graphics, fx chip graphics, and
+  even small 256-color bitmaps less than 512 pixels wide (of course you might
+  rather use Paint since all the colors would be messed up). These are not
+  special modes of TileView, just the normal colored block mode set to a
+  certain unit size and wrap width. For mode 7 graphics (as they would be
+  found in a savestate), set the width to 8 and unit size to word. Fx chip
+  graphics such as those found in "Starfox" and "Yoshi's Island" can be viewed
+  by setting the width to 256 and unit size to byte. 
+
+========================
+Using the viewing window
+========================
+
+Keys
+--------
+  Scrolling:
+    Up Down            Single row
+    Left Right         Single column
+    PgUp PgDn          16 rows
+    Home End           16 columns
+    Ctrl+(Left/Right)  Byte forward or backward
+    Ctrl+(PgUp/PgDn)   32k at a time (for bank movement)
+    Ctrl+(Home/End)    Jump to beginning or end of file
+                       Press Home once to jump to the base offset,
+                       again to jump to the absolute beginning.
+
+  Wrap width/Orientation:
+    [ ]         Decrease/increase by one tile (1-256)
+    { }         Half/double tile width
+    o           Normal/sideways orientation
+
+  Viewing modes:
+    m M         Cycle through modes
+    1           Colored blocks
+    2           Hex numbers
+    3           ASCII characters
+    4           VRAM
+    5           Tile table
+    6           BRR sample
+
+  Unit attributes:
+    u           Byte/word size (8/16bit)
+    + -         Decrease/increase right shift
+    / *         Decrease/increase bitmask size
+
+  Others:
+    g           Goto file position (depends on hex/dec offset)
+    b           Relative or absolute (use file base or not)
+    B           Set base to current position
+    h           Hex or decimal offset
+    w           Change value of unit at window base (top-left)
+    Del         Sets units to value last entered (with 'w')
+
+    F1          Key help
+    Esc         Go do better things
+
+=======================
+Command line parameters
+=======================
+  You can use these to start TileView at a certain position, wrap, unit size,
+  and mode (rather than having to manually set them afterwards). If giving
+  more than one file to work with (perhaps one to view and another to load a
+  tile table from), the first file is always the viewing file. Some switches
+  apply to the following file even if the filename does not come immediately
+  after it. For example "tmv -v -g 20000 zelda.zst" would still load VRAM from
+  "zelda.zst" despite the goto being in between.
+
+  -g   Goto position, either a hex address or bg number.
+  -w   Set tile wrap width (1-512).
+  -u   Set unit size to byte or word (8,16).
+  -m   Viewing mode (1-6).
+  -v   Load VRAM from following file, a ZSNES savestate.
+  -t   Load tile table from following file, usually a ROM. If you load a tile
+       table, you must also load VRAM. Each of the up to five parameters is
+       separated by a comma.
+         offset - base of table, hex file position (required)
+         height - tiles heigh
+         width  - tiles wide
+         bytes  - bytes per tile (only words work for now)
+         flip   - any value tells tileview to recognize tile table as sideways
+                  axis tiles such as Mario World
+       Example:
+         tmv -v zelda.zst -t 78000,2,2,2 zelda.smc
+         tmv -v dkc.zst -t 20aad6,4,4,2 dkc.fig
+
+  -?   Author info
+
+
+=====================
+Other useful utilites
+=====================
+  As far as I know, nobody else has written (or at least released) something
+  quite like TileView, so I can't exactly mention any other such utilities.
+  Maybe nobody thought of such a thing. Below are some utilities that might be
+  useful along with TileView.
+
+- Hex Workshop   Great Windows hex-editor.
+    Breakpoint     http://www.bpsoft.com/
+- HexPose        Fast hex and alternate character set editor.
+    SnowBro        http://home.sol.no/~kenhanse/nes/index.htm
+
+
+=======
+History
+=======
+
+Past:
+1998-12-14  Last Qbasic version. Switching to asm because of slow 25Mhz PC.
+1999-03-08  Numeric display mode
+1999-04-24  ASCII text mode
+1999-05-03  Goto file position
+1999-06-10  Added my own color palette (rather than the default VGA) to
+            improve viewing. Fixes areas that were too dark to see well. Also
+            helps to visually distinguish different elements. As games tend to
+            group tiles of the same basic kind together, tiles of the same
+            type have will be displayed in similar color hues, whereas before
+            they were all just a mix of colors. It's also easier on the eyes.
+1999-07-15  Increased maximum wrap to 512 for huge levels (the first level of
+            Cybernator is 352 bytes wide)
+            Drew my own slightly smaller font
+            Set GUI colors a little darker and made window a bit heigher
+            Can set individual unit to hex-value
+1999-08-04  Added command line parameters to set position, width, unit size,
+            and viewing mode before starting. I got tired of having to
+            manually set the position and unit size every time while trying
+            out something. Details are below.
+1999-11-15  Darkened colors even more for better contrast in VRAM mode.
+            Added VRAM graphics mode. Use '-v' switch to load graphics from
+            ZSNES savestates.
+2001-01-29  Added bitmasking and right shifting to select only specific bits
+            of the units.
+
+Future: (hopes, no promises)
+- Edit the file with mouse
+- Export the data viewed in the window to a separate file
+- Fill a selected range with a single value or pattern
+- Undo
+
+
+(:Peekin:)  eof || ^Z

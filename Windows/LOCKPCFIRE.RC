@@ -1,0 +1,28 @@
+1 VERSIONINFO
+;FILEVERSION 2,0,0,0
+;PRODUCTVERSION 2,0,0,0
+;FILEFLAGSMASK 0x0000003FL
+;FILEFLAGS 0x0000000BL
+;FILEOS 0x00010001L
+;FILETYPE 0x00000001L
+;FILESUBTYPE 0x00000000L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", "20020501"
+            VALUE "FileDescription","Locks PC while away, showing fire demo"
+            VALUE "LegalCopyright","Copyright\251 2002 Dwayne Robinson"
+            VALUE "Company Name", "PeekinSoft"
+            VALUE "Author Address", "FDwR@hotmail.com\r\nhttp://fdwr.tripod.com/"
+            VALUE "Purpose","Displays a beautiful fire scene while discouraging annoying people - that sit down at your computer and close all your open programs - from touching your station ):-\"
+        END
+    END
+    ;BLOCK "VarFileInfo"
+    ;BEGIN
+    ;    VALUE "Translation", 0x0409,1252
+    ;END
+END
+
+1 ICON LOCKPC.ICO

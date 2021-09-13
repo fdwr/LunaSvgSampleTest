@@ -1,0 +1,33 @@
+--Aug--
+5  Start writing viewer
+   Figure out where certain registers of the SNES were stored in ZSNES savestates
+8  Write code for simple GUI parts
+11 Create main menu and fileload window
+13 Add mouse support (it was a must)  
+14 Able to load VRAM, OAM, and scroll registers
+   but not able to display even a single tile yet
+18 Get the scene info page right after some trial and error
+   Tells the tile size, map size, and scroll registers
+19 Add palette viewing window
+22 Write a tile translator (SNES tile => linear bitmap)
+23 Try to figure out how tilemaps are arranged with simple colored blocks
+   They are messed up! Instead of 64x64 tilemaps being normal, simple arrays
+   they are four 32x32 tilemaps.
+24 Replace the blocks with real tiles (at least for non-mode 7 8x8 tiles)
+   Add palette colormapping
+25 Replace the tilemap debugger with the real one to draw scene layers
+   Add sprites list with details (they might not be right though)
+26 Get the tilemaps to wrap correctly!
+27 Add View scene scroll with arrow keys
+28 Beat Mario RPG and decide I want to make a map of it.
+   Maybe ZsnesMapper will someday do what it was made to do and make a map
+   of it along with Zelda.
+29 Lost copy I've been working on for a week and start from backup
+31 Added mode 7 tiles
+--Sept--
+1  Map tiles are now flipped vertically and horizontally
+2  File loader is actually functional now
+3  Added mosaic, vertical scan line, and cycle count info
+   verified that other games can be viewed with it
+8  Start to add sprites (to the Sprites page at least, not the scene)
+9  Get my old copy back!

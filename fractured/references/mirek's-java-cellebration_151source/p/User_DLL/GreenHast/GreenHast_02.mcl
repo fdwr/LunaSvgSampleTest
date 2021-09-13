@@ -1,0 +1,9 @@
+#MCell 2.50
+#GAME User DLL
+#RULE GreenHast
+#BOARD 160x160
+#SPEED 0
+#WRAP 1
+#CCOLORS 15
+#D Greenberg-Hastings rule
+#L 12A$12A$12A$12A$12A$12A$12A$12A$12A$12A$12A$12A

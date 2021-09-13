@@ -1,0 +1,31 @@
+#MCell 2.50
+#GAME User DLL
+#RULE Aurora
+#BOARD 400x180
+#SPEED 0
+#WRAP 1
+#CCOLORS 16
+#D "Aurora" rule by Rudy Rucker
+#D 
+#D The rule for Aurora is a one-dimensional version of the Rug rule:
+#D every cell's new state is taken to be one greater than the neighborhood
+#D average of Left, Me, and Right. When a color value reaches 16, it is
+#D rounded back down to 0.
+#D 
+#D The effect produced is like globby paint running down the screen,
+#D though really you are seeing "one-dimensional gliders" moving back
+#D and forth and interacting.
+#D 
+#D Rudy Rucker:
+#D 
+#D "I called the rule Aurora because when I visited Norman Packard's
+#D office at the Institute for Advanced Study in 1985, he showed me a
+#D smoother (eight visible neighbor bits and 255 colors) version of this
+#D rule and remarked that it looked like the northern lights."
+#D 
+#L INNFGDDFGHNOKDEJBCCFJ.DOLBENCOEH.FBBJMF.OEOGFIAHFALAAECGAKGOIHNLBOOHDJ
+#L KKFCLAODHLO.EJFAHMGIHDGIMMAMANHMEJLGGFMK.CFMCOCGK.AH.HGD.BFOAANLOAOIHK
+#L EAAEMLLDGJADAANFOHBNBKHFDENIM.NFGGFHNOBFCHHMJCHEBOEN.AJIJJALFELJ.LLJJM
+#L FI..JEOJJM.CKJAJLLDABKIDNLIKBELHGFGHHIDFDHBIGHAI.JMHEFEHDNGLKOGKC.JK.G
+#L LGAJBFAFBIHEBOIBKNFDMFIJELG.3JCKOMJBIA3OBEDMEIJDBOHMCBJGKF.JFBFBMNBACI
+#L LJKIJ.MFCJJOAOAMBCIJIFANABMIOHDECBOKNGMGFAJE.LMO

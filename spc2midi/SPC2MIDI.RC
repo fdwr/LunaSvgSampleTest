@@ -1,0 +1,33 @@
+1 VERSIONINFO
+FILEVERSION PROGVER,0,0,0
+PRODUCTVERSION PROGVER,0,0,0
+FILEFLAGSMASK 0x0000003FL
+FILEFLAGS 0
+FILEOS 40004h //VOS_NT_WINDOWS32
+FILETYPE 1 //VFT_APP
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", PROGVERSTR
+            VALUE "FileDescription","Spc2Midi - DSP to MIDI convertor"
+            VALUE "Purpose","Plays SNES game music from SPC captures / ZSNES savestates and exports it to MIDI files. Also just an experiment to see what I was capable of :)"
+            VALUE "LegalCopyright","Copyright\251 2002 Dwayne Robinson"
+            VALUE "CompanyName", "PeekinSoft"
+            VALUE "Mail", "FDwR@hotmail.com"
+            VALUE "Website", "http://fdwr.tripod.com/snes.htm"
+            VALUE "Origin", "Earth->UnitedStates.Oregon(\042Salem\042)"
+            VALUE "Greets","AntiRes\r\nKoroshiya\r\nZsKnight\r\nAll the SNES composers"
+        END
+    END
+    ;BLOCK "VarFileInfo"
+    ;BEGIN
+    ;    VALUE "Translation", 0x0409,1252
+    ;END
+END
+#ifndef ConVer
+1 ICON SPC2MIDI.ICO
+#endif
+;2 ICON SPCSMALL.ICO

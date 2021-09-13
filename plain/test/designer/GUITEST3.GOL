@@ -1,0 +1,8 @@
+"button","TopWnd",0,0,52,180,0,""
+"titlebar","TwTb",2,2,9,176,0,"Moveable window"
+"border","",13,3,13,174,0,"c"
+"textprompt","",14,4,11,172,0,"Just some random text"
+"label","",28,3,8,172,0,"Pointless label"
+"button","SaveBtn",37,3,12,56,0,"Save"
+"button","DiscardBtn",37,62,12,56,0,"Discard"
+"button","CancelBtn",37,121,12,56,1,"Cancel"

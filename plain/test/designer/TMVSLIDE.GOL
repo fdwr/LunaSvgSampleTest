@@ -1,0 +1,4 @@
+"titlebar","",24,358,18,276,0,"width = 144, height = 408, row=24, col=22"
+"titlebar","",48,358,18,276,0,"status bar row=436,col=20 16x620"
+"titlebar","",0,0,18,144,0,"title bar"
+"border","bdrDeleteMe",-4,-22,416,170,1,""

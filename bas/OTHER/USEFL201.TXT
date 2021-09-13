@@ -1,0 +1,664 @@
+			   U S E F U L 2 . B A S
+			   =====================
+      
+      Collection of modules for various general tasks, mainly system.
+    >>>>For QBasic (i.e. the "free" version that comes with MS-DOS)<<<<
+
+     Written by: Dave Burbridge
+	   Date: 27/11/95
+	Version: 2.00
+  Modifications: - 1.00: First general release
+		 - 2.00: Added many mouse & DOS functions, demo
+
+0. General:
+===========
+
+- Mainly written by:
+  DB = Dave Burbridge (d.burbridge@ic.ac.uk)
+  Other authors:
+  IM = Ian Musgrave (On comp.lang.basic.misc)
+  DG = Douggie Green (On comp.lang.basic.misc)
+  DJ = Dave Jewell (PCAnswers)
+  WH = Wilf Hey (PCPlus)
+  BJ = Brett Jones (written for TurboBasic: I d'ld it from simtel)
+  MB = Bytebloc (on comp.lang.basic.misc)
+  
+- I have removed Ian's SUB Pause, since USEFUL2 includes my own version,
+  WaitForAnyKey, which also checks for mouse presses, and has the option of
+  timing out after a specified period.
+  I have, however, included his extremely useful DIR$ function.
+ 
+- The interrupt routines were taken from a book on MS-DOS programming, but I
+  am not sure how accurate they are: e.g. GetSysConfig reports my system as 
+  having 3 printers and no game ports, when in fact I have none of the former 
+  and 1 of the latter.
+  A comprehensive discussion of the use of DOS/BIOS function calls is beyond
+  the scope of these notes, but the following books may be useful:
+      DOS Programmer's Reference: Dettmann & Johnson (Que)
+      Advanced MS DOS Programming: Ray Duncan (Microsoft Press)
+		    
+- Obviously, it would be a waste of memory to load all of these each time you
+  wanted to use one. I therefore give you permission to split this up how you
+  like, as long as my name is mentioned in your source code/documentation
+  (and the names of anyone else who appears in my code!).
+  
+- NB: Possible problem: for some reason, if you run this through Windows,
+   Alt+Tab to Win & back, you lose control over the mouse in the interpreter
+   screen. You can regain it by issuing the command "MouseShow" in the
+   Immediate window.
+
+  Contents:
+    0. General
+    1. Conversion to PDS etc
+    2. List of routines
+    3. Details of each routine
+-------------------------------------------------------
+NOTE: Mouse routine info is given in file US2MOUSE.TXT
+-------------------------------------------------------
+
+1. Conversion to PDS etc:
+=========================
+
+  To convert to PDS, start it with the /L:QBX.QLB option.
+  
+  Delete the SUB InterruptX, & change this line:
+      InterruptX [IntNo], regsx
+    to
+      InterruptX [IntNo], regsx, regsx
+    wherever it occurs.
+
+  Add the line:  
+    '$INCLUDE: '[path]general.bi' 'where [path] is the path to your PDS src dir.
+
+  (I did try to find a way of passing regsx twice in this version, but
+    QBasic was having none of that :-( I also tried to add an Interrupt
+    version (i.e. w/out passing segment registers), but couldn't hack it)
+
+  Remove the TYPE RegTypeX..END TYPE lines inclusive, and the DECLARE SUB
+    InterruptX line.
+
+2. Short list of routines: 
+==========================
+    (summary at head of each routine in USEFUL.BAS):
+    
+    (S) = SUB, (F) = FUNCTION
+ 
+      (S) BigFont: Large printing on screen
+      (S) CalcSkewRect: Calculates (x,y) of vertices of skewed rectangle
+      (S) Centre: Writes text in centre of specified row
+      (S) CHDRIVE: Changes to specified drive
+      (F) CheckInEllipse: Checks whether a point is in an ellipse
+      (F) CheckInRect: Checks whether a point is in a rectangle
+      (S) ClearBuffer: Waits until keyboard buffer is empty
+      (F) CURDIR: Gets the current directory
+      (F) DIR: Returns first/next fit filename
+      (S) DrawSkewEllipse: Draws a skewed ellipse
+      (S) GetAvailModes: Returns available screen modes
+      (F) GetCallingPath: Returns the full path of the original programme
+      (S) GetCDRom: Returns CD drive info
+      (S) GetCountryInfo: Returns current country info
+      (S) GetDiskSpace: Returns available disk spcae
+      (F) GetDosVer: Returns DOS version
+      (S) GetFloppyInfo: Returns floppy drive info
+      (S) GetMachineInfo: Returns info on machine
+      (S) GetMem: Returns memory available
+      (F) GetNoDrives: Returns the total number of drives
+      (F) GetPrinterStatus: Returns printer status
+      (S) GetScreenMode: Returns info on current screen mode
+      (S) GetSysConfig: Returns system setup
+      (S) InterruptX: Basic DOS/BIOS interrupt caller
+      (F) IsAnsi: Checks for ANSI.SYS
+      (F) IsDoskey: Checks for DOSKEY.COM
+      (F) IsGraftabl: Checks for GRAFTABL.SYS
+      (F) IsHimem: Checks for HIMEM.SYS
+      (F) IsPrintQ: Checks for print queue
+      (F) IsShare: Checks for SHARE.EXE
+      (F) LRS: Converts number into string & strips leading/trailing spaces
+      (F) PerpDist: Calculates perpendicular distance of point from line
+      (S) ScrollDown: Scrolls screen down
+      (S) ScrollUp: Scrolls screen up
+      (S) Stats: Does statistics
+      (F) VolLab: Returns volume label of specified drive
+      (S) WaitForAnyKey: Waits for a key or mouse click, with timeout option
+
+3. Details of each routine: 
+===========================
+
+SUB BigFont (TopRow%, LeftCol%, Colour%, Text$)
+    Short desc:   Large printing on screen.
+    What it does: Writes Text$ in Colour at about 8x normal size. (Exact
+		  scale depends on screen mode used). Top left of new Text$
+		  is at (TopRow%, LeftCol%).
+    Notes:        This module can accept text that may be partially off the
+		  screen.
+		  In screen mode 0, if you are using a WIDTH statement to set
+		  a screen other than 80x25, you will find BigFont only works
+		  properly from within a programme. This is because working
+		  in the "Immediate" window in mode 0 resets the screen to
+		  ?x25 (where ? is the current screen width, 40 or 80) after
+		  every command. So, in the Immediate window:
+		    WIDTH 40, 50                  'Sets screen size
+		    LOCATE 25, 1: PRINT "Hello!"  'Prints message in bottom
+						  'left corner of screen,
+						  'despite the previous
+						  'command
+		  Similarly, Ctrl+Breaking, or using the STOP command, or
+		  setting a breakpoint, or any other method by which you can
+		  return to the source code whilst your programme is running,
+		  will reset the visible screen width as above, >>in mode 0
+		  only!!<<. In any other screen mode, the width is
+		  maintained. Note also that it is the >visible< screen width
+		  that is reset. The values returned by using GetScreenMode
+		  will still be those set by your last WIDTH statement! So
+		  using another WIDTH command will not set the screen back to
+		  the width you want, since as far as the QBX interpreter is
+		  concerned, you are already running at that width. Dear old
+		  MS, don't we love them?
+    Example:      BigFont 1, 1, 4, "Hello!"
+    Written by:   DB (thanks to Jim Oliver)
+    How it works: First GetScreenMode is called. This returns, among other
+		  things, the size of the screen, and the maximum number of
+		  colours that may be supported, in the current mode.
+		  The amount of the string that will fit on the screen is
+		  calculated, to avoid trying to move outside the screen.
+		  The ROM font table is then accessed directly and the bytes
+		  defining each character in the text are examined. This
+		  information is used to construct an array of new strings,
+		  one for each row of the text (number of rows = height of
+		  character). The new strings have a block character
+		  (CHR$(219)) if the pixel was coloured, or a space ( ) if it 
+		  was blank. They are then printed to the screen, with the
+		  first being located at (TopRow, LeftCol).
+
+SUB CalcSkewRect (XShift!, YShift!, PLength!, QLength!, Grad!, X!(), Y!())
+    Short desc:   Calculates (x,y) of vertices of skewed rectangle.
+    What it does: Calculates co-ordinates of skewed rectangle about (XShift!,
+		  YShift!), with rotated axes length PLength! & QLength! for
+		  major & minor respectively. Major axes at gradient Grad.
+		  Puts co-ordinates into array of size X!(4), Y!(4).
+    Notes:        PLength! & QLength! are "RADII" not "DIAMETERS"
+    Example:      CalcSkewRect 100, 100, 30, 10, 1, RectX!(), RectY!()
+    Written by:   DB
+    How it works: PLength! is first examined to check it isn't 0 (i.e.
+		  rectangle isn't point/line). The angle of the major axis is
+		  then calculated, followed by the angle to each vertice from
+		  (XShift!, YShift!), relative to the major axis. The length
+		  to each vertex is then calculated, followed by the angle to
+		  each relative to the X-axis, and finally, the (x, y) co-
+		  ordinates of each vertice relative to (0, 0).
+
+SUB Centre (QRow%, Text$)
+    Short desc:   Writes text in centre of specified row.
+    What it does: Prints Text$ such that the central character of Text$
+		  is located at the centre of QRow%.
+    Notes:        This routine is not designed to cope with Text$ that is
+		  longer than the maximum number of columns in the current
+		  screen mode.
+    Example:      Centre 10, "Hello world"
+    Written by:   DB
+    How it works: First GetScreenMode is called. This returns, among other
+		  things, the number of character columns for the current
+		  screen mode.
+		  The offset from the left hand side of the screen is then
+		  calculated, and the Text$ is printed at QRow%, offset.
+
+SUB CHDRIVE (Dr$)
+    Short desc:   Changes to specified drive.
+    What it does: Changes to specified drive.
+    Notes:        Produces an error 68 if drive is unavailable.
+    Example:      CHDRIVE ("A")
+    Written by:   DB
+    How it works: Takes the leftmost character of Dr$, and tries to change to
+		  it using DOS Int &H21, subfunction &HE. This is then
+		  checked using subfunction &H19.
+
+FUNCTION CheckInEllipse% (XTry!, YTry!, XShift!, YShift!, PLength!, QLength!, Grad!)
+    Short desc:   Checks whether a point is in an ellipse.
+    What it does: Checks to see if point (XTry!, YTry!) is contained in an
+		  ellipse defined as follows:
+		  Centre (XShift!, YShift!), rotated axes length PLength! &
+		  QLength! for major & minor respectively, major axes at
+		  gradient Grad!.
+		  Function returns -1 for inside, 0 for outside.
+    Notes:        PLength! & QLength! are "RADII" not "DIAMETERS"
+    Example:      InEllipse% = CheckInEllipse%(110, 120, 100, 100, 30, 10, 1)
+    Written by:   DB
+    How it works: PLength! and QLength! are first examined to check it isn't
+		  0 (i.e. ellipse isn't point/line). The angle of the major
+		  axis is then calculated, then the length (squared) from
+		  (XShift!, YShift!) to (XTry!, YTry!). The angle between
+		  these two points relative to the X-axis is then calculated
+		  and hence the same angle relative to the major axis. The
+		  length to from (XShift!, YShift!) to the ellipse boundary
+		  at this angle is then calculated, and this is compared with 
+		  the length to (XTry!, YTry!). If the former is the greater
+		  then the point is in the ellipse.
+
+FUNCTION CheckInRect% (XTry!, YTry!, XShift!, YShift!, PLength!, QLength!, Grad!)
+    Short desc:   Checks whether a point is in a rectangle.
+    What it does: Checks to see if point (XTry!, YTry!) is contained in an
+		  rectangle defined as follows:
+		  Centre (XShift!, YShift!), rotated axes length PLength! &
+		  QLength! for major & minor respectively, major axes at
+		  gradient Grad!.
+		  Function returns -1 for inside, 0 for outside.
+    Notes:        PLength! & QLength! are "RADII" not "DIAMETERS"
+    Example:      InRect% = CheckInRect%(110, 120, 100, 100, 30, 10, 1)
+    Written by:   DB
+    How it works: PLength! is first examined to check it isn't 0 (i.e.
+		  rectangle isn't point/line). The angle of the major axis is
+		  then calculated, then the length (squared) from
+		  (XShift!, YShift!) to (XTry!, YTry!). The angle between
+		  these two points relative to the X-axis is then calculated
+		  and hence the same angle relative to the major axis. The
+		  length to from (XShift!, YShift!) to the rectangle boundary
+		  at this angle is then calculated, and this is compared with
+		  the length to (XTry!, YTry!). If the former is the greater
+		  then the point is in the rectangle.
+ 
+SUB ClearBuffer ()
+    Short desc:   Waits until keyboard buffer is empty.
+    What it does: Clears the keyboard buffer of any lined up keystrokes
+    Notes:        
+    Example:      ClearBuffer
+    Written by:   DB
+    How it works: Goes into a loop, checking the keyboard & dumping any
+		  keystrokes until there are no more to be read.
+
+FUNCTION CURDIR$ (Dr$)
+    Short desc:   Gets the current directory.
+    What it does: Returns the currently logged in directory on the drive 
+		  identified by the leftmost character of Dr$. If Dr$ = ""
+		  then the current drive is examined.
+    Notes:        Same as the PDS function CURDIR$.
+    Example:      CurrDir$ = CURDIR$("C")
+    Written by:   DB, based on code by BJ
+    How it works: Uses DOS INT &H21, functions &H19 & &H47.
+ 
+FUNCTION DIR$ (FileSpec$)
+    Short desc:   Returns first/next fit filename.
+    What it does: Looks for any file matching FileSpec$, If FileSpec$ = ""
+		  then DIR$ looks for the next file matching the last
+		  FileSpec$ used.
+    Notes:        Same as the PDS function DIR$.
+    Example:      FileName$ = DIR$("*.TXT")
+    Written by:   IM
+    How it works: Uses DOS INT &H21, function &H4E.
+
+SUB DrawSkewEllipse (XShift!, YShift!, PLength!, QLength!, Grad!, Colour%, Res%)
+    Short desc:   Draws a skewed ellipse.
+    What it does: Draws a skewed ellipse about (XShift!, YShift!), with
+		  rotated axes length PLength! & QLength! for major & minor
+		  respectively. Major axes at gradient Grad!. Number of
+		  points in each quadrant = Res%. Ellipse is in Colour%.
+    Notes:        PLength! & QLength! are "RADII" not "DIAMETERS"
+		  Set Res% to a value optimised for the speed you require.
+		  Use a timed loop to obtain an index of speed for any
+		  computer your computer may run on.
+    Example:      DrawSkewEllipse 100, 100, 30, 10, 1, 12, 50
+    Written by:   DB
+    How it works: PLength! is first examined to check it isn't 0 (i.e.
+		  ellipse isn't point/line). The angle of the major axis is
+		  then calculated. For each point in one quadrant (at a
+		  resolution of Res% points/quadrant) the co-ordinates are
+		  calculated, followed by the angle of the point from
+		  (XShift!, YShift!), relative to the major axis. The length
+		  to the point is then calculated, followed by the angle
+		  relative to the X-axis. Finally, the co-ordinates of the
+		  point relative to (0, 0) are calculated and mirrored into 
+		  each quadrant, and the four resulting points plotted in 
+		  Colour%.
+ 
+SUB GetAvailModes (AvailMode%())
+    Short desc:   Returns available screen modes.
+    What it does: Returns TRUE/FALSE for each of BIOS modes &H0-&H13
+    Notes:        These are not the same as QB modes!
+    Example:      GetAvailModes (AvailMode%())
+    Written by:   DB
+    How it works: Uses BIOS INT &H10, function &H1B.
+
+FUNCTION GetCallingPath$ ()
+    Short desc:   Returns the full path of the original programme.
+    What it does: Returns the path & name of the .EXE programme being run,
+		  from its PSP. Not much use in interpreted mode, (returns
+		  the location of QBASIC.EXE) but good in compiled code,
+		  since you can discover where your programme is being
+		  stored.
+    Notes:        I'm still looking for how to get command line parameters in
+		  QBasic.
+    Example:      CommLine$ = GetCallingPath$
+    Written by:   DB, from code by MB
+    How it works: Uses DOS INT &H21, function &H62.
+      
+SUB GetCDRom (NoCDDrives%, FirstCD$, IsMSCDEX%)
+    Short desc:   Returns CD drive info.
+    What it does: Returns the number of installed CD drives, the letter
+		  assigned to the first one, and whether MSCDEX.EXE is
+		  loaded.
+    Notes:        
+    Example:      GetCDRom NoCDDrives%, FirstCD$, IsMSCDEX%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H15.
+
+SUB GetCountryInfo (CountryID%, CodePage%, DateForm$, CurrSym$, CurrForm$(), ThousSep$, DecSep$, TimeSep$, Clock%, ASCIIZSep$)
+    Short desc:   Returns current country info.
+    What it does: Returns country specific info about machine:
+		    CountryID = DOS ID number
+		    CodePage = DOS code page
+		    DateForm$ = Date format
+		    CurrSym$ = Currency symbol
+		    CurrForm$(1) = Currency format (w/out decimal)
+		    CurrForm$(2) = Currency format (with decimal)
+		    ThousSep$ = '000s separator
+		    DecSep$ = Decimal separator
+		    TimeSep$ = Time separator
+		    Clock = 12/24 hour clock
+		    ASCIIZSep$ = ASCII data list separator
+    Notes:        Does this work for other countries (OK on UK (44))?
+    Example:      GetCountryInfo CID%, CP%, DateF$, CurrS$, CurrF$(), ThSep$, DecSep$, TimSep$, Clk%, ASCSep$
+    Written by:   DB
+    How it works: Uses DOS INT &H21, function &H65.
+
+SUB GetDiskSpace (Dr$, TotalSpace&, FreeSpace&)
+    Short desc:   Returns available disk spcae.
+    What it does: Calculates available & total disk space on the drive
+		  identified by the leftmost character of Dr$, from numbers
+		  of clusters, sectors/cluster, & bytes/sector
+		  & bytes/cluster data.
+    Notes:        Can cope with large drives (i.e. where calculations involve
+		  numbers > 32767)
+    Example:      GetDiskSpace "C", TotalSpace&, FreeSpace&
+    Written by:   DB, using kludges by DJ
+    How it works: Uses DOS INT &H21, function &H36.
+
+FUNCTION GetDosVer! ()
+    Short desc:   Returns DOS version.
+    What it does: Returns a single precision number corresponding to the DOS
+		  version in use (e.g. 5, 6.21).
+    Notes:        Can cope with DOS 1.00 (for which this INT was not
+		  available). Some use... but hey, *I* liked it :-)
+    Example:      DosVer! = GetDosVer!
+    Written by:   DB
+    How it works: Uses DOS INT &H21, function &H30.
+
+SUB GetFloppyInfo (Dr$, FlopSize!, FlopCap$)
+    Short desc:   Returns floppy drive info.
+    What it does: Finds the size of floppy & its maximum capacity that can be
+		  used in the floppy drive identified by the leftmost
+		  character of Dr$.
+    Notes:        Returns info as single (size) and string (capacity) since
+		  I imagined this would be most convenient: if not, tell me!
+    Example:      GetFloppyInfo "A", FlopSize!, FlopCap$
+    Written by:   Anon, I think from a PC mag.
+    How it works: Uses OUT &H70 and INP(&H71).
+
+SUB GetMachineInfo (BIOSDate$, MachType$)
+    Short desc:   Returns info on machine.
+    What it does: Reads the BIOS ROM for BIOS date & machine type.
+    Notes:        This may not be accurate: it reflected the state-of-the-art
+		  PC as it was a few years ago, so you may find your machine
+		  listed as a PS/2!
+    Example:      GetMachineInfo BIOSDate$, MachType$
+    Written by:   DB
+    How it works: Reads (PEEK) BIOS ROM directly.
+
+SUB GetMem (ConvMem%, ExtMem%, VideoMem%)
+    Short desc:   Returns memory available.
+    What it does: Returns the amount of available conventional memory,
+		  extended memory, & total amount of video memory.
+    Notes:        I do not think the video memory figure is accurate: see
+		  GetScreenMode for more info.
+    Example:      GetMem ConvMem%, ExtMem%, VideoMem%
+    Written by:   DB
+    How it works: Uses BIOS INT &H12, & &H15 function &H88, also
+		  GetScreenMode to get the video memory.
+
+FUNCTION GetNoDrives% ()
+    Short desc:   Returns the total number of drives.
+    What it does: Returns the number of physical/logical? drives attached to
+		  the system.
+    Notes:        
+    Example:      NoDrives% = GetNoDrives%
+    Written by:   DJ
+    How it works: Uses DOS INT &H21, functions &H19 & &H0E.
+
+FUNCTION GetPrinterStatus% ()
+    Short desc:   Returns printer status.
+    What it does: Returns an integer corresponding to the status of the
+		  printer as follows:
+		    0: Timed out
+		    3: I/O error
+		    4: Selected
+		    5: Out of paper
+		    6: Acknowledge
+		    7: Not busy
+		    ELSE: Unknown
+    Notes:        Does this work? I can only get Unknown.
+    Example:      PrinterStatus% = GetPrinterStatus%
+    Written by:   DB
+    How it works: Uses DOS INT &H17, function &H01.
+
+SUB GetScreenMode (ScrMode%, ScrCols%, ScrRows%, CharHor%, CharVer%, ScrMaxX%, ScrMaxY%, MaxColours%, VideoMem%, Page%)
+    Short desc:   Returns info on current screen mode.
+    What it does: Returns information on the current screen mode:
+		  ScrMode% = Mode set by last SCREEN statement
+		  ScrCols% = Number of character columns
+		  ScrRows% = Number of character rows
+		  CharHor% = Width in pixels of text character
+		  CharVer% = Height in pixels of text character
+		  ScrMaxX% = Width in pixels of screen
+		  ScrMaxY% = Height in pixels of screen
+		  MaxColours% = Number of colours
+		  VideoMem% = Graphics adapter memory
+		  Page% = Cureent screen page
+    Notes:        Again, I do not think the video memory figure is accurate:
+		  it also reflected the state-of-the-art PC as it was a few
+		  years ago. Any thoughts?
+    Example:      GetScreenMode Mode%, Co%, Ro%, ChX%, ChY%, MX%, MY%, Cols%, VMem%, Page%
+    Written by:   DB
+    How it works: Three BIOS function calls are made:
+		  Interrupt &H10, Function &H0F
+		    (Get video mode)
+		  Interrupt &H10, Function &H11 Sub-function &H30
+		    (Get font information)
+		  Interrupt &H10, Function &H1B
+		    (Get video memory)
+		  The first returns the BIOS screen mode, and the number of
+		  character columns; the second returns, among other things,
+		  the number of character rows. The third returns the video
+		  memory on the graphics adapter.
+		  These pieces of information are used to deduce the other
+		  data regarding the screen mode.
+
+SUB GetSysConfig (FlDrives%, CoPro%, RS232s%, GPort%, Modem%, Printers%)
+    Short desc:   Returns system setup.
+    What it does: Returns system setup info:
+		    FlDrives% = Number of floppy drives
+		    CoPro% = Co-processor present
+		    RS232s% = Number of RS232s
+		    GPort% = Game port present
+		    Modem% = Modem present
+		    Printers% = Number of printers
+    Notes:        Are the printers & game port figures correct?
+    Example:      GetSysConfig FlDr%, CoPr%, RS%, GP%, Modem%, Prntrs%
+    Written by:   DB
+    How it works: Uses BIOS INT &H11.
+
+SUB InterruptX (IntNum%, regsx AS RegTypeX)
+    Short desc:   Basic DOS/BIOS interrupt caller.
+    What it does: Enables DOS interrupts to be called from QBasic, using
+		  registers set up as specified by regsx.
+    Notes:        Almost identical to PDS function of same name, but only
+		  takes regsx once (PDS requires InterruptX INum%, regsx,
+		  regsx). I haven't yet been able to implement this. Also
+		  note that I have removed Ian's restriction on using &H25,
+		  &H26 (Absolute Disk Read/Write), and Ints > 255. This is to 
+		  make it as similar to the PDS version as possible. If you
+		  crash your machine trying to absolute write your hard disk
+		  holding vital code, guess who's fault it'll be? :-)
+		  I tried making an Interrupt version (i.e. without the
+		  segment registers, but have not yet succeeded :-(
+    Example:      InterruptX &H21, regsx
+    Written by:   DB, modified from IM, who got it from code by DG
+    How it works: Uses an assembler routine using CALL ABSOLUTE.
+
+FUNCTION IsAnsi% ()
+    Short desc:   Checks for ANSI.SYS.
+    What it does: Returns TRUE/FALSE depending on whether or not ANSI.SYS is
+		  loaded.
+    Notes:        
+    Example:      AnsiPres% = IsAnsi%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H1A.
+
+FUNCTION IsDoskey% ()
+    Short desc:   Checks for DOSKEY.COM.
+    What it does: Returns TRUE/FALSE depending on whether or not DOSKEY.COM
+		  is loaded.
+    Notes:        
+    Example:      DoskeyPres% = IsDoskey%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H48.
+
+FUNCTION IsGraftabl% ()
+    Short desc:   Checks for GRAFTABL.SYS.
+    What it does: Returns TRUE/FALSE depending on whether or not GRAFTABL.SYS
+		  is loaded.
+    Notes:        
+    Example:      GraftablPres% = IsGraftabl%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H0B.
+
+FUNCTION IsHimem% ()
+    Short desc:   Checks for HIMEM.SYS.
+    What it does: Returns TRUE/FALSE depending on whether or not HIMEM.SYS is
+		  loaded.
+    Notes:        
+    Example:      HimemPres% = IsHimem%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H43.
+
+FUNCTION IsPrintQ% ()
+    Short desc:   Checks for print queue.
+    What it does: Returns TRUE/FALSE depending on whether or not there is a
+		  print queue.
+    Notes:        
+    Example:      PrntQPres% = IsPrintQ%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H01.
+
+FUNCTION IsShare% ()
+    Short desc:   Checks for SHARE.EXE.
+    What it does: Returns TRUE/FALSE depending on whether or not SHARE.EXE is
+		  loaded.
+    Notes:        
+    Example:      SharePres% = IsShare%
+    Written by:   DB, from code by WH
+    How it works: Uses DOS INT &H2F, function &H10.
+
+FUNCTION LRS$ (Number%)
+    Short desc:   Converts number to string & strips leading/trailing spaces.
+    What it does: Returns Number% as a string, with leading/trailing spaces
+		  stripped off.
+    Notes:        
+    Example:      PartID$ = LRS$(PartNumber%)
+    Written by:   DB
+    How it works: STR$ is used to convert the number to a string, then
+		  LTRIM$/RTRIM$ is used to remove the spaces.
+
+FUNCTION PerpDist (XPt!, YPt!, M!, C!)
+    Short desc:   Calculates perpendicular distance of point from line.
+    What it does: Returns the perpendicular distance of the point
+		  (XPt!, YPt!) from the line y = M! * x + C!. Returns -ve
+		  value if the point is below the line, +ve if it is above
+		  the line.
+    Notes:        
+    Example:      Dist! = PerpDist!(100, 100, 1, 50)
+    Written by:   DB
+    How it works: The X co-ordinate of the intersection is calculated,
+		  followed by the distance from (XPt!, YPt!).
+
+SUB ScrollDown (Top%, Left%, Bottom%, Right%)
+    Short desc:   Scrolls screen down.
+    What it does: Moves all lines on the screen, within the window specified
+		  by (Top%, Left%)-(Bottom%, Right%), down one. You then
+		  print the new line if required at the top.
+    Notes:        If Bottom% < Top% (or similar error) they are automatically
+		  swapped.
+    Example:      ScrollDown 5, 5, 20, 60
+    Written by:   DB
+    How it works: Uses &H10, function &H06.
+
+SUB ScrollUp (Top%, Left%, Bottom%, Right%)
+    Short desc:   Scrolls screen up.
+    What it does: Moves all lines on the screen, within the window specified
+		  by (Top%, Left%)-(Bottom%, Right%), up one. You then
+		  print the new line if required at the bottom.
+    Notes:        If Bottom% < Top% (or similar error) they are automatically
+		  swapped.
+    Example:      ScrollUp 5, 5, 20, 60
+    Written by:   DB
+    How it works: Uses &H10, function &H07.
+
+SUB Stats (XStat!(), YStat!(), Number%, XBar!, YBar!, MajGrad!, MinGrad!, MajYInt!, MinYInt!, SigmaP!, SigmaQ!, Fit!)
+    Short desc:   Statistics analyser.
+    What it does: Calculates the statistical mean and standard deviations of
+		  a set of Number% points of two-dimensional data, also the
+		  major & minor gradients & intercepts of the set, and the
+		  goodness of fit.
+		  Reads data from XStat!(), YStat!(), the actual array size
+		  being determined by Number%
+    Notes:        Since PCs are not very good at coping with concepts like
+		  1/0 and infinity, I have included a trap to set for each
+		  gradient: if it is 0, it is set to 0.0000001, and if it is 
+		  vertical, it is set to 1E+10.
+		  To use this routine for 1D data, set all the Y-values to 0.
+		  This will return: XBar! = XBar!
+				    YBar! = 0
+				    MajGrad! = 0.0000001
+				    MinGrad! = +/-1E+7
+				    MajYInt! = +/-[very small number]
+				    MinYInt! = +/-[very large number]
+				    SigmaP! = SigmaP!
+				    SigmaQ! = +/-[very small number]
+				    Fit! = 1
+		  I have not yet got Fit! working properly... still
+		  working...
+    Example:      Stats X!(), Y!(), 10, XB!, YB!, Mj!, Mn!, MjY!, MnY!, SP!, SQ!, Ft!
+    Written by:   DB
+    How it works: Conventional statistical formulae are used to calculate the
+		  mean and linear regression of the data, then the function
+		  PerpDist! is used to find the shortest distance from each
+		  point to the major & minor axes. This is then used to
+		  calculate the standard deviation along each axis. Finally,
+		  the goodness of fit along the major axis is calculated.
+
+FUNCTION VolLab$ (Dr$)
+    Short desc:   Returns volume label of specified drive.
+    What it does: Returns the vloume label of the drive specified by the
+		  leftmost character of Dr$. If Dr$ = "", the drive is the
+		  currently logged in one.
+    Notes:        
+    Example:      Label$ = VolLab$("A")
+    Written by:   DB, modified from BJ, using IM's DIR$
+    How it works: Uses a similar method to DIR$, with the Int set to look for
+		  volume labels.
+
+SUB WaitForAnyKey (Pause!)
+    Short desc:   Waits for a key or mouse click, with a timeout option.
+    What it does: Waits for any keystroke from the keyboard, or for either
+		  mouse button to be pressed, or for an amount of time
+		  specified by Pause!, whichever comes the soonest.
+    Notes:        The keystroke (if any) is not returned.
+		  Pause! is in seconds: unlike SLEEP, this routine will
+		  accept parts of a second.
+		  Calling with Pause! = 0 will wait indefinitely for a
+		  keystroke or mouse click.
+		  Despite much talk on the subject in c.l.b.m, I haven't got
+		  a trap for midnight - I don't have a way to do it that will
+		  be quick enough still to allow v. small pause values.
+    Example:      WaitForAnyKey (5)
+    Written by:   DB
+    How it works: INKEY$ is used to test for a keystroke, MouseTextPos is used
+		  to test for a mouse click, and the TIMER function is used
+		  for testing for a timeout.

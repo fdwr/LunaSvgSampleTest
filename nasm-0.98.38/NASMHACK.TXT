@@ -1,0 +1,21 @@
+This IS NOT an official release of NASM. I prefer you do not redistribute it.
+It is just my personal hack with very minor changes to make compiling my GUI
+a little easier.
+
+Hacks:
+-DW inserts Unicode strings instead of word aligned bytes
+-Recognizes C preprocesser form (accepts %define or #define)
+-Recognizes '//' as comments (in addition the usual ';')
+
+Why:
+-So I can easily use Unicode strings with: dw "Some Word",0
+ instead of resorting to: dw 'S','o','m','e',' ','W','o','r','d',0
+-So the same header file can be used in both the ASM parts, the C code, and
+ in the resource file.
+
+Hopes:
+-Would like to see these or similar changes in the official build
+-Would like to support multiline comments, but that would take a much deeper
+ understanding of the project flow.
+
+(: Dwayne Robinson

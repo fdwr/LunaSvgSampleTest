@@ -1,0 +1,41 @@
+Supports:
+  All normal video modes 0-7
+  4,16,and 256 color planes
+  Tile colormapping and flipping
+  Tilemap sizes 32x32,32x64,64x32,64x64,128x128(mode 7)
+  8x8 tiles for maps
+
+Includes:
+  Map viewing
+  VRAM tile viewer
+  Palette viewer
+  Scene info (video mode, plane colors, tilemap sizes..)
+  Sprite info
+
+Will not support: (and wasn't meant to)
+  Mode 7 rotation or scaling
+  HDMA effects
+  Windowing
+  Transparency
+  Pixelation
+    As far as I am concerned, these special effects just get in the way of making maps, so why bother to emulate them? That's what emulators are for.
+
+Should eventually support:
+  16x16 tiles for maps
+    As soon as I find a game that uses them!
+  8x16 tiles for 512 column mode
+    Such as in 'Secret of Mana's' main menu screen
+  Sprites (after I figure them out)
+  Exporting of tilemaps, sprites, scene info, and palettes
+  Info in mode 7 registers and windowing
+
+Known supported games:
+  Zelda, Mario World, DKC, & Secret of Mana
+    But they all use 8x8 tiles!
+
+Notes:
+  Somes games have advanced techniques that can cause problems when looking for maps or sprites. Unfortunately it isn't always possible to build a complete picture from a single savestate because it is only a single instant in time. In real time, the game would be changing the display as it went, even in the middle of a frame. Some of those wavy effects you see in various games are accomplished this way. Of course the point of this program was to get rid of those special effects to leave just simple tilemaps, but when the techniques unclude something like changing the entire video mode midframe, SnMapper does not know that the whole scene isn't using the same mode.
+
+In the case of the world map in 'The Secret of Mana' when you start a new game, you might intend to get the mode 7 landscape, but when you look at the scene with SnMapper you only see a sky with clouds. Because it switches modes midframe, what you see depends on where you catch it. With ZSNES, savestates are always saved at the beginning of a frame (scanline 0) while in emulation, so the only way to save it at a different time - or rather a different scanline - is to use the debugger (read the ZSNES readme on how to use it). Simply trace through enough instructions for the scanline (the 'Y:' at the top) to reach a litte after where you think the change happens and then save it from within the debugger. Remember there are 224 visible vertical lines, so if you wanted to get the mode 7 world map from SOM you would just trace to scanlines 101-223 and save the state.
+
+If you looking for outputting sprites, realize that the sprite you want might not be in VRAM unless you can directly see it in the scene. Older SNES games would load everything they needed when you entered a level, or when you went from one part to another. That makes it nice for us because we can find it all in one place at the same time. Sometimes you can even find frames of enemies that are not anywhere in the level you are playing, or possibly even characters you have never seen! Newer games though use a lot more DMA to transfer sprites as they are needed. This is better for the player because it means more enemies and animation frames, but if you are looking for a particular frame, the only way you are guaranteed to get it is if you save the game state when that sprite you want is visible in the scene. One technique that quite a few games use is to store some of the graphics (if they have been uncompressed or something) in WRAM and send them to VRAM when needed. So maybe I'll eventually add viewing for WRAM too.

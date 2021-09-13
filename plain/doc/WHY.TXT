@@ -1,0 +1,324 @@
+_______________________________________________________________________________
+Plain - Piken's Layered Graphical Interface
+
+
+Why:
+    -The experience, fun project
+    -My old utilities needed a more functional GUI
+    -Wanted an OS independant interface (not force everything to Windows)
+    -Wanted an intuitive interface that behaved and looked exactly how I liked
+
+Includes:
+    -Core UI source files, definitions, macros...
+    -Basic user control elements (windows, buttons, edits...)
+    -Default data resources for styles, fonts, cursors...
+
+Using:
+    -From your program, call the default GUI loop or provide a custom loop
+    -Provide a defined main window and contained items (this must be user provided)
+
+    Except for the GUI loop and main window, everything else is taken care of,
+    all redrawing code, keyboard & mouse support, and timed processes.
+    The Windows port requires more variables, such as a window class
+    structure, the window handle, a default message structure, and a default
+    paint struct...
+
+Language:
+    x86 assembler (NASM) and C (pure C, not C++).
+
+Supports:
+    -Multiple styles to emulate existing operating system interfaces.
+    -Advanced graphics blending operations.
+    -Controls can be preallocated at compile time or dynamically allocated.
+    -'Classes' can be called directly.
+
+Deficiencies:
+    -Is not threadsafe
+     As long as two functions that manipulate the same data structures are not
+     called simultaneosly, all should be fine, but better not to take the chance.
+    -No true type font support
+    -Missing shape primitives (ellipses, polylines...) but these can be
+     accomplished easily enough by calling an OS function on the DIB directly.
+
+_______________________________________________________________________________
+Compiling
+
+
+Tools:
+    NASM 0.98 (Netwide Assembler)
+    ALINK 1.6 (Anthony Williams Linker)
+    WDOSX 0.96 (Wuschel's DOS Extender)
+
+    MS Edit & MSVC6 (substitute your choice of editor)
+
+  Dos:
+    nasm -f win32 somefile.asm -o somefile.cof -dDosVer
+    alink somefile.cof -oPE -o somefile.exe -entry Main
+    stubit -nowfse somefile.exe
+
+  Windows:
+    nasm -f win32 somefile.asm -o somefile.cof -dWinVer
+    alink somefile.cof winimp.lib -oPE -o somefile.exe -entry Main
+
+    Yes, even the DOS version is compiled to PE.
+
+Files:
+  Your program:
+    sample.asm   - the program that will use the GUI
+    items.asm    - sample GUI item list
+
+  Main code:
+    guidefs.asm  - constants and structure definitions
+    guicode.asm  - core code & functions (sending messages, getting input...)
+    guiobjs.asm  - object code for common items (button, text prompt, label)
+    keycodes.asm - virtual keycode constants
+
+  Graphics:
+    gfxdefs.asm  - graphics definitions (colors, screen address...)
+    gfx.asm      - graphics routines (rectangles, lines, fonts, pictures)
+
+  Data:
+    fnt_smal.lbm - small, 2-color transparent font
+    fnt_larg.lbm - large, 2-color transparent font
+    cursors.lbm  - hmm, take a guess
+    vkc.dat      - scancode to virtual keycode / ASCII to ANSI tables
+
+  Windows:
+    mywininc.asm - Windows include with definitions and structures
+    winimp.def   - small subset of Windows import functions (API)
+    winimp.lib   - compiled import library
+
+  Development:
+    guimake2.bas - basic form maker
+    bmp2fnt2.bas - bitmap to 2bit raw font
+    bmp2px16.bas - bitmap to 15bit raw pixels
+
+_______________________________________________________________________________
+GUI Basics
+
+
+It's based off a typical game loop more than a 'message pump' loop.
+
+Sample main loop:
+  get keyboard input and pass on to active item
+  get mouse input and pass on to item cursor is over
+  do timed processes
+  redraw GUI scene
+
+Rules:
+  Mouse events are second to keyboard input.
+    Because the keyboard generates fewer messages, but generally more
+    important ones. The most frequent mouse message is a mere cursor move.
+
+  Timed events are lower priority than both forms of user input.
+    Because the user should always be in control and make the decisions.
+
+  Redrawing is lowest priority of all.
+    Redrawing only occurs when no mouse, keyboard, or timer input is pending.
+    Drawing is never done during an input message. Instead, all drawing
+    needs are accumulated and done together.
+
+  No common windows are selfish and exclusively steal input (hateful modal)
+    Because I'm a strong believer that modal forms should not be used
+    (except for critical errors and program exit).
+
+GUI Items:
+  GUI items (rather than the overused word "objects") can be defined purely
+  by inline macros. No RC or externel RES files are necessary. You might
+  keep them separate though just for convenience.
+
+
+_______________________________________________________________________________
+Code Conventions
+
+
+Parameter Notation:
+  Before each routine, you should see a set of parameters in parenthesis. The
+  first set are the parameters in. The second set, if even present, are the
+  parameters out, or return values. Routines may either accept parameters on
+  the stack or directly by register. Unlike C routines, expect these
+  functions to use any/all general registers, but leave alone any segment
+  registers, esp, and ebp. So save any that need to be retained.
+
+Parameter Order:
+  Parameters are passed so that to the routine's point of view, variables are
+  on the stack in the same order as their parameter list (which means they
+  are pushed in reverse order by the caller). Parameters ARE left on the
+  stack, so that a variable number of parameters can be passed, and so that
+  the caller can reuse the variables already on stack if calling the
+  same/similar routine multiple times with only minor variations.
+
+Returns Values:
+  Functions can return values in registers, change memory variables, or
+  modify the parameters passed to them.
+
+Error Indication:
+  Most GUI functions and object items indicate an error by setting cf: either
+  the function couldn't be performed, task couldn't be finished, something
+  wasn't found, or a function was unrecognized. Clear carry generally
+  indicates success or completion. When sending messages, cf means the
+  message was unknown or ignored. For example, sending the F12 keypress to a
+  button would be ignored, and carry would be set.
+
+Pseudocode:
+  For some of the more complex functions I kept the pseudocode. It should
+  make the code easier to understand. Sometimes I need to reread it just to
+  understand again.
+
+_______________________________________________________________________________
+Pigeon, mission is to fix the annoyances
+
+
+I hope to take good ideas from various GUIs (Windows, Mac, KDE, Gnome...),
+combine them, and add a little behaviour of my own to make Pigeon. If nothing
+remarkably new comes out of it, then I at least want to alleviate some irritants
+than GUIs (mostly Windows) have.
+
+Various controls, scrolling speed:
+    My computer is slow by modern standards, but even it is too fast too
+    accurately select text in an edit field. I move the cursor slightly past
+    the left or right edge, and instead of selecting just a little bit more
+    and scrolling the prompt accordingly, it jumps to the far end. In my text
+    edit, you 'push' against either edge to scroll. The same problem occurs
+    with many other controls like lists, system lists, and combo boxes.
+
+Scroll bar, small arrow buttons:
+    Although this is no longer such a problem since the advent of mouse wheels,
+    it is still a nuisance to aim for such small arrow buttons just to scroll
+    up or down. It would be convenient to just click anywhere on either side
+    of the bar to 'pull' the handle that direction. They got it half right,
+    but they didn't utilize use the right button: how about left click for a
+    single line, and right click for a page. Don't tell me anyone actually
+    uses that superfluous context menu of IE5's webpages.
+
+Scroll bar, widely spaced buttons:
+    Although it does look asthetically more pleasing, many GUI vendors have
+    wised up and grouped them closer together. With the buttons so far apart,
+    compensation for overshooting the target is slower.
+
+Scroll bar, instant jump:
+    When you have a specific spot of document you want to jump to, it would
+    be convenient to have an instant jump, no time wasted scrolling there or
+    right-click/Scroll-here nonsense. It would work like Media Players seek
+    bar. How about pressing both buttons together to jump there?
+
+Scroll bar, dense range:
+    When a list grows very large / document very long, the scroll handle
+    becomes a thin, difficult to aim for, rod that scrolls way to quickly.
+    For such huge lists, it would be useful to have an alternate mode that
+    would scroll more slowly. Perhaps right click on the handle to grab it
+    more slowly, or change the grab speed based on the degree of sideways
+    motion.
+
+Large dialogs with tons of controls:
+    Who cares about using the Tab key since you can simply use the mouse.
+    I do! Many tasks (once you know how) can be performed a lot faster using
+    the keyboard. Data entry though is made slower by large, badly ordered
+    windows with often unreachable controls. Instead of Tab stepping through
+    every little control along the way, it would be nice for it to jump a
+    group at a time, leaving up/down for little tabbing (Windows does have
+    group/tabstop separation, but sadly, its rarely used). Dialogs should
+    always have a sensible order, and all controls should be accessible via
+    the keyboard.
+
+Windows, grabbing anywhere to move:
+    Many audio/video playing programs allow you move a window by grabbing it
+    anywhere not over a control. Very convenient.
+
+Menus, nested way to deeply:
+    Ever tire wading through knee deep menus just to reach an option that
+    really should be at the top level? I wish Excel had a top level 'Macro'
+    menu option just to the right of 'Tools' with an immediate list of macros
+    to run in it. Since I often find myself following the same path,
+    accessing options that are in the depths of menudom, I thought it would
+    be nice to leave the menu open to whatever submenu was last chosen.
+
+Random question:
+    Why does everybody call them title bars, but MicroSoft calls them
+    'caption's. MS is good at dredging up obscure old words for new
+    computer terms.
+
+_______________________________________________________________________________
+Windows spells confusion
+
+
+As a computer tutor, I've seen many cases of what confuses beginners.
+All of us experienced people rarely give them a second thought after we have
+become accustomed to their counterintuitive behaviour. I think that if
+anything is more intuitive to the beginner, then it was meant to be.
+
+Text prompt, focus in:
+    Remember the days when you occassionally forgot to click in the text
+    prompt before typing, typed a few words, only to see that they were all
+    wasted and that you have to retype them. What? You don't remember? Well,
+    I still see it all the time. After moving the mouse over the prompt, they
+    think, the cursor in there, so now I can start typing.
+
+    It all arrises from the understandable confusion between the word
+    'cursor' and 'cursor'. On a black screen with grey text (ie DOS), the
+    flashing thing is called a cursor. In Windows, the mousey thing is called
+    a cursor. Microsoft was right. Caret truly is a better word for it, but
+    that doesn't remedy the confusion.
+
+    So to unify the long separated caret and cursor, moving the mouse over a
+    text prompt automatically sets focus to it. :-)
+
+Scroll bar, down and up arrows:
+    I've seen this early misstep often. I think I even used to confuse the up
+    and down arrows with down and up. Seeing the up arrow, you naturally
+    think, clicking on up will move the text up. Likewise, clicking down
+    should move it down. I won't say that scroll bars are oriented backwards,
+    because there are two ways of looking at movement: you moving the object
+    or you moving over the object. In this case, the screen is staying still
+    and the page contents are moving, so the grab angle seems more logical;
+    but directional controls in engineering applications tend to favor the
+    pan philosophy more. Whichever is ultimately superior, those little
+    direction arrows just add confusion. So, to reduce upsidedowness, I got
+    rid of them. ;-)
+
+Modal dialogs:
+    Joe Doe opens a file dialog. Joe Doe made a mistake or changes his mind,
+    and decides to print it first. Joe Doe (totally oblivious to the large
+    dialog still glaring at him) clicks on the print icon in the toolbar.
+    Confused and annoyed, he then clicks on the File menu, hoping to access
+    the print option from there; but instead, all he gets is a tell nothing
+    beeping sound.
+
+    Okay class, what's wrong here? Is it that Joe Doe didn't click Cancel?
+    No, it's that MS came up with the idea of a modal dialog. Modal=bad.
+    Piken doesn't like or use modal dialogs. (well, except maybe critical)
+
+    The flashing title bar in Win2k was a good idea. Even better would be if
+    the mouse cursor moved on its own, back over the dialog or if disabled
+    background windows would dim themselves more as another visual indication.
+
+Personalized menus:
+    What happened to the 'xyz' option? I don't see it in the menu, but I just
+    used that computer over there only an hour ago, and it had the choice in
+    the menu. So I explain, oh Microsoft thought you couldn't handle seeing
+    so many options at once, and knew you would never need to use that option
+    you need to use right now.
+
+    I HATE personalized menus, the most inconvenient and annoying innovation
+    invented. Any computer I sit at must show all files, the full path in the
+    title bar, details view, and NO personalized menus. I'm a big boy. Show
+    me everything. Enough of that rant.
+
+    If MS really wanted to do something smart, instead of hiding less
+    frequently used options, they should reorder the menu items so that the
+    most common choices appear at the top. So now you probably think that is
+    what I'm about to tell you that my GUI does. Uh, no. I just thought it
+    was an idea worth mentioning.
+
+Inconsistent mouse behaviour:
+    Left click the choice (with text and an icon) if a menu choice.
+    Double click the choice (with text and an icon) if in a list.
+    Left click on menu bar for submenu.
+    Right click on icon for submenu.
+    Ctrl+Insert copies text.
+    Ctrl+Insert copies files.
+    Shift+Delete cuts text.
+    Shift+Delete does not cut text (permanently deletes files)
+    
+_______________________________________________________________________________
+Eof

@@ -1,0 +1,60 @@
+==============
+SpriteView 0.4, 5-10-98, FDwR
+==============
+This includes many locations I have found graphics in my favorite games.
+
+Some of these are signifigant, some are curious, and some I still wonder
+if they are even graphics are not! If they have a question beside, it means
+that I am not sure if that sprite is what I think it is, or that area is
+questionable for graphics. It may use a yet unknown mode, or it may be a
+levelmap, sound, or another type of repetitive data structure. If anyone
+finds an image in mode 7 in a common game, please tell me. Anything listed
+as 'curious' can just be ignored. It just means that I am working on them,
+wondering if they are an unfamiliar graphics or something totally different.
+This is by no means an extensive list of anything, just some examples from
+games I own. Note that some games may have different values because of there
+being different versions released. For example, newer versions of DK include
+three languages. Also, these locations are all for SMC images.
+
+LegendOfZelda (It uses 3bit for the majority of its graphics)
+ 459265:2-FamiliarFont! 524801:4-Link! 565761:3-Opening&JapaneseWriting
+ 561153-GameOver&Fairy 564993-PieceOfHeart 553473-StartOfTheItems!
+ 726604-CreatureFaces 731772-TheEnd 731966-Curious 762308-Man'sBody
+ 770186-BombSeller 782361-TreasureChest 771262-Bird 772131-FluteNote
+ 785603-SomeItems 786448-SkullKey 794866-Zelda? 769667-SomeFaces
+ 732169-Cannonball 765773-OldMan 760654-Knight 764424-Armos
+ 767470-Bee&Witch'sAssistant 735873-SandWorm! 735001-PieceOfCaterpillar
+ 741432-King 742132-DissapearingMaiden 747875-Blind
+ 698689:3:13-FallingKnight
+ 599038,652026- SmallPieceOfTitle (I just do not get how it is stored) ):-/
+
+SuperMarioWorld (I think it uses 3bit for its graphics (?))
+ Unfortunately this game is filled with more questions than answers as far
+ as graphics, and you would think it to be the simplest one!
+ 307853:3? 265865? 266313? 268073?
+ 277133?! 286249|286572-296907-flower 289155-messageBlock 286113-feather
+ 288163:3-Goomba 292259:2-309855-RouletteBlock 297415-Again? 303729-Xblock
+ 321449-SunkenShipPowerKey 325709-LetterB? 377461-Curious! (this area may
+ hold the key to how this ROM stores its tiles) 317537-Aand2 338870-Berry  343147-E 347334-G 379134-Star96 390765-Goomba 391911-Sphere 38819-Sphere
+MarioAllStars (Just to examples of 8bit, use the inverse gray)
+ 33280:8-TitleScreen 1409537:8-SelectionScreens
+SuperMetroid3
+ 13889-Hum? 295425:4-YourFavoriteItems 459265:4-Font&Helmet 475649:4-Zebes
+ 481537:2-MapSections 791630-Curious 865281:2-DuplicateMapSections 874497:4-
+ Explosions&Devices 885249-OurBeautySamus!(inverse gray) 912385-SamusInAmor!
+ 1188861-Curious 1230789-Curious 1409537-MiniKraid&OtherEnemies!(inverse gray)
+ 1442305-OurHelpfulBuddies&SporeSpawn (user pal) 1488897-YourTicketHome&
+ UglySpacePirates 1507841-TonsOfEnemies 1679969-Curious 1769985:4-
+ PauseScreenParts 1812993-Chozo&MotherBrain (die you ugly gray matter) >:-)
+ 231269-YetAnotherCuriousity,1919489-?,793285-E
+DKC (you would have to be blind to not see anything in this one)
+ 1646618-LevelData 2742493-SomeFont 2870877:4-Donkey'sStereo
+ 3264200:8-Diddy'sFace! (inverse gray) 3265928:4-Numbers (gray, wrap=2)
+ 3792198-Bananas&AnimalBuddyItems 72530-MainMap 535301-BGSunset 657666-BG? 812799-BananaHoard 822741-What? 983361-Rool'sShip? 1116418-Map 1261045-Mist? 1395557-Barrels 1822451-MincerWheel 2009407-Rambi 2055813-BlastBarrels 2801759-Espresso 2194422-DonkeyHead 2298753-NewMode? 2361489-Logo 2325345-MoreNewMode 2463224-DiddyHead 2485852-PalDisable 2540631-NLogo 2625799-PalmTrees 2961125-Rlogo 3082497-Title 3819423-MenuBG 3279105-ToxicBG 3318711-Cranky'sCabin 3353693-MoreRambi 3413849-?BG 3438371-GameTiles! 3449599-Funky'sFlights 3473945-Cranky 3539483-Donkey 3604993-BG? 3705627-Font 3763055-Tire 4131074-BG?
+Tenchi Muyo
+ 2036129-Who?
+SailorMoon
+ 
+
+This list is separate from the main readme so you can more easily add your
+own finds to it.

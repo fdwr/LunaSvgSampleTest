@@ -1,0 +1,302 @@
+                          Q U I C K  B A S I C
+
+                        ÛÛÛ ÛÛÛ ÛÛÛÛÛ ÛÛÛÛ  ÛÛÛÛÛ
+                        Û Û Û Û   Û   Û   Û   Û
+                        Û  Û  Û   Û   Û   Û   Û
+                        Û  Û  Û ÛÛÛÛÛ ÛÛÛÛ  ÛÛÛÛÛ 
+
+                       QBMIDI(TM) Library Overview
+
+              S H A R E W A R E    V E R S I O N    1 . 0
+
+                        SHAREWARE PRICE $20.00
+
+                              Developed by:
+                      AskUs! Technology Specialists
+                                PO Box 737
+                         Bountiful, UT 84011-0737
+
+            QBMIDI is a Trademark of AskUs! Technology Specialists
+                   (c) 1990 AskUs.  All rights reserved.
+
+
+Hello and welcome to QBMIDI.  If you use MIDI and you program using
+Microsoft QuickBASIC or BASIC PDS, then we're confident you'll love the
+QBMIDI library, since it gives you to access and control your MIDI'ed
+instruments using simple QuickBASIC compatible calls.  QBMIDI V1.0 is a
+fully functional library of utilities that provide you with access to
+all of your MIDI instruments connected through a Roland MPU401 or
+compatible MIDI interface.  You can play your instruments via QuickBASIC
+as well as receive MIDI information and send MIDI commands to your MIDI'ed
+instruments.  It's simple, fast, and best of all ... you'll be in 
+control of your MIDI instruments! 
+
+Included with this document file (QBMIDI.DOC), you'll find the following
+related files:
+
+     QBM-DEM1.BAS     Initial demonstration program that features a few
+                      simple MIDI commands and general starting place
+                      to view source examples of QBMIDI's use.
+
+     QBM-DEM2.BAS     A demonstration program that generates music based
+                      constraints you provide.  Not only does it show 
+                      working examples of your computer controlling your
+                      MIDI instruments, it's interesting to hear the
+                      sounds created.  We invite you to add functions and
+                      modify both of the demo programs to suit your needs.
+
+     QBM-DEM3.BAS     A simple keyboard split program.
+
+     QBMIDI.QLB       A QuickBASIC 4.5 environment QuickLibrary that
+                      provides you access to QBMIDI functions from within
+                      the QuickBASIC programming environment (QB.EXE).
+
+     QBMIDI.LIB       A linkable library suitable for linking to your
+                      result .EXE programs.  Once linked, the QBMIDI calls
+                      you use become an integral part of your compiled 
+                      program.
+
+     QBMIDI.ORD       Order information for the advanced MUSICIANS QBMIDI
+                      V2.0 which contains numerous advanced MIDI functions
+                      that are not included with this Shareware version.
+
+
+A QUICK OVERVIEW OF QBMIDI's V1.0 FUNCTIONS
+-------------------------------------------
+
+CALL STATEMENT                 WHAT IT DOES
+--------------                 ---------------------------------------------
+CALL SeeIfMPUExists(Found)     If Midi Controller (MPU401) or compatible
+                               is found in your system 
+CALL ResetMpu                  Resets the MPU to power on state
+CALL SetDataInStopMode         Turns off some of the MPU's intelligence
+                               you'll be controlling it via QuickBASIC
+CALL PlayNote(Note, Velocity)  Plays a Note, striking it as you would from
+                               a keyboard with different strike velocities,
+                               or turns off a note currently playing
+CALL AllNotesOff               All notes off currently playing turned off
+CALL ChangePatchTo (NewPatch)  Change the patch (voice) currently in use
+                               to New Patch
+CALL ReceiveMidiData(Value)    Receive any midi data that may be coming
+                               in.  It listens to MIDI being sent back.
+CALL OmniModeOn                Turn on Omni, where all MIDI data will be
+                               played by all synthesizer channels.
+CALL OmniModeOff               Set Omni Off, where MIDI channel data is
+                               only received by the synthesizer's channel
+CALL SetToPolyMode             Set multi-voice mode
+CALL SetToMonoMode             Set to Mono-voice mode
+
+
+
+The demo programs make use of all functions found in QBMIDI 1.0, and
+describe usage within the source code of the demo programs.  We encourage
+experimentation with the demo programs to gain a better understanding while
+having some fun.
+
+
+FOR NEW QUICKBASIC PROGRAMMERS
+------------------------------
+For new programmers, like we were at one time,we've tried to aim our examples
+at your level.  QuickBASIC's library and sub functions can be somewhat tricky
+at first, so we've listed what you should type to get the libraries loaded 
+and running.  If you're a pro at QuickBASIC please excuse the lengthy 
+descriptions, as we want everyone to get to make music as fast as possible 
+with the least amount of problems.
+
+
+USING QBMIDI WITHIN THE QUICKBASIC PROGRAMMING ENVIRONMENT (QB.EXE)
+-------------------------------------------------------------------
+Two libraries are provided with QBMIDI, one called QBMIDI.QLB (the Quick
+Library) and QBMIDI.LIB (the Linkable library).  When working within the
+QuickBASIC programming environment (ie. using QB.EXE), you have the option
+to load a QuickLibrary at the time you start QB.EXE.  We make use of this
+feature to enables you to use all of QBMIDI call routines while debugging
+your programs.
+
+To start QuickBASIC with QBMIDI library functions available you would type
+the following:
+
+     QB /L QBMIDI <Enter>
+
+Note: The file QBMIDI.QLB should be placed in the same directory with your
+      other QB library files (typically the same directory where the file
+      QB.EXE is found).  You may also start QB.EXE with QBMIDI by adding
+      the pathname where to find QBMIDI.QLB (ie. QB /L Pathname\QBMIDI)
+
+If when starting QB.EXE you receive this error message:
+
+     Cannot find file (QBMIDI.QLB). Input path:
+
+you may type in a new path name, but we recommend control ^C and re-entering
+a correct pathname from startup.  By doing this now, you'll save time when
+compiling your programs to .EXE executable's.
+
+If you are greeted with the Microsoft QuickBASIC environment, without seeing
+any error messages, you can assume that QBMIDI.QLB was loaded and its 
+functions are available.  For some reason QuickBASIC doesn't tell you what 
+library is loaded of if the load went OK so we just say no news is good news.
+
+
+WITHIN THE QUICKBASIC PROGRAMMING ENVIRONMENT
+---------------------------------------------
+
+To use any of the QBMIDI commands, you simply call the command as you would
+a local SUB function.  Don't worry if you don't know how to use SUB's since
+QBMIDI does not use the SUB capabilities, but is merely called like one.
+For example:
+
+     Any good midi program should first check to see if an MPU401 controller
+     is present, connected, and ready for data.  To find out we use the
+     QBMIDI SeeIfMPUExists command.  The full QuickBASIC call syntax is:
+
+     CALL SeeIfMPUExists(Found)	
+
+When run, the QBMIDI.QLB library function named SeeIfMPUExists is called and
+returns a value in the variable called Found.  SeeIfMPUExists returns the
+value of zero (0) for no MPU found and -1 indicating an MPU was located.
+
+NOTE: If you receive the message Subprogram Not Found, this indicates you've
+not loaded QB using the /L option.  See the examples above and restart QB.EXE.
+
+Each QBMIDI command functions in this same way, with one exception. Some
+commands require that you set the variables values before calling.  For
+example:
+
+     If playing a note, we us the PlayNote command with the following
+     syntax.
+     
+     Note=60                           'Middle C
+     Velocity = 64                     'Moderate strike velocity
+     CALL PlayNote (Note,Velocity)     'Use QBMIDI playnote to play
+
+In the above example, the values were set before calling the routine.  The 
+following table lists the QBMIDI command and a quick description of how it 
+is used. 
+
+CALL STATEMENT                 SEND/RETURNED
+--------------                 ---------------------------------------------
+CALL SeeIfMPUExists(Found)     Found = 0 if no MPU is found
+                               Found = -1 if MPU is found and ready
+
+CALL ResetMpu                  Resets the MPU to power on state. No variable
+                               is given or returned. Use sparingly to reset
+                               MPU if another program modifies it.  This will
+                               not stop notes in play. Use AllNotesOff.
+
+CALL SetDataInStopMode         Turns off some of the MPU's intelligence.
+                               No variable is sent or returned.
+
+Note = n                       Note to play. Range 0 to 127 where 60=Middle C
+Velocity = n                   Strike velocity. Range 0 to 127 where 1=soft
+                               127=hardest, and 0= turn note off.
+CALL PlayNote(Note, Velocity)  Plays a Note, passes variables Note, Velocity
+                               To turn note off, pass note number with the
+                               velocity set at zero (0). Note and velocity
+                               variables are left unchanged after call.
+
+CALL AllNotesOff               All notes off currently playing turned off.
+                               No variable is sent or returned.
+
+NewPatch = n                   Patch number to change to, range 0 - 127
+CALL ChangePatchTo (NewPatch)  Change the patch (voice) currently in use
+                               to New Patch number given. NewPatch variable
+                               is left unchanged after the call.
+
+CALL ReceiveMidiData(Value)    Receive any midi data that may be coming
+                               in from synthesizers or keyboards. Several
+                               midi bytes may be sent in succession, so
+                               your routines should be ready to catch all
+                               that are sent.  See QBM-DEM2.BAS for more.
+
+CALL OmniModeOn                Turn on Omni, where all MIDI data will be
+                               played by all synthesizer channels. No 
+                               variables are passed or returned.
+CALL OmniModeOff               Set Omni Off, where MIDI channel data is
+                               only received by the synthesizer's channel. No 
+                               variables are passed or returned.
+CALL SetToPolyMode             Set multi-voice mode. No variables are passed
+                               or returned.
+CALL SetToMonoMode             Set to Mono-voice mode. No variables are 
+                               passed or returned.
+
+
+Call up the program titled QBM-DEM1.BAS by using the FILE OPEN command and
+view it's contents.  This demo program shows a few of the basics and
+illustrates how we call the routines from QuickBASIC.  
+
+
+COMPILING PROGRAMS FROM QUICKBASIC SO THEY CAN USE QBMIDI
+---------------------------------------------------------
+
+One nice feature within QuickBASIC is its ability to compile your program
+to a standalone or runtime .EXE file and use the library you started with.
+Since you started QB using the /L QBMIDI command, Quick-BASIC will 
+automatically use the QBMIDI.LIB (run version of QBMIDI) file when it 
+compiles your program.
+
+To compile you're program, use Alt select, Run, Make EXE file.  Your screen
+should resemble the following.  Select Make EXE and Exit and QuickBASIC will
+compile your program and exit.  To run the example below after compile, you
+type QBM-DEM1 <Enter>.
+
+  File  Edit  View  Search  <RUN>  Debug  Calls  Options            Help  
+ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ Untitled ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´ÃÄ¿
+³   ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ Make EXE File ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿   
+³   ³                ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿ ³   °
+³   ³ EXE File Name: ³QBM-DEM1.EXE                                ³ ³   °
+³   ³                ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ ³   °
+³   ³                                                               ³   °
+³   ³   [ ] Produce Debug Code         Produce:                     ³   °
+³   ³                                  ( ) EXE Requiring BRUN45.EXE ³   °
+³   ³                                  (X) Stand-Alone EXE File     ³   °
+³   ÃÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ´   °
+³   ³  < Make EXE >   < Make EXE and Exit >   < Cancel >   < Help > ³   °
+³   ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ   °
+°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+
+If you wish a further discussion of linking libraries, we refer you to your
+Microsoft documentation.
+
+
+PDS7 (BASIC 7.x) USERS
+----------------------
+Please write us about receiving PDS7.x compatible versions of QBMIDI.QLB and
+QBMIDI.LIB.  We'll also supply QBMIDI.OBJ so you may add the functions to
+other libraries you have.
+
+
+CONCLUSION
+-----------
+We hope you, like us, enjoy making music and we feel making music with Quick-
+BASIC is more fun than writing any other type of program.  As you experiment
+you may find referring to the MIDI specification helpful or related MIDI
+books helpful in understanding what's going on.  
+
+We also want you to know about our MUSICIANS VERSION of QBMIDI, that contains
+added features such as:
+
+o  Independent receive and Transmit over all 16 midi channels
+o  Record and Playback using the MPU401
+o  Facilities for MIDI dumps, voice dumps, etc.
+o  Direct access to transmit and receive MIDI data
+o  Metronome On/Off
+o  Tempo adjustment
+o  Customization to your synth's features
+o  Superb Printed documentation
+o  And much more ...
+
+You may order MUSICIANS QBMIDI V2.0 by sending $45.00 cash or
+check (we'll pay shipping to you by return mail) with your return address 
+info to:
+
+     AskUs!
+     QBMIDI 2.0
+     PO Box 737
+     Bountiful, UT 84011-0737
+
+We thank you for trying QBMIDI and hope you find making QB Music as
+enjoyable as we have.
+
+Best Regards,
+AskUs!

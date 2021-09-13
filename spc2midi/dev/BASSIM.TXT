@@ -1,0 +1,42 @@
+Simulation of Cochlear Mechanics
+Basilar Membrane Resonance
+Peekin 2000.8.30
+
+-<Variables>-
+stiffness - determines tension rate and natural frequency
+mass - determines resistance and frequency response rate
+tension - pull back towards the membrane's center from stiffness
+resistance - resistance to change in velocity because of mass
+velocity - membrane's speed and direction of oscillation
+level - membrane's distance from center
+
+-<Concept>-
+A waveform resonates with a specific area of the basilar membrane if the waveform's frequency matches the membrane's natural frequency. If the waveform buffers right between the curve of resistance and tension, it will maximally excite the membrane surface. Too fast of acceleration (cresting early) is dampened by resistance. The waveform is attempting to move the membrane faster than it can overcome the membrane's mass. Too slow of acceleration (cresting late) is dampenedned by tension. The waveform is not moving the membrane fast enough to overcome the rebound pull back towards center (tension).
+
+-<Formulas>-
+I'm not completely sure if these are all in the right order. They may need to be shuffled
+
+membrane level += membrane velocity
+wave velocity = wave level - previous wave level
+membrane velocity += (wave velocity - membrane velocity) * resistance%
+membrane velocity -= membrane level * tension%
+
+-<Algorithm>-
+WavePreLvl = 0
+BsmLvl = 0, BsmVel = 0
+
+if (SamplesLeft < SampleCountGranularity)
+    SampleCount = SamplesLeft;
+else
+    SampleCount = SampleCountGranularity;
+
+for (; SampleCount > 0; SampleCount--){
+    WaveLvl = *WaveBuffer
+    WaveVel = WaveLvl - WavePreLvl
+    WavePreLvl = WaveLvl
+
+    BsmLvl += BsmVel
+    //TotalVelDif
+    BsmVel += ((WaveVel - BsmVel) * BsmResist) >> 16
+    BsmVel -= (BsmLvl * BsmTension) >> 16
+}

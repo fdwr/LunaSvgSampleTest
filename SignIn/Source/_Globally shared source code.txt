@@ -1,0 +1,9 @@
+Read the Readme.doc for more generic information...
+Read top of SignIn.frm for history and changes...
+
+This folder contains source code shared in each of the versions.
+For the project file of the desired location, go into its respective 
+folder with the right suffix.
+
+Most of the program is customized by the SignIn.ini file in each 
+folder. 

@@ -1,0 +1,33 @@
+#define PROGVER 1
+#define PROGVERSTR "1.0"
+
+1 VERSIONINFO
+FILEVERSION PROGVER,0,0,0
+PRODUCTVERSION PROGVER,0,0,0
+FILEFLAGSMASK 0x0000003FL
+FILEFLAGS 0
+FILEOS 40004h //VOS_NT_WINDOWS32
+FILETYPE 1 //VFT_APP
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", PROGVERSTR
+            VALUE "FileDescription","Spc2Midi - DSP to MIDI convertor"
+            VALUE "Purpose","Displays the electric fields between charged particles"
+            VALUE "LegalCopyright","Copyright\251 2004 Dwayne Robinson"
+            VALUE "CompanyName", "PikenSoft"
+            VALUE "Mail", "FDwR@hotmail.com"
+            VALUE "Website", "http://oregonstate.edu/~robinsfr"
+            VALUE "Origin", "Earth->UnitedStates.Oregon(\042Salem\042)"
+        END
+    END
+    ;BLOCK "VarFileInfo"
+    ;BEGIN
+    ;    VALUE "Translation", 0x0409,1252
+    ;END
+END
+
+1 ICON EFOF.ICO

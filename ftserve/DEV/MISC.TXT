@@ -1,0 +1,277 @@
+// Misc stuff for reference
+
+	char test[80];
+	wsprintf(test, "sizeof=%d", sizeof(""));
+	MessageBox(NULL, test, "Caption", MB_OK);
+
+
+#if 0
+
+
+struct sockaddr {
+        u_short sa_family;              // address family
+        char    sa_data[14];            // up to 14 bytes of direct address
+};
+struct sockaddr_in {
+        short   sin_family;
+        u_short sin_port;
+        struct  in_addr sin_addr;
+        char    sin_zero[8];
+};
+struct in_addr {
+        union {
+                struct { u_char s_b1,s_b2,s_b3,s_b4; } S_un_b;
+                struct { u_short s_w1,s_w2; } S_un_w;
+                u_long S_addr;
+        } S_un;
+*/
+
+		if (host=gethostbyname(ScanPath.pathA)) {
+			static struct sockaddr SocketAddress = {AF_INET, //.sin_family
+                0,139u,		//.sin_port (in silly 'network' order)
+				0,0,0,0,	//.sin_addr (IP)
+                "FLANSCA"};	//.sin_zero (socket name)
+
+			AppendLog(L"\r\nhost name: %hs\r\nhost alias: %hs", host->h_name, host->h_aliases);
+			ScanIp = *(int*)(*(host->h_addr_list));
+			*(int*)(&SocketAddress.sa_data[2]) = ScanIp;
+			AppendLog(L"\r\nhost ip: %X", ScanIp);
+
+			if (WsConnect(ScanSocket, (struct sockaddr*)&SocketAddress, sizeof(struct sockaddr)) == 0) {
+				WsDestroy(ScanSocket);
+				AppendLog(L"\r\nconnected to: %X", ScanIp);				
+			//} else if (GetLastError()==WSAECONNREFUSED) {
+			} else if (GetLastError()==WSAEWOULDBLOCK) {				
+				static struct timeval time = {6,0};
+				struct fd_set wfds = {1, ScanSocket, -1},
+					   xfds = {1, ScanSocket, -1};
+				AppendLog(L"\r\nwaiting for connection %d", GetLastError());
+				if (WsWait(0, NULL, &wfds, &xfds, &time) >= 1
+					&& wfds.fd_count >= 1) {
+					// connected
+					WsDestroy(ScanSocket);
+					AppendLog(L"\r\nconnected after wait");
+
+				} else {
+					//error connecting
+					AppendLog(L"\r\nconnection failed at wait %d, #%d", GetLastError(), wfds.fd_count);
+					goto ScanThread_EnumExit;
+				}
+			} else {
+				//error connecting
+				AppendLog(L"\r\nconnection failed at connect %d", GetLastError());
+				goto ScanThread_EnumExit;
+			}
+#endif
+
+
+
+if (PackBufferOverflow) { // there was a packet overflow last time
+	// realign buffer to nearest following terminator
+	// scan forward as to not skip any small intermediate packets
+	for (inptr = PackBuffer; ; ) {
+		if (PackBufferLen-- <= 0) return 0;
+		if (*inptr++ == PknftHdrEnd) break;
+	}
+	dbgmsg("GetPacket: wasted overflow");
+	memmove(PackBuffer, inptr, PackBufferLen);
+	PackBufferOverflow = false;
+	// see if any more after discarded packet
+	inlen = PackBufferLen;
+	for (inptr = PackBuffer+PackBufferLen-1; ; inlen--) {
+		if (inlen <= 0) return 0;
+		if (*inptr-- == PknftHdrEnd) break;
+	}
+}
+
+
+
+/*
+// A thread whose sole purpose is to listen for socket events
+// So the main server can also listen for user commands and not
+// block completely.
+// This thread is only called during a silence of no packets,
+// when the server thread polled with no results.
+static int SocketListener(int param) {
+	HANDLE WaitHandles[2] = {ServerEvent, ServerThread};
+	int AlertMessage[] = {PknftCmdServerEvent, 0,0,0};
+	// assert sizeof(AlertMessage) == sizeof(PoutBfr)
+
+	dbgmsg("SocketListener: entered");
+
+	// wait until server thread needs me (or server thread death)
+	while (WaitForMultipleObjects(2, WaitHandles, FALSE, INFINITE) == 0) {
+		dbgmsg("SocketListener: awakened");
+		ResetEvent(ServerEvent);
+		if (Mode & (ModeConnected|ModeConnecting|ModeListening)) {
+			FD_ZERO(&FdsReadable);
+			if (Mode & ModeReading) {
+				FD_SET(Socket, &FdsReadable);
+			}
+			FD_ZERO(&FdsWriteable);
+			if (Mode & ModeWriting) {
+				FD_SET(Socket, &FdsWriteable);
+			}
+			FD_ZERO(&FdsException);
+			FD_SET(Socket, &FdsException);
+
+			dbgmsg("SocketListener: selecting");
+			if (select(1, &FdsReadable, &FdsWriteable, &FdsException, NULL) > 0) {
+				dbgmsg("SocketListener: alerting server");
+				Selecting = 0; //&= ~(SelectingReads|SelectingWrites|SelectingException);
+				// alert main thread no select statement is pending			
+				WriteFile(PknftPin[1], &AlertMessage, sizeof(AlertMessage), &Dummy, NULL); // wake server
+			}
+			else {
+				// socket error! maybe socket was closed!?
+				// not sure how to best handle this possibility yet
+				// Mode &= ~(ModeConnected|ModeConnecting|ModeListening);
+				dbgmsg("SocketListener: select error");
+				Selecting = 0; //&= ~(SelectingReads|SelectingWrites|SelectingException);
+			}
+		}
+	}
+
+	dbgmsg("SocketListener: exiting");
+
+	// server thread died, so I have no purpose any more
+	return false;
+}
+*/
+
+// Called by the main thread to check socket without blocking.
+// Ensures that none of the FDS conflict with any select
+// already happening in other thread.
+/*
+static int PollSocket() {
+	static struct timeval zerotime = {0,0};
+	fd_set *FdsReadablePtr  = NULL,
+		   *FdsWriteablePtr  = NULL,
+		   *FdsExceptionPtr = NULL;
+	int temp; //dbg
+
+	if (!(Mode & (ModeConnected|ModeConnecting|ModeListening))) return false;
+
+	// check whether select statement is pending in other thread
+	if (Mode & ModeReading) {
+		FdsReadablePtr = &FdsReadable;
+		FD_ZERO(&FdsReadable);
+		FD_SET(Socket, &FdsReadable);
+	}
+	if (Mode & ModeWriting) {		
+		FdsWriteablePtr = &FdsWriteable;
+		FD_ZERO(&FdsWriteable);
+		FD_SET(Socket, &FdsWriteable);
+	}
+		FdsExceptionPtr = &FdsException;
+		FD_ZERO(&FdsException);
+		FD_SET(Socket, &FdsException);
+	}
+	if (!FdsReadablePtr && !FdsWriteablePtr && !FdsExceptionPtr) return false;
+	//return select(0, &FdsReadable, &FdsWriteable, &FdsException, &zerotime) > 0;
+	temp = select(0, &FdsReadable, &FdsWriteable, &FdsException, &zerotime);
+	return temp > 0;
+}
+*/
+
+	//SocketEventList.lNetworkEvents
+	//SocketEventList->lNetworkEvents
+
+
+//fd_set Socket
+//FD_ZERO set
+//FD_SET s set
+//FD_ISSET s set
+
+
+///////////////////////////////////////////////////////////////////////////////
+/*
+	if (Mode & ModeListening) {
+		int AdrSize = sizeof(SockAddr);
+		int OldSocket = Socket;
+
+		Mode &= ~(ModeListening|ModeConnecting|ModeConnected);
+		// if readable, accept connection
+		if (FD_ISSET(Socket, &FdsReadable)
+		  && (Socket = accept(OldSocket, (struct sockaddr*) &SockAddr, &AdrSize)) > 0) {
+			Mode |= ModeConnected;
+			NotifyParent(PknftCmdStatus, "HandleSocketEvent: Incoming connection accepted");
+		}
+		else {
+			Socket=0;
+			NotifyParent(PknftCmdStatus, "HandleSocketEvent: Listen failed");
+		}
+		closesocket(OldSocket); // close original socket regardless of success/fail
+	}
+	else if (Mode & ModeConnecting) {
+		Mode &= ~(ModeListening|ModeConnecting|ModeConnected);
+		// if Writeable, connection established
+		if (FD_ISSET(Socket, &FdsWriteable)) {
+			Mode |= ModeConnected;
+			NotifyParent(PknftCmdStatus, "HandleSocketEvent: Connection accepted");
+		}
+		else {
+			NotifyParent(PknftCmdStatus, "HandleSocketEvent: Connection refused");
+		}
+	}
+	else {
+		if (FD_ISSET(Socket, &FdsException)) {
+			dbgmsg("HandleSocketEvent: Exception!");
+		}
+		
+		if (FD_ISSET(Socket, &FdsReadable)) {
+			dbgmsg("HandleSocketEvent: Readable");
+			switch (GetPacket(&PinBfr.msg, RecvBuffer, &IoCount)) {
+			case -1:
+				Disconnect();
+				break;
+			//case 0: // need more data
+			//	break;
+			case 1:
+				RecvBuffer[IoCount] = '\0'; //dbg
+				SendMessage(GetDlgItem(PknftHwnd, 1002), LB_ADDSTRING, 0, (long)RecvBuffer); //dbg
+				//NotifyParent(PknftCmdStatus, RecvBuffer+RecvBufferLen);
+				//NotifyParent(PknftCmdStatus, "received data");
+				switch(PinBfr.msg) {
+				case 0:
+				case 1:
+				default:
+					break;
+				}
+				break;
+			}
+		}
+
+		if ((Mode & ModePutting) && FD_ISSET(Socket, &FdsWriteable)) {
+			// assert sending < PacketBufferSize
+			ReadFile(FileHandOut, FileBuffer, PacketBufferSize-2048, &IoCount, NULL);
+			if (IoCount > 0) {
+				SendPacket(PknftHdrFile, FileBuffer,IoCount);
+			}
+			else {
+				CloseHandle(FileHandOut); FileHandOut=0;
+				Mode &= ~ModePutting;
+			}
+		}
+	}
+*/
+
+
+
+	/*
+	// scan from the rear because it will usually be faster
+	for (inptr = PackBuffer+PackBufferLen-1; ; inlen--) {
+		if (inlen <= 0) {
+			if (PackBufferLen >= PacketBufferSize) {
+				PackBufferOverflow = true; // signal error
+				PackBufferLen = 0; // and clear buffer
+				dbgmsg("GetPacket: overflow");
+				return -1;
+			} //  wait until NEXT full packet received, not when current one finished
+			return 0;
+		}
+		if (*inptr-- == PknftHdrEnd) break;
+	}
+	*/
+
+

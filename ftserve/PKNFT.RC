@@ -1,0 +1,257 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IddMain DIALOGEX 0, 0, 316, 145
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_NOFAILCREATE | DS_CENTER | 
+    WS_MINIMIZEBOX | WS_POPUP | WS_MINIMIZE | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "PknFtServe - (c)2004 PikenSoft <Dwayne Robinson>"
+MENU IdrMain
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    LTEXT           " &Server name",IDC_STATIC,4,3,153,15,SS_CENTERIMAGE | 
+                    SS_SUNKEN
+    EDITTEXT        IdcAddress,52,4,104,12,ES_AUTOHSCROLL
+    LTEXT           " &Port number",IDC_STATIC,4,19,153,15,SS_CENTERIMAGE | 
+                    SS_SUNKEN
+    EDITTEXT        IdcPort,52,20,104,12,ES_AUTOHSCROLL
+    LTEXT           " &User name",IDC_STATIC,160,3,153,15,SS_CENTERIMAGE | 
+                    SS_SUNKEN
+    EDITTEXT        IdcUser,208,4,104,12,ES_AUTOHSCROLL
+    LTEXT           " Pass&word",IDC_STATIC,160,19,153,15,SS_CENTERIMAGE | 
+                    SS_SUNKEN
+    EDITTEXT        IdcPass,208,20,104,12,ES_AUTOHSCROLL
+    CONTROL         "&Connect",IdcConnect,"Button",BS_AUTORADIOBUTTON | 
+                    BS_PUSHLIKE | WS_GROUP | WS_TABSTOP,4,36,48,16
+    CONTROL         "&Listen",IdcListen,"Button",BS_AUTORADIOBUTTON | 
+                    BS_PUSHLIKE,56,36,48,16
+    CONTROL         "&Disconnect",IdcDisconnect,"Button",BS_AUTORADIOBUTTON | 
+                    BS_PUSHLIKE,108,36,48,16
+    CHECKBOX        "&Files...",IdcFiles,160,36,48,16,BS_PUSHLIKE
+    PUSHBUTTON      "Put...",IdcPut,212,36,48,16
+    PUSHBUTTON      "E&xit",IdcExit,264,36,48,16
+    LTEXT           "",IDC_STATIC,4,55,308,2,SS_SUNKEN | NOT WS_GROUP
+    LTEXT           " Message:",IDC_STATIC,4,59,257,15,SS_CENTERIMAGE | 
+                    SS_SUNKEN
+    EDITTEXT        IdcMsg,52,60,208,12,ES_AUTOHSCROLL | WS_GROUP
+    PUSHBUTTON      "Send",IdcSend,264,59,48,15
+    CONTROL         "",IdcLog,"RichEdit20A",ES_MULTILINE | ES_AUTOHSCROLL | 
+                    ES_READONLY | WS_BORDER | WS_VSCROLL | WS_GROUP,4,76,308,
+                    64
+END
+
+IddFiles DIALOGEX 0, 0, 332, 229
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_NOFAILCREATE | 
+    WS_MINIMIZEBOX | WS_POPUP | WS_MINIMIZE | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "<UNFINISHED, Use the File|Put menu option instead>"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    CONTROL         "Local:",IDC_STATIC,"Static",SS_SIMPLE | WS_GROUP,4,4,
+                    160,16
+    COMBOBOX        IdcLocalPath,4,16,160,12,CBS_DROPDOWN | 
+                    CBS_OWNERDRAWFIXED | CBS_HASSTRINGS | WS_VSCROLL | 
+                    WS_TABSTOP
+    LISTBOX         IdcLocalFiles,4,32,160,100,LBS_SORT | LBS_OWNERDRAWFIXED | 
+                    LBS_HASSTRINGS | LBS_NOINTEGRALHEIGHT | WS_VSCROLL | 
+                    WS_TABSTOP
+    CONTROL         "Progress1",IdcLocalProgress,"msctls_progress32",0x0,4,
+                    136,160,8
+    CONTROL         "&Put",IdcPut,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE,4,
+                    208,48,16
+    CONTROL         ">",IdcPutOptions,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | 
+                    WS_DISABLED,52,208,12,16
+    LISTBOX         IdcRemoteFiles2,4,148,324,44,LBS_SORT | 
+                    LBS_OWNERDRAWFIXED | LBS_HASSTRINGS | 
+                    LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IdcLocalProgress2,"msctls_progress32",0x0,168,136,160,
+                    8
+    CONTROL         "Remove",IdcPut2,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | 
+                    WS_DISABLED,132,208,48,16
+    CONTROL         "Clear",IdcPut3,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | 
+                    WS_DISABLED,184,208,48,16
+    CONTROL         "Remote:",IDC_STATIC,"Static",SS_SIMPLE | WS_GROUP,168,4,
+                    160,16
+    COMBOBOX        IdcRemotePath,168,16,160,12,CBS_DROPDOWN | 
+                    CBS_OWNERDRAWFIXED | CBS_HASSTRINGS | WS_VSCROLL | 
+                    WS_TABSTOP
+    LISTBOX         IdcRemoteFiles,168,32,160,100,LBS_SORT | 
+                    LBS_OWNERDRAWFIXED | LBS_HASSTRINGS | 
+                    LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Progress1",IdcRemoteProgress,"msctls_progress32",0x0,4,
+                    196,324,8
+    CONTROL         "&Get",IdcGet,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | 
+                    WS_DISABLED | WS_GROUP | WS_TABSTOP,68,208,48,16
+    CONTROL         ">",IdcGetOptions,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | 
+                    WS_DISABLED | WS_GROUP | WS_TABSTOP,116,208,12,16
+END
+
+IddAbout DIALOGEX 0, 0, 136, 63
+STYLE DS_SETFONT | DS_MODALFRAME | DS_SETFOREGROUND | DS_3DLOOK | 
+    DS_NOFAILCREATE | DS_CENTER | WS_POPUP | WS_MINIMIZE | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOOLWINDOW
+CAPTION "About PknFt Server"
+FONT 8, "MS Sans Serif", 0, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Close",IDCANCEL,44,44,48,16
+    EDITTEXT        IdcMsg,32,4,100,36,ES_MULTILINE | ES_AUTOVSCROLL | 
+                    ES_READONLY | NOT WS_BORDER | WS_GROUP | NOT WS_TABSTOP
+    ICON            IdiMain,IDC_STATIC,4,4,20,20,SS_CENTERIMAGE | WS_GROUP
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IddMain, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 309
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 129
+    END
+
+    IddFiles, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 325
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 213
+    END
+
+    IddAbout, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 129
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 47
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IdiMain                 ICON                    "PknFtW.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "PknFt.manifest"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IdrMain MENU 
+BEGIN
+    POPUP "Server"
+    BEGIN
+        MENUITEM "Connect",                     IdcConnect
+        MENUITEM "Listen",                      IdcListen
+        MENUITEM "Disconnect",                  IdcDisconnect
+        MENUITEM SEPARATOR
+        MENUITEM "Exit",                        IdcExit
+    END
+    POPUP "File"
+    BEGIN
+        MENUITEM "Put...",                      IdcPut
+        MENUITEM "Browse...",                   IdcFiles
+    END
+    POPUP "Edit"
+    BEGIN
+        MENUITEM "Copy",                        IdmEditCopy, GRAYED
+        MENUITEM "Paste",                       IdmEditPaste, GRAYED
+    END
+    POPUP "Audio"
+    BEGIN
+        MENUITEM "Listen",                      IdmAudioListen, GRAYED
+        MENUITEM "Record...",                   40018, GRAYED
+    END
+    POPUP "Help"
+    BEGIN
+        MENUITEM "Readme",                      IdmHelpReadme
+        MENUITEM "About",                       IdcAbout
+    END
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -1,0 +1,24 @@
+﻿DirectWrite demo
+
+ClearType is a softwarewfwqerq4r5 technology developed by Microsoft that improves the readability of text on existing LCDs (Liquid Crystal Displays), such as laptop screens, Pocket PC srewqrecreens aeueoau.,.p323.,pweqweqrew234reen look almost as sharp and clear as those printed on a piece of paper.
+
+Mixed scripts: 천사같아요 وفاة امير الكويت السابق
+CJK characters beyond BMP - 𠂢𠂤𠌫
+Type is a softwarewfwqerq4r5 technology developed by Microsoft that improves the readability of text on existing LCDs (Liquid Crystal Displays), such as laptop screens, Pocket PC srewqrecreens aeueoau.,.p323.,pweqweqrew234reen look almost as sharp and clear as those printed on a piece of paper.
+
+Script MT Bold
+
+
+DirectWrite SDK demo
+
+Feel free to play around with the formatting options to see just some of what DWrite is capable of: 
+
+Glyph rendering, Complex script shaping, Script analysis, Bidi ordering (‮abc‬), Line breaking, Font fallback, Font enumeration, ClearType rendering, Bold/Italic/Underline/Strikethrough, OpenType styles, Inline objects ￼, Trimming, Selection hit-testing...
+
+Mixed scripts: 한글 الْعَرَبيّة 中文 日本語 ภาษาไทย
+CJK characters beyond BMP - 𠂢𠂤𠌫
+
+
+
+
+public bin

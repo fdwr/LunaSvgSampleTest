@@ -1,0 +1,483 @@
+;ZSNES Savestate SPC Format:
+;  Thanks to ZsKnight for it!
+;  Meant to be compiled with NASM.
+;  Obtained from http://members.tripod.com/FDwR/snes.htm
+;
+;  This accounts for the extra 67180 bytes that a savestate
+;  with sound has over one that does not (266879-199699).
+;  This portion only includes SPC information and registers,
+;  not FX chip or SA-1 registers, or extra any additional
+;  cartridge memory. All the 65816c registers, PPU
+;  registers, palette, VRAM... are contained in the main
+;  portion.
+
+; SPC700 Status Area
+
+spcRam   times 65472 db 0FFh  ; Pointer to the SPC's RAM
+; THE SPC ROM :)
+   db 0CDh      ;FFC0 MOV     X,#$EF          normal start is $ffc0
+   db 0EFh
+   db 0BDh      ;FFC2 MOV     SP,X          
+   db 0E8h      ;FFC3 MOV     A,#$00        
+   db 000h
+   db 0C6h      ;FFC5 MOV     (X),A         
+   db 01Dh      ;FFC6 DEC     X
+   db 0D0h      ;FFC7 BNE     $FFC5
+   db 0FCh
+   db 08Fh      ;FFC9 MOV     $FA,#$AA
+   db 0AAh
+   db 0F4h
+   db 08Fh      ;FFCC MOV     $F5,#$BB
+   db 0BBh
+   db 0F5h
+   db 078h      ;FFCF CMP     $F4,#$CC
+   db 0CCh
+   db 0F4h
+   db 0D0h      ;FFD2 BNE     $FFCF
+   db 0FBh
+   db 02Fh      ;FFD4 BRA     $FFEF
+   db 019h
+   db 0EBh      ;FFD6 MOV     Y,$F4
+   db 0F4h
+   db 0D0h      ;FFD8 BNE     $FFD6     ; wait until it is zero
+   db 0FCh
+   db 07Eh      ;FFDA CMP     Y,$F4
+   db 0F4h
+   db 0D0h      ;FFDC BNE     $FFE9
+   db 00Bh
+   db 0E4h      ;FFDE MOV     A,$F5
+   db 0F5h
+   db 0CBh      ;FFE0 MOV     $F4,Y
+   db 0F4h
+   db 0D7h      ;FFE2 MOV     [$00]+Y,A
+   db 000h
+   db 0FCh      ;FFE4 INC     Y
+   db 0D0h      ;FFE5 BNE     $FFDA
+   db 0F3h
+   db 0ABh      ;FFE7 INC     $01
+   db 001h
+   db 010h      ;FFE9 BPL     $FFDA
+   db 0EFh
+   db 07Eh      ;FFEB CMP     Y,$F4         
+   db 0F4h
+   db 010h      ;FFED BNE     $FFE9
+   db 0EBh
+   db 0BAh      ;FFEF MOVW    YA,$F6        
+   db 0F6h
+   db 0DAh      ;FFF1 MOVW    $00,YA        
+   db 000h
+   db 0BAh      ;FFF3 MOVW    YA,$F4        
+   db 0F4h
+   db 0C4h      ;FFF5 MOV     $F4,A
+   db 0F4h
+   db 0DDh      ;FFF7 MOV     A,Y           
+   db 05Dh      ;FFF8 MOV     X,A           
+   db 0D0h      ;FFF9 BNE     $FFD6
+   db 0DBh
+   db 01Fh      ;FFFB JMP     [$0000+X]     
+   db 000h
+   db 000h
+   db 0C0h          ;DI                       reset vector
+   db 0FFh          ;STOP                  
+
+   db 0AAh
+   db 0BBh
+   db 0CCh
+   db 0DDh
+   db 0EEh
+   db 0FFh
+      
+   db 000h
+   db 011h
+   db 022h
+   db 033h
+   db 044h
+   db 055h
+   db 066h
+   db 077h
+   db 088h
+   db 099h
+
+spcPCRam dd 0     ; Program Counter
+spcA     db 0     ; The A register (general purpose)
+         db 0
+         db 0
+         db 0
+spcX     db 0     ; The X register (general purpose)
+         db 0
+         db 0
+         db 0
+spcY     db 0     ; The Y register (general purpose)
+         db 0
+         db 0
+         db 0
+spcP     db 0     ; The processor status byte (Removed for each flags)
+         db 0     ; NZ are not always processed...
+         db 0
+         db 0
+spcNZ    db 0     ; The processor NZ flag (little speed up hack :) )
+         db 0
+         db 0
+         db 0
+
+
+spcS     dd 1FFh   ; The stack pointer (always from 100 to 1FF) (added Ram)
+spcRamDP dd 0     ; The direct page pointer 
+spcCycle dd 0     ; The Cycle Counter
+reg1read db 0     ; read from 65816
+reg2read db 0     ; read from 65816
+reg3read db 0     ; read from 65816
+reg4read db 0     ; read from 65816
+timeron  db 0     ; timer0 on
+timincr0 db 0     ; # of ticks before incrementing
+timincr1 db 0     ; # of ticks before incrementing
+timincr2 db 0     ; # of ticks before incrementing
+timinl0  db 0     ; ticks left before incrementing
+timinl1  db 0     ; ticks left before incrementing
+timinl2  db 0     ; ticks left before incrementing
+timrcall db 0     ; alternating bit 0 to correctly timer timer1 & 2 to 8000hz
+
+spcextraram times 64 db 0 ; extra ram, used for pcall
+
+FutureExpandS  times 256-64 db 0
+
+spcsave equ $-spcRam
+
+; DSP Status area
+
+BRRBuffer times 32 db 0   ; The BRR Decode Buffer
+
+BRRPlace0 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp0  dd 0             ; Keep this 0
+BRRPlace1 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp1  dd 0             ; Keep this 0
+BRRPlace2 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp2  dd 0             ; Keep this 0
+BRRPlace3 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp3  dd 0             ; Keep this 0
+BRRPlace4 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp4  dd 0             ; Keep this 0
+BRRPlace5 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp5  dd 0             ; Keep this 0
+BRRPlace6 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp6  dd 0             ; Keep this 0
+BRRPlace7 dd 0             ; Place in the BRRBuffer for Voice 0
+BRRTemp7  dd 0             ; Keep this 0
+
+Voice0Freq dd 1            ; Frequency of Voice 0 (Delta Freq)
+Voice1Freq dd 1            ; Frequency of Voice 1 (Delta Freq)
+Voice2Freq dd 1            ; Frequency of Voice 2 (Delta Freq)
+Voice3Freq dd 1            ; Frequency of Voice 3 (Delta Freq)
+Voice4Freq dd 1            ; Frequency of Voice 4 (Delta Freq)
+Voice5Freq dd 1            ; Frequency of Voice 5 (Delta Freq)
+Voice6Freq dd 1            ; Frequency of Voice 6 (Delta Freq)
+Voice7Freq dd 1            ; Frequency of Voice 7 (Delta Freq)
+
+Voice0Pitch dw 1            ; Previous Pitch for Voice 0
+Voice1Pitch dw 1            ; Previous Pitch for Voice 1
+Voice2Pitch dw 1            ; Previous Pitch for Voice 2
+Voice3Pitch dw 1            ; Previous Pitch for Voice 3
+Voice4Pitch dw 1            ; Previous Pitch for Voice 4
+Voice5Pitch dw 1            ; Previous Pitch for Voice 5
+Voice6Pitch dw 1            ; Previous Pitch for Voice 6
+Voice7Pitch dw 1            ; Previous Pitch for Voice 7
+
+
+Voice0Status   db 0 ; 0=Not Playing 1=Playing
+Voice1Status   db 0 
+Voice2Status   db 0
+Voice3Status   db 0
+Voice4Status   db 0
+Voice5Status   db 0
+Voice6Status   db 0
+Voice7Status   db 0
+
+Voice0Ptr      dd 0 ; Ptr to Next BRR Block to be played
+Voice1Ptr      dd 0
+Voice2Ptr      dd 0
+Voice3Ptr      dd 0
+Voice4Ptr      dd 0
+Voice5Ptr      dd 0
+Voice6Ptr      dd 0
+Voice7Ptr      dd 0
+Voice0LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice1LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice2LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice3LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice4LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice5LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice6LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+Voice7LoopPtr  dd 0 ; Ptr to Loop BRR Block to be played
+
+Voice0BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice1BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice2BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice3BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice4BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice5BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice6BufPtr  dd 0 ; Ptr to Buffer Block to be played
+Voice7BufPtr  dd 0 ; Ptr to Buffer Block to be played
+
+SoundCounter   dd 0 ; Counter used for sound generation
+SoundCounter2  dd 0 ; Counter used for sound generation
+Voice0Prev0    dd 0 
+Voice1Prev0    dd 0 
+Voice2Prev0    dd 0 
+Voice3Prev0    dd 0 
+Voice4Prev0    dd 0 
+Voice5Prev0    dd 0 
+Voice6Prev0    dd 0 
+Voice7Prev0    dd 0 
+Voice0Prev1    dd 0 
+Voice1Prev1    dd 0 
+Voice2Prev1    dd 0 
+Voice3Prev1    dd 0 
+Voice4Prev1    dd 0 
+Voice5Prev1    dd 0 
+Voice6Prev1    dd 0 
+Voice7Prev1    dd 0 
+
+Voice0Loop     db 0
+Voice1Loop     db 0
+Voice2Loop     db 0
+Voice3Loop     db 0
+Voice4Loop     db 0
+Voice5Loop     db 0
+Voice6Loop     db 0
+Voice7Loop     db 0
+
+Voice0End      db 0
+Voice1End      db 0
+Voice2End      db 0
+Voice3End      db 0
+Voice4End      db 0
+Voice5End      db 0
+Voice6End      db 0
+Voice7End      db 0
+
+Voice0Noise    db 1
+Voice1Noise    db 1
+Voice2Noise    db 1
+Voice3Noise    db 1
+Voice4Noise    db 1
+Voice5Noise    db 1
+Voice6Noise    db 1
+Voice7Noise    db 1
+
+Voice0Volume   db 0
+Voice1Volume   db 0
+Voice2Volume   db 0
+Voice3Volume   db 0
+Voice4Volume   db 0
+Voice5Volume   db 0
+Voice6Volume   db 0
+Voice7Volume   db 0
+
+Voice0VolumeR   db 0
+Voice1VolumeR   db 0
+Voice2VolumeR   db 0
+Voice3VolumeR   db 0
+Voice4VolumeR   db 0
+Voice5VolumeR   db 0
+Voice6VolumeR   db 0
+Voice7VolumeR   db 0
+
+Voice0VolumeL   db 0
+Voice1VolumeL   db 0
+Voice2VolumeL   db 0
+Voice3VolumeL   db 0
+Voice4VolumeL   db 0
+Voice5VolumeL   db 0
+Voice6VolumeL   db 0
+Voice7VolumeL   db 0
+
+Voice0Env      db 1
+Voice1Env      db 1
+Voice2Env      db 1
+Voice3Env      db 1
+Voice4Env      db 1
+Voice5Env      db 1
+Voice6Env      db 1
+Voice7Env      db 1
+
+Voice0Out      db 0
+Voice1Out      db 0
+Voice2Out      db 0
+Voice3Out      db 0
+Voice4Out      db 0
+Voice5Out      db 0
+Voice6Out      db 0
+Voice7Out      db 0
+
+; 1 Attack, 2 Decrease,3 Sustain, 0 Gain
+Voice0State   db 0
+Voice1State   db 0
+Voice2State   db 0
+Voice3State   db 0
+Voice4State   db 0
+Voice5State   db 0
+Voice6State   db 0
+Voice7State   db 0
+
+Voice0Time     dd 1
+Voice1Time     dd 1
+Voice2Time     dd 1
+Voice3Time     dd 1
+Voice4Time     dd 1
+Voice5Time     dd 1
+Voice6Time     dd 1
+Voice7Time     dd 1
+
+Voice0Attack   dd 1
+Voice1Attack   dd 1
+Voice2Attack   dd 1
+Voice3Attack   dd 1
+Voice4Attack   dd 1
+Voice5Attack   dd 1
+Voice6Attack   dd 1
+Voice7Attack   dd 1
+
+Voice0Decay dd 1
+Voice1Decay dd 1
+Voice2Decay dd 1
+Voice3Decay dd 1
+Voice4Decay dd 1
+Voice5Decay dd 1
+Voice6Decay dd 1
+Voice7Decay dd 1
+
+Voice0SustainL db 1
+Voice1SustainL db 1
+Voice2SustainL db 1
+Voice3SustainL db 1
+Voice4SustainL db 1
+Voice5SustainL db 1
+Voice6SustainL db 1
+Voice7SustainL db 1
+
+Voice0SustainL2 db 1
+Voice1SustainL2 db 1
+Voice2SustainL2 db 1
+Voice3SustainL2 db 1
+Voice4SustainL2 db 1
+Voice5SustainL2 db 1
+Voice6SustainL2 db 1
+Voice7SustainL2 db 1
+
+Voice0SustainR dd 1
+Voice1SustainR dd 1
+Voice2SustainR dd 1
+Voice3SustainR dd 1
+Voice4SustainR dd 1
+Voice5SustainR dd 1
+Voice6SustainR dd 1
+Voice7SustainR dd 1
+
+Voice0SustainR2 dd 1
+Voice1SustainR2 dd 1
+Voice2SustainR2 dd 1
+Voice3SustainR2 dd 1
+Voice4SustainR2 dd 1
+Voice5SustainR2 dd 1
+Voice6SustainR2 dd 1
+Voice7SustainR2 dd 1
+
+Voice0IncNumber  dd 1
+Voice1IncNumber  dd 1
+Voice2IncNumber  dd 1
+Voice3IncNumber  dd 1
+Voice4IncNumber  dd 1
+Voice5IncNumber  dd 1
+Voice6IncNumber  dd 1
+Voice7IncNumber  dd 1
+
+Voice0SLenNumber  dd 0
+Voice1SLenNumber  dd 0
+Voice2SLenNumber  dd 0
+Voice3SLenNumber  dd 0
+Voice4SLenNumber  dd 0
+Voice5SLenNumber  dd 0
+Voice6SLenNumber  dd 0
+Voice7SLenNumber  dd 0
+
+Voice0SEndNumber  dd 0
+Voice1SEndNumber  dd 0
+Voice2SEndNumber  dd 0
+Voice3SEndNumber  dd 0
+Voice4SEndNumber  dd 0
+Voice5SEndNumber  dd 0
+Voice6SEndNumber  dd 0
+Voice7SEndNumber  dd 0
+
+Voice0SEndLNumber  dd 0
+Voice1SEndLNumber  dd 0
+Voice2SEndLNumber  dd 0
+Voice3SEndLNumber  dd 0
+Voice4SEndLNumber  dd 0
+Voice5SEndLNumber  dd 0
+Voice6SEndLNumber  dd 0
+Voice7SEndLNumber  dd 0
+
+Voice0DecreaseNumber  dd 1
+Voice1DecreaseNumber  dd 1
+Voice2DecreaseNumber  dd 1
+Voice3DecreaseNumber  dd 1
+Voice4DecreaseNumber  dd 1
+Voice5DecreaseNumber  dd 1
+Voice6DecreaseNumber  dd 1
+Voice7DecreaseNumber  dd 1
+
+Voice0EnvInc          dd 1
+Voice1EnvInc          dd 1
+Voice2EnvInc          dd 1
+Voice3EnvInc          dd 1
+Voice4EnvInc          dd 1
+Voice5EnvInc          dd 1
+Voice6EnvInc          dd 1
+Voice7EnvInc          dd 1
+
+; 0 = Direct, 1 = Increase, 2 = Increase2, 3 = Decrease, 4 = Decrease2
+Voice0GainType       db 0
+Voice1GainType       db 0
+Voice2GainType       db 0
+Voice3GainType       db 0
+Voice4GainType       db 0
+Voice5GainType       db 0
+Voice6GainType       db 0
+Voice7GainType       db 0
+
+Voice0GainTime       dd 1
+Voice1GainTime       dd 1
+Voice2GainTime       dd 1
+Voice3GainTime       dd 1
+Voice4GainTime       dd 1
+Voice5GainTime       dd 1
+Voice6GainTime       dd 1
+Voice7GainTime       dd 1
+
+Voice0Starting          db 0
+Voice1Starting          db 0
+Voice2Starting          db 0
+Voice3Starting          db 0
+Voice4Starting          db 0
+Voice5Starting          db 0
+Voice6Starting          db 0
+Voice7Starting          db 0
+
+Freqdisp        dd 0
+SBRateb         dd 0
+
+Voice0Looped            db 0
+Voice1Looped            db 0
+Voice2Looped            db 0
+Voice3Looped            db 0
+Voice4Looped            db 0
+Voice5Looped            db 0
+Voice6Looped            db 0
+Voice7Looped            db 0
+
+FutureExpand   times 244 db 0
+
+dspsave equ $-BRRBuffer
+
+DSPMem times 256 db 0

@@ -1,0 +1,121 @@
+CLCL Format Documentation
+
+What's good about .ini files?
+-Easy to edit (no special program needed)
+-Easy to understand.
+-Very easy to parse.
+-Can easily copy settings from computer to computer
+-Don't need to clutter the registry.
+-Can support Unicode (via UTF-8) if read directly
+
+What's wrong with simple .ini files?
+-Only a single level heirarchy (unless path fully qualified)
+-Size limited to 64k (if using Windows to parse)
+-Value length limited to 256 chars. (if using Windows to parse)
+-No Unicode
+-Binary data not possible (unless encoded)
+
+What's good about XML format?
+-Standardized syntax.
+-Easily holds multiline data
+-Supports Unicode implicitly
+-Familiar to webheads
+
+What's wrong with the sadly popularized XML format?
+-Unnecessarily verbose.
+-Awkward to type and edit.
+-Ugly (appearance does count for something)
+-Slow parsing :-/
+-Inconsistent use of attributes verse data
+-Binary data storage is ugly kludge
+
+What's good about the Window's registry?
+-Can store binary data easily.
+-Configuration information is heirarchical.
+-All program's configs are centralized.
+-Supports huge size.
+-Supports different users transparently.
+-Fast data access.
+
+What's wrong with the Window's registry?
+-OS dependant
+-Clutters system and gradually slows operations
+-Configuration information is TOO heirarchical
+-Is a veritable mess, poorly architected from the beginning
+-Editing information requires registry editors
+-All program's configs are centralized. If anything goes wrong...
+-Migrating settings not just a file copy
+-Higher memory overhead to implement database
+
+What's good about databases?
+-Can store binary data easily.
+-Entire user configuration information exportable.
+-Information can easily be related.
+-Supports huge size.
+-Fast data access.
+
+What's wrong with databases?
+-Way too much overhead for simple config files.
+-Support library is huge.
+-Often platform dependent (though getting better).
+
+What's good about YAML?
+-It's not XML!
+-It's concise and space efficient
+
+What's worng with YAML?
+-Can't think of anything.
+
+What's good about CSS format?
+-Standardized syntax.
+-Commonly used for webby stuff.
+-Elegant appearance.
+
+What's wrong with CSS format for information storage?
+-Can't think of anything.
+
+
+This configuration format seeks the following desirable features of each method:
+-Editable using basic tools (I do like binary formats, but text is easy to edit if something goes wrong or a feature is 'hidden')
+-Efficient space usage (not as good as binary, but certainly better than XML).
+-Standardized syntax. (since only one person is working on it rather than a whole consortium and since it is a finite format, standardization is a reality).
+-Simple parsing.
+-Easy to edit (nonawkward < > for every tag).
+-Visually appealing. (you'll end up looking at this stuff someday).
+
+
+Common format issues addressed:
+(http://en.wikipedia.org/wiki/Configuration_file)
+
+--No defined behavior if the configuration file is missing, truncated, unreadable, unwritable, or has inappropriate ownership 
+A missing or unreadable config file will cause all the missing key handlers to be called, setting default values for all options. A truncated file will call all the handlers up to the truncation point, then cascade back up the heirachy with all the missing key handlers. Unwriteable files must not cause an exception, but rather return an error to the application to decide what to do.
+
+--No defined minimum or maximum file size 
+Minimum = 0.
+Maximum = ~4GBs (sound good?)
+
+--No defined minimum or maximum entry size 
+Hmm... More importantly is the max size of a single line? If you can read the entire file into memory, the entry could be as large as you want. If you must stream it in chunks, the max would be the size of the buffer. A line should have a minimum length of 1024, but if entries can span more than one line, then what? How large should the buffer be?
+
+--No revision control 
+The top line will have a version number.
+
+--No defined precedence, i.e. if there are two identical entries, does the program use the value of the first, the second, or both? 
+The first key always has predence. Later instances of the same key are ignored.
+
+--No formal syntax definition 
+Nothing yet.
+
+--No defined character set 
+UCS8, UTF-8, UTF-71, and UCS16
+
+--No defined line-continuation syntax 
+If it is long enough to break lines, it should be a separate variable.
+
+--Poorly defined comment syntax 
+// or # or ;
+
+--undefined or idiosyncratic treatment of whitespace 
+Whitespace (space and tabs) are ignored.
+
+http://www.scriptet.com/uc.php

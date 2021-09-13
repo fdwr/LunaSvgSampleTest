@@ -1,0 +1,20 @@
+PUSH    DS
+PUSH    ES
+;PUSH    BP
+;MOV     BP,SP
+MOV     SI,[BP+06]
+MOV     DS,[SI]
+MOV     SI,[BP+08]
+MOV     SI,[SI]
+MOV     AX,B800
+MOV     ES,AX
+MOV     DI,0000
+MOV     CX,0780
+CLD
+MOVSB
+INC     DI
+LOOP    0118
+;POP     BP
+POP     ES
+POP     DS
+RETF    0004

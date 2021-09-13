@@ -1,0 +1,15 @@
+#MCell 2.0
+#GAME User DLL
+#RULE ModulusMT9
+#BOARD 300x300
+#SPEED 0
+#WRAP 0
+#CCOLORS 9
+#D ModulusMT9 rule by Alastair Couper
+#D 
+#D This rule sets the new state of each cell to the
+#D modulus sum, base 9 of its immediate 8 neighbors
+#D plus itself. The possible states are thus 0-8.
+#D 
+#D July 1999
+#L A

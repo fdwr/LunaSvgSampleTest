@@ -1,0 +1,1 @@
+@FOR /R %%I IN (FILE*.CHK) DO c:\programs\utility\jpegdump.exe -recover %%I & ren jpegdump_recover_001.jpg %%~nI.jpg

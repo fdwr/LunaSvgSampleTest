@@ -1,0 +1,12 @@
+#MCell 3.00
+#GAME User DLL
+#RULE Triad
+#BOARD 400x400
+#SPEED 20
+#WRAP 1
+#CCOLORS 6
+#D 180° parting small ship seeds
+#D 
+#D Lionel Bonnetier
+#D Spring 1996, revised March 2000
+#L AC$AC10$EE$AC$AC10$E$AC$AC12$E$AC$AC$E13$E$AC$AC$.E13$EE$AC$AC$EE

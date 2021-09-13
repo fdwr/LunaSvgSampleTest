@@ -1,0 +1,28 @@
+1 VERSIONINFO
+;FILEVERSION 2,0,0,0
+;PRODUCTVERSION 2,0,0,0
+;FILEFLAGSMASK 0x0000003FL
+;FILEFLAGS 0x0000000BL
+;FILEOS 0x00010001L
+;FILETYPE 0x00000001L
+;FILESUBTYPE 0x00000000L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", "1.1"
+            VALUE "FileDescription","Hwnd Information"
+            VALUE "Purpose","Displays brief information about the hovered window."
+            VALUE "LegalCopyright","Copyright\251 2004 Dwayne Robinson"
+            VALUE "Company Name", "PikenSoft"
+            VALUE "Author Address", "FDwR@hotmail.com\r\nhttp://oregonstate.edu/~robinsfr\r\nhttp://fdwr.tripod.com/"
+        END
+    END
+    ;BLOCK "VarFileInfo"
+    ;BEGIN
+    ;    VALUE "Translation", 0x0409,1252
+    ;END
+END
+
+1 ICON HWNDINFO.ICO

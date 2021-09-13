@@ -1,0 +1,1 @@
+@\apps\_\rawimage.exe plain\styles\%1

@@ -1,0 +1,45 @@
+Project: Pikwin
+Title: Peekin's Windows Emulator
+Proposed: 2003-05-10
+OS: Pikos
+
+Objective:
+Emulate enough of the 32bit Windows environment to allow standard MS Windows programs like Explorer and Notepad to work. Will emulate enough of the library core and base operating system that will allow simple programs to work. More advanced programs and those programs that depend on overly complicated methods, inconsistently parameterized routines, and a messed up heirarchy of filters (like Media Player and CD Player) will not work completely.
+
+Main parts:
+The emulator consists of two parts - the operating system and the interpreter. The operating system is a true protected mode OS, with memory management, disk access, and hardware communication. The interpreter is a large framework of virtual libraries that interpret the function calls from Windows programs and translate them into OS commands/function calls. The operating system portion of it has its own file system, built in generic 'device' drivers, memory management, global variables, and process timing. It is completely separate from the interpreter, in that it is on not dependant on the interpreter in any way. The interpreter is however very dependant on the OS and intimately connected.
+
+HLE:
+Emulation of Windows programs is possible thanks to how high a level the emulation occurs at. There is no need to interpret individual opcodes as is necessary for console emulators and all other emulators that need to simulate another kind of chip. In fact, the program's code runs natively on the processor, completely unaware of what kernel truly lies on the other side of memory barriers. Most of the true emulation occurs at the function call level.
+
+Virtual libraries:
+The real Windows system DLLs are very dependant on each other, cheating by using inside knowledge, undocumented function names, and ordinal numbers. So all the base libraries will be completely implemented in the interpreter code. Whenever a virtualized DLL is loaded for the executable, the function tables will actually point to interpreter code. These libraries include: kernel32.dll, user32.dll, advapi32.dll, shell32.dll, and gdi32.dll. Most of the lesser used functions in them will be stubbed, so that if called, they will simply return an error. The bloated shell32.dll will be the most unfinished. For other DLLs like comct32.dll, comdlg32.dll, winmm.dll, mpr.dll, and the control panel extensions, it may be possible to use their existing code directly - depending how interconnected they turn out to be.
+
+32bit only:
+Only 32bit programs will be supported. 16bit code might be supported, but I will not mess with thunking. In fact, I'd write a complete 16bit 80286 emulator before I would bother with thunking. 64bit code will not be supported because of the added complexity.
+
+File system:
+The native OS file system I have in mind is HPFS or very similar. All filenames will be true Unicode, with the extra file details like short name and icon stored in the directory information or in an extra data fork. The path notation is similar to the familiar to that of Windows and Unix, but the exact file system heirarchy and details are irrelavant to emulated programs since all file function calls go through the interpreter anyway. It could simply use FAT32 with the VFAT hack implemented since W95-OSR2.
+
+Security:
+There is system security but no user security. All security functions dependant on the current user privileges will always return success, unless access is denied for another reason (like trying to delete a read only file, which I probably won't even care about). There is however system memory security, more so than in the real Windows. Program are not allowed to mess with ANYTHING except that which is in their own memory.
+
+Registry:
+The registry is normally supported by advapi32.dll. The idea of a registry, a central database which all programs can share static information in, is good one. In fact, such a thing is so important, that I would make it an integral part of the kernel. However the Microsoft implementation and obfuscated heirarchy absolutely stink! Since so many programs are so dependant on the registry though, it will be supported.
+
+Graphics Access:
+The true OS graphics functions fix stupid things like the bitmaps being upside down (which was based off the perverted OS/2 Presentation Manager), more easily allow direct video memory access, and have some color addition/blending functions that Windows has been lacking for very long. Theoretically, specially written Windows programs could even use them if they dynamically loaded the functions.
+
+Devices:
+I'm against any kernel functions for specific devices like com ports and keyboards. Only the user interface aspect of the OS should have specific functions for specific devices. Although this dream probably isn't possible, it would instead be better to a have unified device communication protocol. Things like character input (keyboard) should be abstracted so that input is simply input, regardless of whether the characters came from a terminal on another computer or joystick or a mouse (assuming mice and joystick 'could' generate characters). Windows actually does a fairly good abstraction of separating devices from their specifics (sometimes too well).
+
+Unified devices:
+All devices support some basic concepts: input/reading, output/writing, generic information, enumeration, opening/closing, locking/unlocking, resolution, creation/deletion of children. Anything more specific could be ascertained by querying the device directly with specific commands, but the common commands above should be sufficient for most cases. Digital cameras, scanners, video cards, and printers all share very common interfaces, only slightly different for each because of unique attributes for each device. MS had a good idea (or at least good in concept if not implementation) with device contexts. Both printers and display devices could use them. But, I think that concept should have been expanded further.
+
+input/reading - characters from a keyboard, data from a file, image from a camera
+output/writing - packets through a modem, data to a file, text to a printer
+enumeration - hard drive directory listing, image list in camera, video modes
+opening/closing - opening a file, opening the audio device
+locking/unlocking - locking the hard drive for defragment, ejecting a CD
+resolution - video size, scanner resolution, floppy drive format density
+creation/deletion - creating files, uploading to player, clearing camera image memory

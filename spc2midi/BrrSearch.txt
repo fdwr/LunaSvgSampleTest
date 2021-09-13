@@ -1,0 +1,34 @@
+count through all the samples 0-x
+    if sample entry used (not empty)
+        match sample to any BRR samples in the table
+    end if
+end count
+count through BRR table 0-255
+    if unmatched
+        create new sample, using first available name "wave???"
+        increment total samples
+        set sample to BRR wave
+        set wave to sample
+        search forward for other matching samples
+    end if
+end count
+
+Brr Table:
+index number
+checksum, dword sum of all bytes (last dword zero-extended)
+length, length of initial portion
+loop length, length of looped portion only
+sample, matching global wave sample in all spc's
+used, whether sample has been used by code
+
+Sample List:
+index number
+checksum, dword sum of all bytes (last dword zero-extended)
+length, length of initial portion
+loop length, length of looped portion only
+brr number, matching local wave sample in current spc memory
+transpose
+volume,
+soundfx, sound effect to use
+patch, General MIDI patch/instrument
+bank, extended MIDI bank

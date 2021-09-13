@@ -1,0 +1,202 @@
+;ZSNES Savestate Format:
+;  Thanks to ZsKnight for it!
+;  Meant to be compiled with NASM.
+;  Obtained from http://members.tripod.com/FDwR/snes.htm
+;
+;  This portion does not contain any part of the SPC
+;  information, FX chip or SA-1 registers, or extra any
+;  additional cartridge memory. It does include all the
+;  65816c registers, PPU registers, sprites (OAM), palette
+;  (CGRAM), DMA channels, VRAM, and main memory.
+;  Altogether, that accounts for 199699 bytes of it.
+
+zsmesg  db 'ZSNES Save State File V0.6',26
+versn   db 60   ; version #/100
+curcyc  db 0    ; cycles left in scanline
+curypos dw 0    ; current y position
+cacheud db 1    ; update cache every ? frames
+ccud    db 0    ; current cache increment
+intrset db 0    ; interrupt set
+cycpl   db 0    ; cycles per scanline
+cycphb  db 0    ; cycles per hblank
+spcon   db 0    ; SPC Enable (1=enabled)
+stackand dw 01FFh ; value to and stack to keep it from going to the =
+wrong area
+stackor  dw 0100h ; value to or stack to keep it from going to the wrong =
+area
+
+; 65816 registers
+xat      dw 0
+xdbt     db 0
+xpbt     db 0
+xst      dw 0
+xdt      dw 0
+xxt      dw 0
+xyt      dw 0
+xp       db 0
+xe       db 0
+xpc      dw 0
+xirqb    db 0              ; which bank the irqs start at
+debugger db 0              ; Start with debugger (1=yes,0=no)
+Curtableaddr  dd 0         ; Current table address
+curnmi   db 0              ; if in NMI(1) or not(0)
+cycpbl  dd 110             ; percentage left of CPU/SPC to run  (3.58 = 175)
+cycpblt dd 110             ; percentage of CPU/SPC to run
+
+; SNES PPU Registers
+sndrot    db 0             ; rotates to use A,X or Y for sound skip
+sndrot2   db 0             ; rotates a random value for sound skip
+INTEnab   db 0             ; enables NMI(7)/VIRQ(5)/HIRQ(4)/JOY(0)
+NMIEnab   db 1             ; controlled in e65816 loop.  Sets to 81h
+VIRQLoc   dw 0             ; VIRQ Y location
+vidbright db 0             ; screen brightness (0 .. 15)
+previdbr  db 0             ; previous screen brightness
+forceblnk db 80h           ; force blanking on/off ($80=on)
+objptr    dd 0             ; pointer to object data in VRAM
+objptrn   dd 0             ; pointer2 to object data in VRAM
+objsize1  db 1             ; 1 = 8dot, 4=16 dot, 16=32 dot, 64=64dot
+objsize2  db 4             ; large object size
+objmovs1  db 2             ; number of bytes to move/paragraph
+objadds1  dw 14            ; number of bytes to add/paragraph
+objmovs2  db 2             ; number of bytes to move/paragraph
+objadds2  dw 14            ; number of bytes to add/paragraph
+oamaddrt  dw 0             ; oam address
+oamaddrs  dw 0             ; oam address at beginning of vblank
+objhipr   db 0             ; highest priority object #
+bgmode    db 0             ; graphics mode ( 0 .. 7 )
+bg3highst db 0             ; is 1 if background 3 has the highest priority
+bgtilesz  db 0             ; 0 = 8x8, 1 = 16x16, bit0=bg1,bit1=bg2,etc
+mosaicon  db 0             ; mosaic on, bit 0=bg1,bit1=bg2, etc
+mosaicsz  db 0             ; mosaic size in pixels
+bg1ptr    dw 0             ; pointer to background1
+bg2ptr    dw 0             ; pointer to background2
+bg3ptr    dw 0             ; pointer to background3
+bg4ptr    dw 0             ; pointer to background4
+bg1ptrb   dw 0             ; pointer to background1
+bg2ptrb   dw 0             ; pointer to background2
+bg3ptrb   dw 0             ; pointer to background3
+bg4ptrb   dw 0             ; pointer to background4
+bg1ptrc   dw 0             ; pointer to background1
+bg2ptrc   dw 0             ; pointer to background2
+bg3ptrc   dw 0             ; pointer to background3
+bg4ptrc   dw 0             ; pointer to background4
+bg1ptrd   dw 0             ; pointer to background1
+bg2ptrd   dw 0             ; pointer to background2
+bg3ptrd   dw 0             ; pointer to background3
+bg4ptrd   dw 0             ; pointer to background4
+bg1scsize db 0             ; bg #1 screen size (0=1x1,1=1x2,2=2x1,3=2x2)
+bg2scsize db 0             ; bg #2 screen size (0=1x1,1=1x2,2=2x1,3=2x2)
+bg3scsize db 0             ; bg #3 screen size (0=1x1,1=1x2,2=2x1,3=2x2)
+bg4scsize db 0             ; bg #4 screen size (0=1x1,1=1x2,2=2x1,3=2x2)
+bg1objptr dw 0             ; pointer to tiles in background1
+bg2objptr dw 0             ; pointer to tiles in background2
+bg3objptr dw 0             ; pointer to tiles in background3
+bg4objptr dw 0             ; pointer to tiles in background4
+bg1scrolx dw 0             ; background 1 x position
+bg2scrolx dw 0             ; background 2 x position
+bg3scrolx dw 0             ; background 3 x position
+bg4scrolx dw 0             ; background 4 x position
+bg1sx     dw 0             ; Temporary Variable for Debugging purposes
+bg1scroly dw 0             ; background 1 y position
+bg2scroly dw 0             ; background 2 y position
+bg3scroly dw 0             ; background 3 y position
+bg4scroly dw 0             ; background 4 y position
+addrincr  dw 2             ; vram increment (2,64,128,256)
+vramincr  db 0             ; 0 = increment at 2118/2139, 1 = 2119,213A
+vramread  db 0             ; 0 = address set, 1 = already read once
+vramaddr  dd 0             ; vram address
+cgaddr    dw 0             ; cg (palette) address
+cgmod     db 0             ; if cgram is modified or not
+scrnon    dw 0             ; main & sub screen on
+scrndist  db 0             ; which background is disabled
+resolutn  dw 224           ; screen resolution
+multa     db 0             ; multiplier A
+diva      dw 0             ; divisor C
+divres    dw 0             ; quotent of divc/divb
+multres   dw 0             ; result of multa * multb/remainder of divc/divb
+latchx    dw 0             ; latched x value
+latchy    dw 0             ; latched y value
+latchxr   db 0             ; low or high byte read for x value
+latchyr   db 0             ; low or high byte read for y value
+frskipper db 0             ; used to control frame skipping
+winl1     db 0             ; window 1 left position
+winr1     db 0             ; window 1 right position
+winl2     db 0             ; window 2 left position
+winr2     db 0             ; window 2 right position
+winbg1en  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on BG1
+winbg2en  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on BG2
+winbg3en  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on BG3
+winbg4en  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on BG4
+winobjen  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on =
+sprites
+wincolen  db 0             ; Win1 on (IN/OUT) or Win2 on (IN/OUT) on =
+backarea
+winlogica db 0             ; Window logic type for BG1 to 4
+winlogicb db 0             ; Window logic type for Sprites and Backarea
+winenabm  db 0             ; Window logic enable for main screen
+winenabs  db 0             ; Window logic enable for sub screen
+mode7set  db 0             ; mode 7 settings
+mode7A    dw 0             ; A value for Mode 7
+mode7B    dw 0             ; B value for Mode 7
+mode7C    dw 0             ; C value for Mode 7
+mode7D    dw 0             ; D value for Mode 7
+mode7X0   dw 0             ; Center X for Mode 7
+mode7Y0   dw 0             ; Center Y for Mode 7
+JoyAPos   db 0             ; Old-Style Joystick Read Position for Joy 1 & 3
+JoyBPos   db 0             ; Old-Style Joystick Read Position for Joy 2 & 4
+compmult  dd 0             ; Complement Multiplication for Mode 7
+joyalt    db 0             ; temporary joystick alternation
+
+wramrwadr dd 0             ; continuous read/write to wram address
+dmadata times 129 db 0     ; dma data (written from ports 43xx)
+irqon     db 0             ; if IRQ has been called (80h) or not (0)
+nexthdma  db 0             ; HDMA data to execute once vblank ends
+curhdma   db 0             ; Currently executed hdma
+hdmadata times 8*19 db 0   ; 4 dword register addresses, # of bytes to
+                           ; transfer/line, address increment (word)
+hdmatype  db 0             ; if first time executing hdma or not
+coladdr   db 0             ; red value of color to add
+coladdg   db 0             ; green value of color to add
+coladdb   db 0             ; blue value of color to add
+colnull   db 0             ; keep this 0 (when accessing colors by =
+dword)
+scaddset  db 0             ; screen/fixed color addition settings
+scaddtype db 0             ; which screen to add/sub
+Voice0Disabl2 db 1         ; Disable Voice 0
+Voice1Disabl2 db 1         ; Disable Voice 1
+Voice2Disabl2 db 1         ; Disable Voice 2
+Voice3Disabl2 db 1         ; Disable Voice 3
+Voice4Disabl2 db 1         ; Disable Voice 4
+Voice5Disabl2 db 1         ; Disable Voice 5
+Voice6Disabl2 db 1         ; Disable Voice 6
+Voice7Disabl2 db 1         ; Disable Voice 7
+
+oamram  times 1024 db 0    ; OAMRAM (544 bytes)
+cgram   times 512 db 0     ; CGRAM
+pcgram  times 512 db 0     ; Previous CGRAM
+
+vraminctype  db 0
+
+; New variables
+vramincby8on   db 0        ; if increment by 8 is on
+vramincby8left db 0        ; how many left
+vramincby8totl db 0        ; how many in total (32,64,128)
+vramincby8rowl db 0        ; how many left in that row (start at 8)
+vramincby8ptri dw 0        ; increment by how many when rowl = 0
+
+nexthprior     db 0
+doirqnext      db 0
+
+vramincby8var  dw 0
+screstype      db 0
+extlatch       db 0
+cfield         db 0
+interlval      db 0
+
+HIRQLoc   dw 0             ; HIRQ X location
+
+tempdat times 490 db 0     ; expandable area
+
+wram7E times 16384 dd 0
+wram7F times 16384 dd 0
+vram   times 16384 dd 0

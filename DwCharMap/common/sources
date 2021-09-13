@@ -1,0 +1,27 @@
+
+#!include ..\sources.inc
+
+TARGETNAME=Common
+TARGETTYPE=LIBRARY
+TEST_CODE=1
+
+#WARNING_LEVEL=W3
+#MSC_WARNING_LEVEL=$(MSC_WARNING_LEVEL:W4=W3)
+
+SOURCES=\
+    Common.cpp \
+
+INCLUDES=\
+    $(SDK_INC_PATH); \
+    $(WINDOWS_INC_PATH); \
+    $(INCLUDES); \
+
+#
+#   This tool is targetting Windows XP SP2 and later
+#
+_NT_TARGET_VERSION=$(_NT_TARGET_VERSION_WINXP)
+
+#PASS2_BINPLACE=-DEST: $(D2D_DRT) $(OBJ_DIR)\$(O)\$(TARGETNAME).exe
+
+PRECOMPILED_INCLUDE = precomp.h
+PRECOMPILED_CXX = 1

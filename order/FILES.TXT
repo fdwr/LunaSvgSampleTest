@@ -1,0 +1,10 @@
+ASMORDER.ASM - assembly code for DLL
+ASMORDER.DEF - export names
+ASMORDER.DLL - library the ordering routine is located in
+TestSort.vbp - VB project
+TestSort.exe - demo VB program
+TestSort.frm - the main form, read the top
+TestSort.frx - form data
+TestSort.bas - module for VB callbacks
+
+Note I didn't include the Windows header file used for compiling the DLL

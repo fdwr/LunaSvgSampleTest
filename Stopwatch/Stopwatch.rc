@@ -1,0 +1,208 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "winres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IddMain DIALOGEX 0, 0, 551, 322
+STYLE DS_3DLOOK | DS_NOFAILCREATE | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | 
+    WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "CH2M Hill Stopwatch Simulation"
+FONT 8, "MS Sans Serif"
+BEGIN
+    DEFPUSHBUTTON   "&Start",IDOK,4,4,48,20
+    PUSHBUTTON      "S&top",IDCANCEL,4,28,48,20
+    PUSHBUTTON      "&Reset",IDRESET,4,52,48,20
+    CTEXT           "Months",IDC_STATIC,112,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Weeks",IDC_STATIC,148,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Days",IDC_STATIC,184,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Hours",IDC_STATIC,220,4,28,16,SS_CENTERIMAGE
+    RTEXT           "Counter limit:",IDC_STATIC,60,20,48,12,SS_CENTERIMAGE
+    EDITTEXT        IdcCounterLimitMonths,112,20,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    EDITTEXT        IdcCounterLimitWeeks,148,20,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    EDITTEXT        IdcCounterLimitDays,184,20,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    EDITTEXT        IdcCounterLimitHours,220,20,40,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    RTEXT           "Counter wrap:",IDC_STATIC,60,36,48,12,SS_CENTERIMAGE
+    EDITTEXT        IdcCounterWrapMonths,112,36,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL | ES_READONLY | WS_DISABLED | NOT 
+                    WS_TABSTOP
+    EDITTEXT        IdcCounterWrapWeeks,148,36,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL | ES_READONLY | WS_DISABLED | NOT 
+                    WS_TABSTOP
+    EDITTEXT        IdcCounterWrapDays,184,36,36,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    EDITTEXT        IdcCounterWrapHours,220,36,40,12,ES_CENTER | 
+                    ES_AUTOHSCROLL
+    RTEXT           "Real minutes per day:",IDC_STATIC,60,52,48,20
+    EDITTEXT        IdcMinutesPerDay,112,57,36,12,ES_CENTER | ES_AUTOHSCROLL
+    CTEXT           "Months",IDC_STATIC,316,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Weeks",IDC_STATIC,352,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Days",IDC_STATIC,388,4,32,16,SS_CENTERIMAGE
+    CTEXT           "Hours",IDC_STATIC,424,4,28,16,SS_CENTERIMAGE
+    RTEXT           "Elapsed:",IDC_STATIC,264,20,48,12,SS_CENTERIMAGE
+    CTEXT           "Static",IdcMonths,316,20,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcWeeks,352,20,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcDays,388,20,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcHours,424,20,36,12,SS_SUNKEN
+    RTEXT           "Totals:",IDC_STATIC,264,36,48,12,SS_CENTERIMAGE
+    CTEXT           "Static",IdcTotalMonths,316,36,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcTotalWeeks,352,36,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcTotalDays,388,36,36,12,SS_SUNKEN
+    CTEXT           "Static",IdcTotalHours,424,36,36,12,SS_SUNKEN
+    CTEXT           "",IdcCounterLabel,472,4,76,40,SS_CENTERIMAGE,
+                    WS_EX_STATICEDGE
+    GROUPBOX        "",IDC_STATIC,56,0,412,76
+    CONTROL         "LargeCalendar",IdcCalendar,"LargeCalendar",WS_TABSTOP,4,
+                    84,544,232
+    CONTROL         103,IDC_STATIC,"Static",SS_BITMAP,472,48,76,28,
+                    WS_EX_STATICEDGE
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IddMain, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 544
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 315
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""winres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IdiMain                 ICON    DISCARDABLE     "stopwatch.ico"
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 2,0,0,1
+ PRODUCTVERSION 2,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "Comments", "Inspired by Timothy Thornton\0"
+            VALUE "CompanyName", "PikenSoft (Dwayne Robinson)\0"
+            VALUE "FileDescription", "Stopwatch for CH2M Hill\0"
+            VALUE "FileVersion", "2, 0, 0, 1\0"
+            VALUE "InternalName", "Stopwatch for CH2M Hill\0"
+            VALUE "LegalCopyright", "Copyright © 2006\0"
+            VALUE "LegalTrademarks", "\0"
+            VALUE "OriginalFilename", "Stopwatch.exe\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "PikenSoft Stopwatch for CH2M Hill\0"
+            VALUE "ProductVersion", "2, 0, 0, 1\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+#endif    // !_MAC
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IdbPayDay               BITMAP  DISCARDABLE     "payday.bmp"
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

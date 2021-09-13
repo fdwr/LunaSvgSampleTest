@@ -1,0 +1,12 @@
+obj\pgfxll.obj
+obj\pgfxhl.obj
+obj\pgfxlayr.obj
+obj\plainstyledata.obj
+gdi32.lib
+plaintest.def
+plaintest.res
+-nodef
+-Xpgfxdefsext
+-Xplainstyledata
+-version=Unicode
+-odobj

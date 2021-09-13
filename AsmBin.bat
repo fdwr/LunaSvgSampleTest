@@ -1,0 +1,3 @@
+:: Compile Binary (just a raw binary file)
+@echo Compiling into binary file with Nasm...
+\src\bin\nasmw.exe -f bin %1.asm -o %1.dat -w+orphan-labels %2 %3 %4 %5 %6 %7 %8 %9

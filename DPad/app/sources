@@ -1,0 +1,42 @@
+TARGETNAME=DPad
+TARGETTYPE=PROGRAM
+TARGET_DESTINATION=DGT\Text
+TEST_CODE=1
+UMENTRY=wwinmain
+UMTYPE=windows
+
+# Avoid linker errors to _com_issue_error in vccomsup.lib
+USE_VCCOM=1
+
+# Allow runtime type identification.
+USE_RTTI=1
+
+# Disable MUI for sample application.
+MUI=0
+
+SOURCES=\
+    Application.rc \
+    Application.cpp \
+    ProfilerWindow.cpp \
+
+INCLUDES=\
+    $(SDK_INC_PATH); \
+    $(WINDOWS_INC_PATH); \
+    $(INCLUDES); \
+
+TARGETLIBS=\
+    $(APP_OBJ_PATH)\editor\$(O)\editor.lib \
+    $(APP_OBJ_PATH)\common\$(O)\common.lib \
+    $(APP_OBJ_PATH)\renderer\$(O)\renderer.lib \
+    $(APP_OBJ_PATH)\ui\$(O)\ui.lib \
+    $(SDK_LIB_PATH)\d2d1.lib \
+    $(SDK_LIB_PATH)\WindowsCodecs.lib \
+    $(SDK_LIB_PATH)\ole32.lib \
+    $(SDK_LIB_PATH)\oleaut32.lib \
+    $(SDK_LIB_PATH)\gdi32.lib \
+    $(SDK_LIB_PATH)\user32.lib \
+    $(SDK_LIB_PATH)\DWrite.lib \
+    $(SDK_LIB_PATH)\uuid.lib \
+    $(SDK_LIB_PATH)\msimg32.lib \
+    $(SDK_LIB_PATH)\gdiplus.lib \
+    $(SDK_LIB_PATH)\usp10.lib \

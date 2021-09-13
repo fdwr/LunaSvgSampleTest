@@ -1,0 +1,13 @@
+#MCell 2.50
+#GAME User DLL
+#RULE GreenHast
+#BOARD 160x160
+#SPEED 0
+#WRAP 1
+#CCOLORS 15
+#D Greenburg-Hastings rule
+#D 
+#D Big thanks to David Lowenstein for pointing me to this rule, and
+#D to Andrew Begel from the StarLogo team for explaining me
+#D the details of it. - Mirek Wojtowicz
+#L 50.A25$25.A49.A25$A49.A49.A25$25.A49.A25$50.A

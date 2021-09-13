@@ -1,0 +1,6 @@
+"border","",0,0,96,180,0,""
+"titlebar","BwTopTb",2,2,10,176,0,"Title bar 1"
+"button","LeftBtn",40,4,12,68,0,"Left"
+"window","InnerWnd",20,28,56,124,0,"Left"
+"button","RightBtn",40,108,12,68,0,"Right"
+"titlebar","BwBtmTb",85,2,10,176,1,"Title bar 2"
