@@ -1,0 +1,1 @@
+A primitive user interface based on DirectWrite and D2D. All text drawing and measuring is done via the TextLayout. All control drawing is done using a themed atlas texture rather than primitives.

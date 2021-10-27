@@ -1,0 +1,62 @@
+TARGETNAME=FontCommandTool
+TARGETTYPE=PROGRAM
+UMTYPE=console
+UMENTRY=wmain
+
+_NT_TARGET_VERSION=$(_NT_TARGET_VERSION_LATEST)
+
+USE_STL=1
+STL_VER=110
+# STR_VER=STL_VER_CURRENT
+
+SOURCES=\
+	FileHelpers.cpp \
+	Common.cpp \
+	DWritEx.cpp \
+	Parser.cpp \
+	FontFaceHelpers.cpp \
+	FontCommandTool.cpp \
+
+TARGETLIBS = \
+    $(SDK_LIB_PATH)\ntdll.lib \
+    $(SDK_LIB_PATH)\user32.lib \
+    $(SDK_LIB_PATH)\kernel32.lib \
+    $(SDK_LIB_PATH)\shell32.lib \
+    $(SDK_LIB_PATH)\gdi32.lib \
+    $(SDK_LIB_PATH)\shlwapi.lib \
+    $(SDK_LIB_PATH)\ole32.lib \
+    $(SDK_LIB_PATH)\uuid.lib \
+    $(SDK_LIB_PATH)\rpcrt4.lib \
+
+PRECOMPILED_INCLUDE=precomp.h
+PRECOMPILED_CXX=1
+
+# Treat wchar_t as a built-in type.
+NO_WCHAR_T=1
+
+# We are Unicode enabled.
+# Enable C++ inline versions of common macros.
+C_DEFINES = \
+    /DUNICODE \
+    /D_UNICODE \
+    /D_USE_MATH_DEFINES \
+    /D_WCTYPE_INLINE_DEFINED \
+    /DINLINE_HRESULT_FROM_WIN32 \
+    /DNOMINMAX \
+    /DSTRICT \
+    /DWIN32_LEAN_AND_MEAN \
+
+# Use synchronous C++ exception handling model (/EHsc).
+USE_NATIVE_EH=1
+
+NO_WCHAR_T=1
+
+# DevTest contains test code that is not a part of the product.
+TEST_CODE=1
+
+# Disable MUI for non-shipping code.
+MUI=0
+MUI_COMMENT="Disable MUI for internal tool"
+
+# Allow nameless struct/union. The warning is silly, as unnamed unions are permitted (C++ Standard, 9.5 paragraph 2)
+MSC_WARNING_LEVEL=$(MSC_WARNING_LEVEL) -wd4201

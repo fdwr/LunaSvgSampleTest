@@ -1,0 +1,20 @@
+<table description="Maximum profile">
+    <entry name="version" type="Fixed" semantic="version"/>
+    <entry name="numGlyphs" type="USHORT" global_property="glyph_count"/>
+
+    <extension version="1">
+        <entry name="maxPoints" type="USHORT"/>
+        <entry name="maxContours" type="USHORT"/>
+        <entry name="maxCompositePoints" type="USHORT"/>
+        <entry name="maxCompositeContours" type="USHORT"/>
+        <entry name="maxZones" type="USHORT"/>
+        <entry name="maxTwilightPoints" type="USHORT"/>
+        <entry name="maxStorage" type="USHORT"/>
+        <entry name="maxFunctionDefs" type="USHORT"/>
+        <entry name="maxInstructionsDefs" type="USHORT"/>
+        <entry name="maxStackElements" type="USHORT"/>
+        <entry name="maxSizeOfInstructions" type="USHORT"/>
+        <entry name="maxComponentElements" type="USHORT"/>
+        <entry name="maxComponentDepth" type="USHORT"/>
+    </extension>
+</table>

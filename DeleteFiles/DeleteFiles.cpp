@@ -1,11 +1,7 @@
-// DeleteFiles.cpp : Defines the entry point for the console application.
-//
-
 #include "precomp.h"
 
 
 bool DeleteDirectory(wchar_t const* sPath);
-bool IsDots(wchar_t const* str);
 
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
@@ -13,7 +9,6 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     void* previousRedirectionValue = nullptr;
     Wow64DisableWow64FsRedirection(OUT &previousRedirectionValue); // Want actual folder paths, not 32-bit virtualized ones.
 
-    //if (commandLine[0] != '')
     if (argc <= 1)
         wprintf(L"Supply the path to delete.\n");
     else if (argc > 2)
@@ -32,13 +27,17 @@ bool DeleteDirectory(wchar_t const* path)
     HANDLE findHandle;  // file handle
     WIN32_FIND_DATA findFileData;
 
-    wchar_t dirPath[MAX_PATH * 4];
-    wchar_t fileName[MAX_PATH * 4];
+    wchar_t dirPath[32768]; // UNC max length, not limited to MAXPATH.
+    wchar_t fileName[32768];
 
     wcscpy_s(dirPath,path);
     wcscat_s(dirPath,L"\\*");    // searching all files
     wcscpy_s(fileName,path);
     wcscat_s(fileName,L"\\");
+
+    // Attempt early deletion if empty directory or if only contains virtual files.
+    if (RemoveDirectory(path) != 0)
+        return true;
 
     findHandle = FindFirstFileEx(
                     dirPath,
@@ -55,7 +54,7 @@ bool DeleteDirectory(wchar_t const* path)
     wcscpy_s(dirPath, fileName);
 
     bool continueSearch = true;
-    while(continueSearch) // until we finds an entry
+    while (continueSearch) // Until we find a directory entry.
     {
         if (FindNextFile(findHandle, &findFileData))
         {

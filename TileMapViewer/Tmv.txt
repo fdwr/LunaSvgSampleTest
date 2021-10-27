@@ -1,8 +1,9 @@
 ========
-  Tilemap Viewer .187 (c)2002 PeekinSoŸt
+  Tilemap Viewer .191 (c)2021 PikenSoï¿½t
   File pattern viewer (speedy and tiny)
-  By Dwayne Robinson, using Nasm/WDOSX/Alink
-  http://fdwr.tripod.com/snes.htm
+  By Dwayne Robinson, using Yasm/Nasm/WDOSX/Alink
+  http://pikensoft.com/
+  (old http://fdwr.tripod.com/snes.htm)
   FDwR at hotmail.com
 
   1. Changes
@@ -258,21 +259,25 @@ Keys
                        again to jump to the absolute beginning.
 
   Wrap width/Orientation:
-    [ ]         Decrease/increase by one tile (1-256)
+    [ ]         Decrease/increase by one tile (1-2048)
     { }         Half/double tile width
-    o           Normal/sideways orientation
+    w           Type new wrap width
+    o           Change orientation normal/flipped horizontal/vertical/sideways...
 
   Viewing modes:
     m M         Cycle through modes
     1           Colored blocks
-    2           Hex numbers
-    3           ASCII characters
-    4           VRAM
-    5           Tile table
-    6           BRR sample
+    2           Actual pixels
+    3           Hex numbers
+    4           ASCII characters
+    5           VRAM
+    6           Tile table
+    7           Wave sample
 
   Unit attributes:
-    u           Byte/word size (8/16bit)
+    u           Change unit bit size (1-bit/2/3/4/8/12/16/24/32)
+    U           Next bit size
+    e           Toggle increasing/decreasing endianness
     + -         Decrease/increase right shift
     / *         Decrease/increase bitmask size
 
@@ -281,8 +286,8 @@ Keys
     b           Relative or absolute (use file base or not)
     B           Set base to current position
     h           Hex or decimal offset
-    w           Change value of unit at window base (top-left)
-    Del         Sets units to value last entered (with 'w')
+    c           Change value of unit at window base (top-left)
+    Del         Sets units to value last entered (with 'c')
 
     F1          Key help
     Esc         Go do better things
@@ -362,6 +367,16 @@ Past:
             ZSNES savestates.
 2001-01-29  Added bitmasking and right shifting to select only specific bits
             of the units.
+2016-01-20  Ported to Windows.
+2021-10-23  Fixed 32-bit bitmasking and narrow numeric display width.
+            Increased max wrap width to 2048. Fixed shifted command line
+            parameters. Added help parameters "-h" and "-?".  Extended
+            orientation to all 8 possibilities. Fixed crash with wave sample
+            display when wrapped width too wide.
+2021-10-25  Supported any bit size 1-32 (e.g. 24bit, 12bit, 3bit...).
+            Added manual wrap width entry via 'w' key.
+            Added 1:1 pixels mode.
+            Added endianness key toggle with 'e'.
 
 Future: (hopes, no promises)
 - Edit the file with mouse
@@ -370,4 +385,4 @@ Future: (hopes, no promises)
 - Undo
 
 
-(:Peekin:)  eof || ^Z
+(:Piken:)  eof || ^Z

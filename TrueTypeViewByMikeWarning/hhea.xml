@@ -1,0 +1,19 @@
+<table description="Horizontal header">
+    <entry name="version" type="Fixed"/>
+    <entry name="Ascender" type="FWORD"/>
+    <entry name="Descender" type="FWORD"/>
+    <entry name="LineGap" type="FWORD"/>
+    <entry name="advanceWidthMax" type="UFWORD"/>
+    <entry name="minLeftSideBearing" type="FWORD"/>
+    <entry name="minRightSideBearing" type="FWORD"/>
+    <entry name="xMaxExtent" type="FWORD"/>
+    <entry name="caretSlopeRise" type="SHORT"/>
+    <entry name="caretSlopRun" type="SHORT"/>
+    <entry name="caretOffset" type="SHORT"/>
+    <entry name="(reserved)" type="SHORT"/>
+    <entry name="(reserved)" type="SHORT"/>
+    <entry name="(reserved)" type="SHORT"/>
+    <entry name="(reserved)" type="SHORT"/>
+    <entry name="metricDataOffset" type="SHORT"/>
+    <entry name="numberofHMetrics" type="USHORT" global_property="numberofHMetrics"/>
+</table> 

@@ -55,65 +55,70 @@ ViewWindow.Width        equ Screen.DefaultWidth - (2*4)
 ViewWindow.Height       equ Screen.DefaultHeight - 20
 ViewWindow.TopRow       equ 4
 ViewWindow.LeftCol      equ 4
-ViewWindow.MaxTileWrap  equ 512
+ViewWindow.MaxTileWrap  equ 2048
 FileOpen.Read           equ 0
 FileOpen.ReadWrite      equ 2
 FileOpen.FullAccess     equ 64
 
 TileFormat:
 .ColorBlocks    equ 0
-.NumericValue   equ 1
-.FontChar       equ 2
-.Vram           equ 3
-.TileTable      equ 4
-.BrrSample      equ 5
-.FirstBplMode   equ 6
-.Snes2          equ 6
-.Snes4          equ 7
-.Snes8          equ 8
-.Gb             equ 9
-.Nes            equ 10
-.LastBplMode    equ 10
-.SnesMode7      equ 11
-.Total          equ 12
+.ActualPixels   equ 1
+.NumericValue   equ 2
+.FontChar       equ 3
+.Vram           equ 4
+.TileTable      equ 5
+;.BrrSample     equ 6
+.WaveSample     equ 6
+.FirstBplMode   equ 7
+.Snes2          equ 7
+.Snes4          equ 8
+.Snes8          equ 9
+.Gb             equ 10
+.Nes            equ 11
+.LastBplMode    equ 11
+.SnesMode7      equ 12
+.Total          equ 13
 
 BlitTileStruct:
 .Blitter        equ 0           ;called show tiles
 .Init           equ 4           ;called to initialize blitter routine
 .Expander       equ 8           ;expands source units to dwords
 .SrcPtr         equ 12          ;ptr to first byte of source range
-.SrcWrap        equ 16          ;number of tile units per row, 1-512 (ViewWindow.MaxTileWrap)
+.SrcWrap        equ 16          ;number of tile units per row, 1-2048 (ViewWindow.MaxTileWrap)
 .SrcRange       equ 20          ;total range of source bytes the window displays
-.Bits           equ 24          ;size in bits of source units
+.UnitBitSize    equ 24          ;size in bits of source units
+.UnitBitSizeMax equ 32          ;maximum supported bit size of units
 .Mask           equ 28          ;bitmask to AND each unit with
 .Shift          equ 32          ;number of bits to bring value down (right shift)
 .SrcBit         equ 33          ;bit offset
 .Format         equ 34          ;how to display tile data, including colored blocks, numbers, or tile graphics
 .Orientation    equ 35          ;direction to display tiles (default columns right then row down)
-.OrientRotate   equ 1           ;horizontal/vertical or vertical/horizontal (default horizontal then vertical)
-.OrientFlipH    equ 2           ;proceed down or up (default down)
-.OrientFlipV    equ 4           ;proceed left or right (default right)
+.OrientFlipCols equ 1           ;proceed left or right (default right) *horizontal if rotated sideways
+.OrientFlipRows equ 2           ;proceed down or up (default down) *vertical if rotated sideways
+.OrientRotate   equ 4           ;horizontal/vertical or vertical/horizontal (default horizontal then vertical)
+.OrientMask     equ 7           ;rotate|flipH|flipV
 .BackwardsEndian equ 8          ;logical or backwards endianness
 .DestPtr        equ 36          ;ptr to gfx buffer or even screen directly
 .DestWrap       equ 40          ;width of destination in pixels
 .DestHeight     equ 44          ;pixel height of entire window
 .DestWidth      equ 48
-.Rows           equ 52          ;(dest window height / tile height) or less
+.Rows           equ 52          ;(dest window height / tile height) or less *vertical if sideways rotated orientation
 .Cols           equ 56          ;(dest window width / tile width) or less
 .Size           equ 60
-.Height         equ 60          ;pixel height of each tile unit
-.Width          equ 61
-.Change         equ 64          ;flags to indicate various changes
+.TileHeight     equ 60          ;pixel height of each tile unit
+.TileWidth      equ 61
+.SrcPtrLimit    equ 64          ;exclusive end pointer
 
 GuiColorTop             equ 7
 GuiColorMidTop          equ 15
 GuiColorBack            equ 8
 GuiColorMidBottom       equ 8
 GuiColorBottom          equ 0
-GuiColorBackDword       equ 8080808h
+GuiColorBackDword       equ 08080808h
+GuiColorHashDword       equ 08000800h
 GuiColorText            equ 15
 
-File.BufferByteSize     equ 262144 ;old value 98304
+File.BufferByteSize     equ 2097152; 262144 (old value for maxwrap=512)
 ;ExportBuffer.Size      equ 262144
 
 NumStringMaxLen         equ 10
@@ -305,6 +310,7 @@ EndProgram:
     int 21h                 ;call DOS
 %elifdef WinVer
     api MessageBoxA, 0, edx, "TileMapViewer", MB_ICONWARNING
+    xor eax,eax
 %endif
 .Immediately:;public entry (edx=message)
     mov ah,4Ch              ;die, exit code is in al
@@ -377,12 +383,9 @@ CheckStartOptions:
     call .GetNext
     jbe near .End
     push edx                        ;save parameter count
-    call StringToNum
+    ;esi=source string, ecx=string length
+    call ExpandTileUnit.SetUnitBitSizeGivenString
     pop edx                         ;retrieve parameter count
-    ;eax=bites
-    mov edi,FileTiles
-    call ExpandTileUnit.SetBits
-.NotUnitSize:
     jmp .Next
 .Mode:
     call .GetNext
@@ -454,9 +457,21 @@ CheckStartOptions:
     jz near .Next
     or byte [TileTable.Options],TileTable.Flipped
     jmp .Next
-.SidewaysOrientation:
-    or byte [FileTiles.Orientation],BlitTileStruct.OrientRotate
+.Orientation:
+    call .GetNext                   ;esi=string
+    jbe near .End
+    push edx                        ;save parameter count
+    call StringToNum
+    pop edx                         ;retrieve parameter count
+    ;eax=bits
+    and byte [FileTiles.Orientation],~BlitTileStruct.OrientMask
+    and al,BlitTileStruct.OrientMask
+    or byte [FileTiles.Orientation],al
     jmp .Next
+
+.Help:
+    mov edx,Text.Info
+    jmp EndProgram.WithMessage
 
 .GetNext:
     inc edx
@@ -526,25 +541,36 @@ CheckStartOptions:
     ret
 
 section data
-.ParamList:     db "vtrmuwgo"
+.ParamList:     db "vtrmuwgoh?"
 .ParamListLen   equ $-.ParamList
 align 4
-.ParamJtbl:     dd .LoadVram,.LoadTileTable,.SetFileReadOnly,.Mode,.UnitSize,.WrapWidth,.Goto,.SidewaysOrientation
+.ParamJtbl:     dd .LoadVram,.LoadTileTable,.SetFileReadOnly,.Mode,.UnitSize,.WrapWidth,.Goto,.Orientation,.Help,.Help
 
-.ModeList:      db 2,"cb",3,"num",4,"text",4,"vram",2,"tt",3,"spc",5,"snes2",5,"snes4",5,"snes8",4,"gb",3,"nes",5,"mode7",0
-.ModeInfo:      ;tile format, unit size in bits, wrap, orientation, gfx converter
-db TileFormat.ColorBlocks,-1,-1,-1, 0, 0, 0  ;blocks
-db TileFormat.NumericValue,-1,-1,-1, 0, 0, 0  ;numbers
-db TileFormat.FontChar, -1,-1, -1, 0, 0, 0  ;text, byte if ASCII, word if unicode/Japanese
-db TileFormat.Vram,     -1,-1, -1, 0, 0, 0  ;vram/word/32
-db TileFormat.TileTable,-1,-1, -1, 0, 0, 0  ;tile table
-db TileFormat.BrrSample, 8, 9,  1, 0, 0, 0  ;spc sample/9/9
-db TileFormat.Snes2,     16,32,-1, 0, 0, 0  ;snes2
-db TileFormat.Snes4,     16,32,-1, 0, 0, 0  ;snes4
-db TileFormat.Snes8,     16,32,-1, 0, 0, 0  ;snes8
-db TileFormat.Gb,        8, 32,-1, 0, 0, 0  ;gb
-db TileFormat.Nes,       8, 32,-1, 0, 0, 0  ;nes
-db TileFormat.SnesMode7, 16,32,128, 0, 0, 0  ;mode7
+.ModeList:      db 1,"1",1,"2",1,"3",1,"4",1,"5",1,"6",1,"7",5,"color",5,"pixel",6,"number",4,"text",4,"vram",2,"tt",4,"wave",5,"snes2",5,"snes4",5,"snes8",2,"gb",3,"nes",5,"mode7",0
+.ModeInfo:      ;tile format, unit size in bits, wrap, orientation
+; numbered modes...
+db TileFormat.ColorBlocks,  -1, -1, -1, 0, 0, 0, 0  ;blocks
+db TileFormat.ActualPixels, -1, -1, -1, 0, 0, 0, 0  ;actual pixels
+db TileFormat.NumericValue, -1, -1, -1, 0, 0, 0, 0  ;numbers
+db TileFormat.FontChar,     -1, -1, -1, 0, 0, 0, 0  ;text, byte if ASCII, word if unicode/Japanese
+db TileFormat.Vram,         -1, -1, -1, 0, 0, 0, 0  ;vram/word/32
+db TileFormat.TileTable,    -1, -1, -1, 0, 0, 0, 0  ;tile table
+db TileFormat.WaveSample,   -1, -1,  1, 0, 0, 0, 0  ;wave sample
+; named modes...
+db TileFormat.ColorBlocks,  -1, -1, -1, 0, 0, 0, 0  ;blocks
+db TileFormat.ActualPixels, -1, -1, -1, 0, 0, 0, 0  ;actual pixels
+db TileFormat.NumericValue, -1, -1, -1, 0, 0, 0, 0  ;numbers
+db TileFormat.FontChar,     -1, -1, -1, 0, 0, 0, 0  ;text, byte if ASCII, word if unicode/Japanese
+db TileFormat.Vram,         -1, -1, -1, 0, 0, 0, 0  ;vram/word/32
+db TileFormat.TileTable,    -1, -1, -1, 0, 0, 0, 0  ;tile table
+;db TileFormat.BrrSample,    8,  9,  1, 0, 0, 0, 0  ;spc sample/9/9 *actually displays wave sample currently
+db TileFormat.WaveSample,   -1, -1,  1, 0, 0, 0, 0  ;wave sample
+db TileFormat.Snes2,        16, 32, -1, 0, 0, 0, 0  ;snes2
+db TileFormat.Snes4,        16, 32, -1, 0, 0, 0, 0  ;snes4
+db TileFormat.Snes8,        16, 32, -1, 0, 0, 0, 0  ;snes8
+db TileFormat.Gb,            8, 32, -1, 0, 0, 0, 0  ;gb
+db TileFormat.Nes,           8, 32, -1, 0, 0, 0, 0  ;nes
+db TileFormat.SnesMode7,    16, 32,128, 0, 0, 0, 0  ;mode7
 
 section code
 
@@ -597,6 +623,8 @@ OpenGivenViewingFile:
     mov byte [Files.ToOpen],1
     pop dword [Files+Files.EntryName]
     call OpenAllFiles
+
+    ;call RedrawViewingWindowPage
     mov byte [ViewWindow.Change],WindowRedraw.Complete
     ret
 
@@ -615,9 +643,11 @@ OpenAllFiles:
     mov ecx,File.BufferByteSize
     call ZeroFill
 
+    ; Reset file position
     xor eax,eax
     mov dword [File.Position],eax
     mov dword [ViewWindow.FilePosition],eax
+    mov [FileTiles.SrcBit],al
     mov [ViewWindow.FileOffsetBase],eax
     and byte [ViewWindow.Options],~ViewWindow.UseOffsetBase
 
@@ -679,7 +709,7 @@ OpenAllFiles:
     call LoadFilePart.AbsoluteOffset
     mov edx,1560                    ;Load palette
     mov edi,Vram.CgramPalette
-    mov ecx,512
+    mov ecx,256*2                   ;2 bytes per uint16 r5g5b5x1
     call LoadFilePart.AbsoluteOffset
     xor edx,edx                     ;Load registers
     mov edi,File.Buffer
@@ -945,15 +975,11 @@ ViewWindowScroll:
     jmp Mouse.Show
     ;ret
 
-;(eax=keypress)
+;(eax=keypress, ah=scan code, al=ASCII character or zero for nothing, upper ax=modifiers ctrl/alt/shift)
 .ReactKeyPress:
     mov esi,.ScrollKeys
     call KeyScanFor
     jnc .ScrollAmount
-    ;cmp byte [.EntryLock],.EntryLockNone
-    ;je .CheckOtherKeys
-    ;0-9,A-F? add letter to prompt
-    ;Enter? process value in prompt
 .CheckOtherKeys:
     debugwrite "keypress=%X", eax
 
@@ -963,15 +989,36 @@ ViewWindowScroll:
     jmp [.KeysJtbl+ecx*4]   ;jump to the right key response
 
 .ScrollAmount:
+; (ecx=key number index 0..7)
     movsx eax,byte [.ScrollKeysStepTable+ecx]
-    test byte [FileTiles.Orientation],BlitTileStruct.OrientRotate
+    mov dl,[FileTiles.Orientation]
+    test cl,2
+    mov dh,BlitTileStruct.OrientFlipRows    ; set mask to test, assuming horizontal key initially
+    jz .ScrollAmountVertical
+    mov dh,BlitTileStruct.OrientFlipCols
+.ScrollAmountVertical:
+    test dl,BlitTileStruct.OrientRotate
     jz .NoRotatedScroll
+    xor dh,BlitTileStruct.OrientFlipCols|BlitTileStruct.OrientFlipRows ;swap rows and columns since rotated
     xor cl,2
 .NoRotatedScroll:
+    test dl,dh
+    jz .NoFlippedScroll
+    neg eax
+.NoFlippedScroll:
     test cl,2                ;test for vertical or horizontal
     jz near .ScrollByRow
     jmp .ScrollByTile
-.ByteBack:
+
+.BitBackward:
+    mov eax,-1
+    xor edx,edx
+    jmp .ScrollByBit
+.BitForward:
+    mov eax,1
+    xor edx,edx
+    jmp .ScrollByBit
+.ByteBackward:
     mov eax,-1
     xor edx,edx
     jmp .ScrollByByte
@@ -979,7 +1026,7 @@ ViewWindowScroll:
     mov eax,1
     xor edx,edx
     jmp .ScrollByByte
-.BankBack:
+.BankBackward:
     mov eax,-32768
     xor edx,edx
     jmp .ScrollByByte
@@ -987,7 +1034,8 @@ ViewWindowScroll:
     mov eax,32768
     xor edx,edx
     jmp .ScrollByByte
-.ScrollHome:
+
+.ScrollFarHome:
     mov eax,[ViewWindow.FileOffsetBase]
     xor edx,edx                     ;zero bit offset
     cmp [ViewWindow.FilePosition],eax
@@ -996,11 +1044,12 @@ ViewWindowScroll:
     je near .SetFilePosition    ;if current file pos = 0, set to base
     xor eax,eax                 ;else current file pos < file base, set to 0
     jmp .SetFilePosition
-.ScrollEnd:
+.ScrollFarEnd:
     mov eax,[File.Length]
     xor edx,edx                 ;zero bit offset
     dec eax
     jmp .SetFilePosition
+
 .DecWrap:
     mov eax,[FileTiles.SrcWrap]
     dec eax
@@ -1023,44 +1072,9 @@ ViewWindowScroll:
     mov eax,[FileTiles.SrcWrap]
     shl eax,1
     jmp .CheckWidth
-.ToggleUnitSize:
-    mov eax,[FileTiles.Bits]
-    mov esi,[FileTiles.Mask]
-    mov cl,[FileTiles.Shift]
-    xchg [FileTiles.PrevBits],eax  ;toggle between current and previous bits
-    xchg [FileTiles.PrevMask],esi
-    xchg [FileTiles.PrevShift],cl
-    mov dl,[FileTiles.Orientation]
-    xor dl,[FileTiles.PrevOrient]
-    and dl,BlitTileStruct.BackwardsEndian
-    xor [FileTiles.Orientation],dl
-    xor [FileTiles.PrevOrient],dl
-    mov [FileTiles.Mask],esi
-    mov [FileTiles.Shift],cl
-    ;(al=bits)
-.SetUnitSize:
-    mov edi,FileTiles
-    call ExpandTileUnit.SetBits
-    mov al,[FileTiles.Format]
-    push dword .SetFullChange
-    ;mov edi,FileTiles
-    jmp SetTileFormat
-.NextUnitSize:
-    mov eax,[FileTiles.Bits]
-    cmp eax,8
-    je .ShiftUnitSize           ;there is no high-endian form for bytes
-    xor byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
-    test byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
-    jnz .SetUnitSize
-.ShiftUnitSize:
-    shl eax,1
-    and eax,63
-    jnz .SetUnitSize
-    mov eax,1
-    and byte [FileTiles.Orientation],~BlitTileStruct.BackwardsEndian
-    jmp short .SetUnitSize
+
 .NextPalette:
-    mov al,[FileTiles.PaletteIndex]
+    mov al,[ViewWindow.PaletteIndex]
     inc al
     and al,1                            ;wrap between 2 available palettes
     jz .NextPaletteUseDefault
@@ -1072,10 +1086,11 @@ ViewWindowScroll:
     mov esi,RainbowPalette
     xor eax,eax
 .NextPaletteSetValue: ;(al=palette index, edx=palette table pointer)
-    mov [FileTiles.PaletteIndex],al
+    mov [ViewWindow.PaletteIndex],al
     mov dword [Display.PalettePtr],esi
     call SetPalette; (esi=palette ptr)
     jmp .SetFullChange
+
 .DecMask:
     mov eax,[FileTiles.Mask]
     shr eax,1
@@ -1088,6 +1103,7 @@ ViewWindowScroll:
     or eax,1
     mov [FileTiles.Mask],eax
     jmp .SetPartialChange
+
 .DecShift:
     mov al,-1
     jmp short .SetShift
@@ -1100,9 +1116,11 @@ ViewWindowScroll:
     jae near .WaitForInput
     mov [FileTiles.Shift],al
     jmp .SetPartialChange
+
 .Help:
     call KeyHelp
     jmp .WaitForInput
+
 .ToggleHexDec:
     mov al,16                       ;default position in hex
     cmp [ViewWindow.PosRadix],al
@@ -1114,12 +1132,10 @@ ViewWindowScroll:
 .ToggleUseBase:
     xor byte [ViewWindow.Options],ViewWindow.UseOffsetBase
     jmp .SetStatBarChange
-;.ToggleStepSize:
-;    rol byte [ViewWindow.StepSize],4
-;    jmp .SetStatBarChange
 .FindBytes:
     jmp .SetStatBarChange
-.SetData:
+
+.SetColorValue:
     mov esi,Text.PromptColorValue
     call ViewingWindowPrompt
     jbe near .WaitForInput          ;cancel
@@ -1135,15 +1151,73 @@ ViewWindowScroll:
     or byte [ViewWindow.Change],WindowRedraw.Scroll
     call SetViewWindowUnit
     jmp .WaitForInput
+
+.AskWrapWidth:
+    mov esi,Text.PromptWrapWidth
+    call ViewingWindowPrompt
+    jbe near .SetStatBarChange      ;cancel
+    ; esi=string, ecx=string length
+    mov ebx,10
+    call StringToNum.AnyLength      ;eax=value
+    cmp eax,ViewWindow.MaxTileWrap
+    ja .WrapWidthTooLarge
+    test eax,eax
+    jz .WrapWidthTooSmall
+.ValidWrapWidth:
+    mov dword [FileTiles.SrcWrap],eax
+    jmp .SetFullChange
+.WrapWidthTooLarge:
+    mov eax,ViewWindow.MaxTileWrap
+    jmp short .ValidWrapWidth
+.WrapWidthTooSmall:
+    mov eax,1
+    jmp short .ValidWrapWidth
+
+.AskUnitSize:
+    mov esi,Text.PromptUnitBitSize
+    call ViewingWindowPrompt
+    jbe near .SetStatBarChange      ;cancel
+    ; esi=string, ecx=string length
+    call ExpandTileUnit.SetUnitBitSizeGivenString
+    mov al,[FileTiles.Format]
+    mov edi,FileTiles
+    push dword .SetFullChange
+    jmp SetTileFormat
+
+.NextUnitSize:
+    mov eax,[FileTiles.UnitBitSize]
+    cmp eax,8
+    je .ShiftUnitSize           ;there is no high-endian form for bytes
+    xor byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
+    test byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
+    jnz .ValidUnitSize              ;just toggle endianness
+.ShiftUnitSize:
+    shl eax,1
+    cmp eax,BlitTileStruct.UnitBitSizeMax
+    jb .ValidUnitSize
+    mov eax,1                       ;restart at lowest unit bit size
+    and byte [FileTiles.Orientation],~BlitTileStruct.BackwardsEndian
+    ;jmp short .ValidUnitSize
+.ValidUnitSize:
+    ;(eax=bit size)
+    mov edi,FileTiles
+    call ExpandTileUnit.SetUnitBitSize
+    mov al,[FileTiles.Format]
+    mov edi,FileTiles
+    push dword .SetFullChange
+    jmp SetTileFormat
+
+.ToggleEndianness:
+    xor byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
+    mov eax,[FileTiles.UnitBitSize]
+    jmp short .ValidUnitSize
+
 .SetPosToBase:
     mov eax,[ViewWindow.FilePosition]
     mov [ViewWindow.FileOffsetBase],eax
     or byte [ViewWindow.Options],ViewWindow.UseOffsetBase   ;set to relative
     jmp .SetStatBarChange
-.ToggleMode:
-    mov al,[FileTiles.Format]
-    xchg [FileTiles.PrevFormat],al
-    jmp short .SetViewMode
+
 .NextMode:
     mov al,[FileTiles.Format]
     inc al                          ;set next mode
@@ -1152,16 +1226,24 @@ ViewWindowScroll:
     xor al,al
 .SetViewMode:
     mov edi,FileTiles
-    call SetTileFormat           ;set up current mode
-    jmp .SetFullChange
-.ToggleOrientation:
-    xor byte [FileTiles.Orientation],BlitTileStruct.OrientRotate
+    call SetTileFormat              ;set up current mode
     jmp .SetFullChange
 .SetViewingMode:
     lea eax,[ecx-.KeysListNumbersOffset]
     mov esi,NumberedFormatsTbl
     call SetViewingMode
     jmp .SetFullChange
+
+.NextOrientation:
+    mov al,[FileTiles.Orientation]
+    mov dl,al
+    inc al
+    and dl,~BlitTileStruct.OrientMask
+    and al,BlitTileStruct.OrientMask
+    or dl,al
+    mov [FileTiles.Orientation],al
+    jmp .SetFullChange
+
 .Goto:
     mov esi,Text.PromptGotoPosition
     call ViewingWindowPrompt
@@ -1174,16 +1256,15 @@ ViewWindowScroll:
 .ScrollByRow: ;(eax=rows to scroll +-)
     imul dword [FileTiles.SrcWrap]
 .ScrollByTile: ;(eax=tiles to scroll +-)
-    mov edx,[FileTiles.Bits]
-    imul eax,edx                ;x * bits
-    dec edx                     ;make unit mask from (bits - 1)
+    mov edx,[FileTiles.UnitBitSize]
+    imul eax,edx                    ;x * bits
+.ScrollByBit: ;(eax=file adjustment in bits)
     movzx ecx,byte [FileTiles.SrcBit]
-    not edx                     ;make mask for nearest whole unit alignment
-    and edx,7                   ;limit bit range 0-7
-    add eax,ecx                 ;add scroll amount to current bit offset
-    and edx,eax                 ;get new bit offset
-    sar eax,3                   ;get new byte scroll
-.ScrollByByte: ;(eax=file adjust, edx=new bit offset)
+    mov edx,7                       ;limit bit range 0-7
+    add eax,ecx                     ;add scroll amount to current bit offset
+    and edx,eax                     ;get new bit offset
+    sar eax,3                       ;get new byte scroll
+.ScrollByByte: ;(eax=file adjustment in bytes, edx=new bit offset)
     mov ebx,[ViewWindow.FilePosition]
     add eax,ebx
 .CheckFilePosition:
@@ -1241,20 +1322,50 @@ ViewWindowScroll:
 .QuitEnd:
     jmp MainLoop.EndProgram
 
-.Keys:
+.Keys:              ;See KeyScanFor.KeyListStruct
 dd .KeysList
 db .KeysListNormalKeyCount,.KeysListExtendedKeyCount
 
 .KeysList:
-db "][}{+-*/uhbBmMgfwoUp"
+db "]"
+db "["
+db "}"
+db "{"
+db "+"
+db "-"
+db "*"
+db "/"
+db "u"
+db "U"
+db "e"
+db "h"
+db "b"
+db "B"
+db "m"
+db "M"
+db "g"
+db "f"
+db "w"
+db "c"
+db "o"
+db "p"
 .KeysListNumbersOffset  equ $-.KeysList
-db "123456789" ; == NumberedFormatsTbl.Size
-db 15 ;Ctrl+O
+db "123456789"      ; == NumberedFormatsTbl.Size
+db 15               ;Ctrl+O
 db ""
 .KeysListNormalKeyCount equ $-.KeysList
 ; Extended keys start here.
-db 116,115, 118,132, 119,117, 83,59
-.KeysListExtendedKeyCount equ $-.KeysList-.KeysListNormalKeyCount
+db 116,101b,101b,0   ;Ctrl+Shift+Right
+db 115,101b,101b,0   ;Ctrl+Shift+Left
+db 116,100b,100b,0   ;Ctrl+Right
+db 115,100b,100b,0   ;Ctrl+Left
+db 118,0,0,0         ;Ctrl+PgDn +32k
+db 132,0,0,0         ;Ctrl+PgUp -32k
+db 119,0,0,0         ;Ctrl+Home
+db 117,0,0,0         ;Ctrl+End
+db 83,0,0,0          ;Delete
+db 59,0,0,0          ;Home
+.KeysListExtendedKeyCount equ ($-.KeysList)/4-.KeysListNormalKeyCount
 
 .KeysJtbl:
 dd .IncWrap         ;']'
@@ -1267,50 +1378,69 @@ dd .IncShift        ;'+' increment shift
 dd .DecShift        ;'-' decrement shift
 dd .IncMask         ;'*' increment mask
 dd .DecMask         ;'/' decrement mask
-dd .ToggleUnitSize  ;'u' toggle unit size between byte/word
+dd .AskUnitSize     ;'u' enter unit bite size
+dd .NextUnitSize    ;'U' 1,2,4,8,16,32
+dd .ToggleEndianness;'e' toggle between increasing/decreasing endianness
 dd .ToggleHexDec    ;'h' toggle between decimal and hex
 dd .ToggleUseBase   ;'b' use or do not use offset base
 dd .SetPosToBase    ;'B' set offset base to current file position
-dd .ToggleMode      ;'m'
+dd .NextMode        ;'m'
 dd .NextMode        ;'M'
 dd .Goto            ;'g' goto position
 dd .FindBytes       ;'f' find data
-dd .SetData         ;'w' set data value (color)
-dd .ToggleOrientation ;'o' normal or sideways
-dd .NextUnitSize    ;'U' 1,2,4,8,16
+dd .AskWrapWidth    ;'w' set wrap width
+dd .SetColorValue   ;'c' set color data value
+dd .NextOrientation ;'o' normal or sideways
 dd .NextPalette     ;'p'
-dd .SetViewingMode,.SetViewingMode,.SetViewingMode;1-3
-dd .SetViewingMode,.SetViewingMode,.SetViewingMode;4-6
-dd .SetViewingMode,.SetViewingMode,.SetViewingMode;7-9
+dd .SetViewingMode  ;'1'
+dd .SetViewingMode  ;'2'
+dd .SetViewingMode  ;'3'
+dd .SetViewingMode  ;'4'
+dd .SetViewingMode  ;'5'
+dd .SetViewingMode  ;'6'
+dd .SetViewingMode  ;'7'
+dd .SetViewingMode  ;'8'
+dd .SetViewingMode  ;'9'
 dd .OpenFileFromUser;Ctrl+O
 dd .QuitEnd         ;'' escape, do you really want to quit :(
 ; Extended keys start here:
+dd .BitForward      ;Ctrl+Shift+Right
+dd .BitBackward     ;Ctrl+Shift+Left
 dd .ByteForward     ;Ctrl+Right
-dd .ByteBack        ;Ctrl+Left
+dd .ByteBackward    ;Ctrl+Left
 dd .BankForward     ;Ctrl+PgDn
-dd .BankBack        ;Ctrl+PgUp +-32k
-dd .ScrollHome      ;Ctrl+Home
-dd .ScrollEnd       ;Ctrl+End
-;dd .ToggleStepSize  ;Insert  toggle between 1 and 16 unit step size
+dd .BankBackward    ;Ctrl+PgUp +-32k
+dd .ScrollFarHome   ;Ctrl+Home
+dd .ScrollFarEnd    ;Ctrl+End
 dd .WriteData       ;Delete  change unit to current "color"
 dd .Help            ;F1      help!
 
-.ScrollKeys:
+.ScrollKeys:        ;See KeyScanFor.KeyListStruct
 dd .ScrollKeysList
 db 0,8
 
 .ScrollKeysList:
-db '','HPKMIQGO'    ;Up,Down,Left,Right,PgUp,PgDn,Home,End
+db ''               ;no normal keys (followed by extended keys)
+db 'H',0,0,0        ;up
+db 'P',0,0,0        ;down
+db 'K',0,0,0        ;left
+db 'M',0,0,0        ;right
+db 'I',0,0,0        ;page up
+db 'Q',0,0,0        ;page down
+db 'G',0,0,0        ;home
+db 'O',0,0,0        ;end
 
 .ScrollKeysStepTable:
-db -1,1,-1,1,-16,16,-16,16
+;even entry pairs are vertical; odd entry pairs horizontal.
+db -1           ;up
+db  1           ;down
+db -1           ;left
+db  1           ;right
+db -16          ;page up
+db  16          ;page down
+db -16          ;home
+db  16          ;end
 
-;.EntryLock:     db 0            ;mode, goto, edit
-;.EntryLockNone  equ 0
-;.EntryLockGoto  equ 1
-;.EntryLockEdit  equ 2
-;.EntryLockMode  equ 3
-;.EntryLockUnit  equ 4
 ;.ToolButtonDown:db 0
 ;.Tool:          db 0            ;currently used tool
 ;.ToolSelect     equ 0
@@ -1379,14 +1509,13 @@ GotoFilePos:
     mov ecx,128                     ;mode 7 uses 128 unit wrap
 .NotMode7:
     mov dword [FileTiles.SrcWrap],ecx
-    mov eax,[FileTiles.Bits]
+    mov eax,[FileTiles.UnitBitSize]
     cmp eax,16
     je .TileBitsAlreadySet
-    mov [FileTiles.PrevBits],eax
-    mov dword [FileTiles.Bits],16
+    mov dword [FileTiles.UnitBitSize],16
   .TileBitsAlreadySet:
     mov byte [FileTiles.Orientation],0
-    mov dword [FileTiles.Expander],ExpandTileUnit.WordLh
+    mov dword [FileTiles.Expander],ExpandTileUnit.Increasing16bit
     mov byte [ViewWindow.Change],WindowRedraw.Complete
     test byte [Vram.Options],Vram.Loaded
     jz .VramNotLoaded
@@ -1464,15 +1593,15 @@ KeyHelp:
     jmp short .RedrawHelpText   ; skip DrawBox since already filled by ClearScreen.
 
 .RedrawHelpPage:
-    push dword GuiColorBack      ;color
+    push dword GuiColorBack     ;color
     push dword (Screen.DefaultHeight-6-6)|((Screen.DefaultWidth-8)<<16) ;height/width
-    push dword 6|(4<<16)       ;row/col
+    push dword 6|(4<<16)        ;row/col
     call DrawBox
     add esp,byte 12
 .RedrawHelpText:
     push dword ((Screen.DefaultHeight-6-6) / (GuiFont.GlyphPixelHeight+1)) | (((Screen.DefaultWidth-4-4) / (GuiFont.GlyphPixelWidth+1))<<16) ;height/width in chars
-    ;push dword 19|(6<<16)       ;row/col
-    push dword 6|(6<<16)       ;row/col
+    ;push dword 19|(6<<16)      ;row/col
+    push dword 6|(6<<16)        ;row/col
     push dword [.HelpTextPtr];Text.KeyHelp
     call PrintControlString
     mov byte [.Change],0
@@ -1644,21 +1773,21 @@ RedrawViewingWindow:
     mov [edi+9],edx
     call NumToString.AnyRadix
     stosb
-    mov [StatusBar.Pos+ecx],byte '@'
+    mov [StatusBar.Pos+ecx],byte 'g'
 
     mov eax,[FileTiles.SrcWrap]
     mov edi,StatusBar.Wrap+1
-    mov ecx,3
+    mov ecx,4
     call NumToString.AnyLength
     stosb
-    mov [StatusBar.Wrap+ecx],byte 'x'
+    mov [StatusBar.Wrap+ecx],byte 'w'
 
-    mov eax,[FileTiles.Bits]
+    mov eax,[FileTiles.UnitBitSize]
     mov edi,StatusBar.Bits+1
     mov ecx,2
     call NumToString.AnyLength
     stosb
-    mov [StatusBar.Bits+ecx],byte '#'
+    mov [StatusBar.Bits+ecx],byte 'u'
     test byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
     mov dl,'+'
     jz .LittleEndian
@@ -1666,20 +1795,10 @@ RedrawViewingWindow:
   .LittleEndian:
     mov [StatusBar.Bits+3],dl
 
-;    mov esi,Text.StatusBar_Absolute
-;    test byte [ViewWindow.Options],ViewWindow.UseOffsetBase
-;    jz .ViewingAbsolute
-;    mov esi,Text.StatusBar_Relative
-;  .ViewingAbsolute:
-;    mov ebx,21|(8<<8)
-;    mov edi,Text.StatusBar+15
-;    mov ecx,4
-;    call .CopyStatusBarString
-
     ; show mask & shift
     mov eax,[FileTiles.Mask]
-    mov ebx,16
-    mov ecx,4
+    mov ebx,16                  ;hexadecimal
+    mov ecx,8
     mov edi,StatusBar.Mask+1
     call NumToString.AnyRadix
     stosb
@@ -1692,6 +1811,12 @@ RedrawViewingWindow:
     stosb
     stosb
     mov [StatusBar.Shift+ecx],word '>>'
+
+    ; show current orientation
+    mov al,[FileTiles.Orientation]
+    and al,BlitTileStruct.OrientMask
+    add al,'0'
+    mov [StatusBar.Orientation+1],al
 
     call .StatusBarClearBackground
 
@@ -1747,18 +1872,8 @@ CopyNullTerminatedString:
     pop esi
     ret
 
-%if 0
-.CopyStatusBarString:
-    cld
-    movzx edi,bl
-    movzx ecx,bh
-    add edi,Text.StatusBar
-    rep movsb
-    ret
-%endif
-
 ;----------------------------------------
-;(esi=ptr to title) (esi=string, cf=cancel)
+;(esi=ptr to title) (esi=string, ecx=string length, cf=escape)
 ViewingWindowPrompt:
     cld
     mov edi,CharStrBuffer
@@ -1776,6 +1891,7 @@ ViewingWindowPrompt:
     call Mouse.Show
     mov byte [ViewWindow.Change],WindowRedraw.StatusBar
     mov esi,CharStrBuffer       ;return pointer to text
+    mov ecx,CharStrBuffer_Len
     popf
     lea esp,[esp+12]
     ret
@@ -1784,7 +1900,7 @@ ViewingWindowPrompt:
 ; Given a source unit buffer, source expander, tile blitter, and destination
 ; buffer, it will blit a grid of tiles. That destination buffer be off screen,
 ; or directly to the screen. This routine can only handle 32bit source units,
-; so all bitsizes (1,2,4,8,16bit) are converted up to dwords first before
+; so all bitsizes (1-32 bits) are converted up to dwords first before
 ; blitting by the expander routine. Bit masking and shifting are also
 ; simultaneously applied here. Then each unit is read and passed directly to
 ; the blitter which will display the data unit, differently depending on the
@@ -1811,16 +1927,20 @@ section data
 .Blitter:       dd BlitTile.ColorBlocks ;routine called to show tiles
 .Expander:      dd ExpandTileUnit.Byte
 .SrcRowPtr:     dd File.Buffer  ;source of tiles
-.Mask:          dd 65535        ;2^16-1
+.Mask:          dd 0xFFFFFFFF   ;2^16-1
+.ShiftAndSrcBit:
 .Shift:         dd 0
 .SrcBit         equ .Shift+1
-.DestPtr:
+.DestPtr:       dd 0
 .DestRowPtr:    dd 0            ;address of current row
+.Rows:          dd 20           ;rows
 .Cols:          dd 32           ;columns per row
 .RowsLeft:      dd 20           ;rows remaining in loop
 .ColsLeft:      dd 32           ;columns remaining in loop
 .SrcPtr:        dd File.Buffer  ;source of tiles
-.SourceWrap:    dd 32           ;wrap width of tilemap
+.SrcPtrLimit:   dd File.Buffer + File.BufferByteSize
+.SourceBitWrap: dd 32           ;bit wrap width of tilemap
+.SourceByteWrap:dd 32           ;byte wrap width
 .DestHeight:    dd 100          ;active area of visible window
 .DestWidth:     dd 200          ;active area of visible window
 .DestColInc:    dd 4            ;bytes to next tile (tilewidth)
@@ -1829,25 +1949,48 @@ section data
 section code
 
     ; Reinitialize values
+    ; Note the rows and columns are reversed for sideways orientation.
+    ; So elements along a row and the increment progress vertically when sideways.
     mov esi,[.InfoPtr]
     MovDwordViaEax [.Blitter],[esi+BlitTileStruct.Blitter]
     MovDwordViaEax [.Expander],[esi+BlitTileStruct.Expander]
     MovDwordViaEax [.SrcRowPtr],[esi+BlitTileStruct.SrcPtr]
+    MovDwordViaEax [.SrcPtrLimit],[esi+BlitTileStruct.SrcPtrLimit]
     MovDwordViaEax [.Mask],[esi+BlitTileStruct.Mask]
     MovDwordViaEax [.Shift],[esi+BlitTileStruct.Shift]
-    MovDwordViaEax [.DestRowPtr],[esi+BlitTileStruct.DestPtr]
+    MovDwordViaEax [.DestPtr],[esi+BlitTileStruct.DestPtr]
+    mov [.DestRowPtr],eax
     MovDwordViaEax [.Cols],[esi+BlitTileStruct.Cols]
-    MovDwordViaEax [.RowsLeft],[esi+BlitTileStruct.Rows]
+    MovDwordViaEax [.Rows],[esi+BlitTileStruct.Rows]
+    mov [.RowsLeft],eax
 
     mov esi,[.InfoPtr]
-    movzx eax,byte [esi+BlitTileStruct.Height]    ;get tile height
+    movzx eax,byte [esi+BlitTileStruct.TileHeight]
     ;next row = tileheight * destination_width (320 for the screen)
     imul dword [esi+BlitTileStruct.DestWrap]
-    movzx ebx,byte [esi+BlitTileStruct.Width]
-    test byte [esi+BlitTileStruct.Orientation],1
+    movzx ebx,byte [esi+BlitTileStruct.TileWidth]
+
+    mov dl,[esi+BlitTileStruct.Orientation]
+    test dl,BlitTileStruct.OrientRotate
     jz .NormalOrientation
     xchg eax,ebx                    ;swap row and column increments
   .NormalOrientation:
+    test dl,BlitTileStruct.OrientFlipCols
+    jz .NormalColumnOrientation
+    mov ecx,[.Cols]
+    dec ecx                         ;-1 to compensate for mirroring
+    imul ecx,ebx                    ;cols * (either destWrap or tileWidth)
+    add [.DestRowPtr],ecx
+    neg ebx
+ .NormalColumnOrientation:
+    test dl,BlitTileStruct.OrientFlipRows
+    jz .NormalRowOrientation
+    mov ecx,[.Rows]
+    dec ecx                         ;-1 to compensate for mirroring
+    imul ecx,eax                    ;rows * (either destWrap or tileWidth)
+    add [.DestRowPtr],ecx
+    neg eax
+ .NormalRowOrientation:
     mov [.DestRowInc],eax           ;bytes to next tile row
     mov [.DestColInc],ebx           ;bytes to next column
 
@@ -1862,8 +2005,11 @@ section code
       int3
      .ok:
     %endif
-    imul dword [esi+BlitTileStruct.Bits]  ;wrap * unitsize
-    mov [.SourceWrap],eax   ;store source bit wrap
+    imul dword [esi+BlitTileStruct.UnitBitSize]  ;wrap * unitsize
+    mov [.SourceBitWrap],eax;store source bit wrap
+    or eax,7                ;round up in bits to nearest whole byte
+    shr eax,3               ;/8 to get byte count
+    mov [.SourceByteWrap],eax;store source bit wrap for pointer limit testing
 
     push ebp                ;save base pointer since routine might not
     call [esi+BlitTileStruct.Init] ;allow output routine the chance to do any-
@@ -1871,12 +2017,17 @@ section code
 .NextRow:
     mov ebx,[.Cols]
     mov esi,[.SrcRowPtr]    ;get source address
+    mov edx,[.SourceByteWrap]
+    add edx,esi             ;compute end limit
+    cmp edx,[.SrcPtrLimit]
+    ja .NoColumnsLeft
+
     mov edi,BlitTilesBuffer ;buffer to expand source units into 1k dwords
     mov [.ColsLeft],ebx     ;set column count for inner loop
     mov edx,[.Mask]         ;select only desired bits
     mov [.SrcPtr],edi       ;set buffer as source for inner loop
-    mov ecx,[.Shift]        ;get amount to shift value by and source bit
-    call [.Expander]        ;the expander not only expands smaller unit sizes
+    mov ecx,[.ShiftAndSrcBit] ;get amount to shift value by and source bit
+    call [.Expander]        ;expander expands smaller unit sizes
     mov edi,[.DestRowPtr]   ;grab destination for output routine
 
 .NextCol:                   ; to dwords, but also applies masking and shifting
@@ -1889,13 +2040,13 @@ section code
     add edi,[.DestColInc]
     dec dword [.ColsLeft]
     jg .NextCol
+.NoColumnsLeft:
 
     ;add wrap to source
     ;move screen output to next line
-
     movzx eax,byte [.SrcBit]
     mov edi,[.DestRowPtr]
-    add eax,[.SourceWrap]   ;add source bit increment
+    add eax,[.SourceBitWrap];add source bit increment
     mov esi,eax             ;copy source increment
     and eax,7               ;limit source bit offset 0-7
     shr esi,3               ;get source address byte increment
@@ -1917,12 +2068,12 @@ section code
     mov ecx,[esi+BlitTileStruct.SrcWrap]
 
     mov eax,[esi+BlitTileStruct.DestHeight]
-    movzx ebx,byte [esi+BlitTileStruct.Height]
+    movzx ebx,byte [esi+BlitTileStruct.TileHeight]
     xor edx,edx
     ;test ebx,ebx            ;test for division by zero
     ;jz near .End            ;!
     div ebx                 ;Rows = WindowHeight \ TileHeight
-    test byte [esi+BlitTileStruct.Orientation],1
+    test byte [esi+BlitTileStruct.Orientation],BlitTileStruct.OrientRotate
     jz .NormalRows
     cmp eax,ecx             ;check if Rows is greater than UnitWrap
     jb .RowsWithinWrap      ;Rows < UnitWrap
@@ -1937,12 +2088,12 @@ section code
     mov [.DestHeight],eax
 
     mov eax,[esi+BlitTileStruct.DestWidth]
-    movzx ebx,byte [esi+BlitTileStruct.Width]
+    movzx ebx,byte [esi+BlitTileStruct.TileWidth]
     xor edx,edx
     ;test ebx,ebx            ;test for division by zero
     ;jz near .End            ;!
     div ebx                 ;Cols = WindowWidth \ TileWidth
-    test byte [esi+BlitTileStruct.Orientation],1
+    test byte [esi+BlitTileStruct.Orientation],BlitTileStruct.OrientRotate
     jnz .SidewaysCols
     cmp eax,ecx             ;check if Cols is greater than UnitWrap
     jb .ColsWithinWrap      ;Cols < UnitWrap
@@ -1957,7 +2108,7 @@ section code
     mov [.DestWidth],eax
 
     mov eax,[esi+BlitTileStruct.Rows]
-    imul dword [esi+BlitTileStruct.Bits]  ;(rows * bits) * unitwrap
+    imul dword [esi+BlitTileStruct.UnitBitSize]  ;(rows * bits) * unitwrap
     imul ecx
     shr eax,3                   ;convert bits to bytes
     mov [esi+BlitTileStruct.SrcRange],eax  ;set window byte range
@@ -1966,8 +2117,8 @@ section code
 
 .DrawBorder:
     mov esi,[.InfoPtr]
-    mov ecx,[esi+BlitTileStruct.DestWidth]
-    mov edi,[.DestWidth]
+    mov ecx,[esi+BlitTileStruct.DestWidth] ;width of viewing window
+    mov edi,[.DestWidth]    ;width filled with tiles
     sub ecx,edi
     jbe .NoSideBorder
     mov edx,[esi+BlitTileStruct.DestWrap]
@@ -1975,13 +2126,13 @@ section code
     add edi,[esi+BlitTileStruct.DestPtr]  ;left side of box
     sub edx,ecx             ;get wrap (destwrap - boxwidth)
     mov bx,[esi+BlitTileStruct.DestHeight]
-    mov eax,(GuiColorBack<<8)+(GuiColorBack<<24)
+    mov eax,GuiColorHashDword
     call DrawPatternBox.ByReg
   .NoSideBorder:
 
     mov esi,[.InfoPtr]
-    mov ecx,[esi+BlitTileStruct.DestHeight]
-    mov edi,[.DestHeight]
+    mov ecx,[esi+BlitTileStruct.DestHeight] ;height of viewing window
+    mov edi,[.DestHeight]           ;height filled with tiles
     sub ecx,edi
     jbe .NoBottomBorder
     mov edx,[esi+BlitTileStruct.DestWrap]
@@ -1990,7 +2141,11 @@ section code
     sub edx,ebx                     ;get wrap (destwrap - boxwidth)
     add edi,[esi+BlitTileStruct.DestPtr]  ;top row of box
     shl ebx,16                      ;set box width
-    mov eax,(GuiColorBack<<8)+(GuiColorBack<<24)
+    test byte [.DestHeight],1       ;check whether even or odd starting y coordinate
+    mov eax,GuiColorHashDword
+    jz .BottomBorderIsEven
+    rol eax,8                       ;shift the hash pattern for even/odd starting line
+  .BottomBorderIsEven:
     mov bx,cx                       ;set box height
     call DrawPatternBox.ByReg
   .NoBottomBorder:
@@ -2000,120 +2155,196 @@ section code
 
 ;----------------------------------------
 ExpandTileUnit:
-;Lh means from low to high, or from least significant bit to most.
-;Hl means high to low, or reverse order (backwards endian).
+;See specific expanders below...
+;Increasing/low to high is from least significant bit to most.
+;Decreasing/high to low is reverse order.
+    ret
+
+.SetUnitBitSize:
+; (al=bits, edi=BlitTileStruct structure)
+; Note bits that are not a power of two won't work correctly.
+    cmp al,BlitTileStruct.UnitBitSizeMax   ;is number of bits valid
+    ja .End
+    test al,al
+    jz .End
+    movzx esi,al
+    shl esi,1                   ;double for even=logical endian, odd=backwards endian
+    test byte [edi+BlitTileStruct.Orientation],BlitTileStruct.BackwardsEndian ;check if lh or hl
+    jz .UseLowToHigh
+    inc esi                     ;use high/low instead of low/high routine
+.UseLowToHigh:
+    mov ebx,[.ExpanderJtbl-(8)+esi*4] ;get expander routine (1-based table)
+    mov [edi+BlitTileStruct.Expander],ebx
+    mov [FileTiles.UnitBitSize],eax
+.End:
+    ret
+
+.SetUnitBitSizeGivenString:
+; (esi=string, ecx=string length)
+    lea edi,[esi+ecx]
+    push edi                        ;save end of buffer for endianness check afterward
+    call StringToNum.AnyLength      ;(esi=string, ecx=count) (eax=value)
+    pop edi
+    ;(eax=unit bits, esi=end exclusive character, edi=end of buffer)
+    ;Check for trailing '+' or '-' to set endianness?
+    cmp esi,edi
+    jae .UnitSizeHasNoEndianness
+    cmp byte [esi],'+'
+    jne .UnitSizeNotLittleEndian
+    and byte [FileTiles.Orientation],~BlitTileStruct.BackwardsEndian
+.UnitSizeNotLittleEndian:
+    cmp byte [esi],'-'
+    jne .UnitSizeNotBigEndian
+    or byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
+.UnitSizeNotBigEndian:
+.UnitSizeHasNoEndianness:
+    ;(eax=unit bits)
+    test eax,eax
+    jz .UnitSizeTooSmall            ;zero bits is invalid
+    cmp eax,BlitTileStruct.UnitBitSizeMax
+    ja .UnitSizeTooLarge
+.ValidUnitSize:
+    ;(eax=bit size)
+    mov edi,FileTiles
+    jmp ExpandTileUnit.SetUnitBitSize
+.UnitSizeTooSmall:
+    mov eax,1
+    jmp short .ValidUnitSize
+.UnitSizeTooLarge:
+    mov eax,BlitTileStruct.UnitBitSizeMax
+    jmp short .ValidUnitSize
 
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.DwordLh:
+.Increasing32bit:
+    test ch,7                   ;misaligned bit offsets require slower but more general function
+    jnz near .IncreasingNbit
     xor eax,eax
-.NextDwordLh:
+.Increasing32bitNextUnit:
     lodsd
     shr eax,cl
     and eax,edx
     stosd
     dec ebx
-    jg .NextDwordLh
+    jg .Increasing32bitNextUnit
     ret
 
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.DwordHl:
+.Decreasing32bit:
+    test ch,7                   ;misaligned bit offsets require slower but more general function
+    jnz near .DecreasingNbit
     xor eax,eax
-.NextDwordHl:
+.Decreasing32bitNextUnit:
     lodsd
     bswap eax
     shr eax,cl
     and eax,edx
     stosd
     dec ebx
-    jg .NextDwordHl
+    jg .Decreasing32bitNextUnit
     ret
 
 ; For word tilemaps or unicode text
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.WordLh:
+.Increasing16bit:
+    test ch,7                   ;misaligned bit offsets require slower but more general function
+    jnz near .IncreasingNbit
     xor eax,eax
-    and edx,0FFFFh          ;limit mask 0-65535
-.NextWordLh:
+    and edx,0FFFFh              ;limit mask 0-65535
+.Increasing16bitNextUnit:
     lodsw
     shr eax,cl
     and eax,edx
     stosd
     dec ebx
-    jg .NextWordLh
+    jg .Increasing16bitNextUnit
     ret
 
 ; For those funky big endian processors, or for reversed short integers like
 ; those found in the headers of MIDI files.
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.WordHl:
+.Decreasing16bit:
+    test ch,7                   ;misaligned bit offsets require slower but more general function
+    jnz near .DecreasingNbit
     xor eax,eax
-    and edx,0FFFFh          ;limit mask 0-65535
-.NextWordHl:
+    and edx,0FFFFh              ;limit mask 0-65535
+.Decreasing16bitNextUnit:
     lodsw
     xchg al,ah
     shr eax,cl
     and eax,edx
     stosd
     dec ebx
-    jg .NextWordHl
+    jg .Decreasing16bitNextUnit
     ret
 
 ; For byte tilemaps or ASCII text
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
+.Increasing8bit:
+.Decreasing8bit:                ;identical either way
 .Byte:
+    test ch,7                   ;misaligned bit offsets require slower but more general function
+    jnz near .IncreasingNbit
     xor eax,eax
-    and edx,0FFh            ;limit mask 0-255
-.NextByte:
+    and edx,0FFh                ;limit mask 0-255
+.ByteNextUnit:
     lodsb
     shr eax,cl
     and eax,edx
     stosd
     dec ebx
-    jg .NextByte
+    jg .ByteNextUnit
     ret
 
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.NybbleLh:
+.Increasing4bit:
+    ;hack:::
+    ;jmp .IncreasingNbit
+    test ch,3                   ;misaligned bit offsets require slower but more general function
+    jnz near .IncreasingNbit
     xor eax,eax
     mov dh,0Fh
     shr dh,cl
     and dl,dh                   ;limit mask 0-15
     cmp ch,4
-    jb .NextNlh
+    jb .Increasing4bitNextUnit
     lodsb
-    jmp short .SecondNlh
-.NextNlh:
+    jmp short .Increasing4bitSecondUnit
+.Increasing4bitNextUnit:
     lodsb
     shr al,cl
     mov dh,al
     and al,dl
     stosd
     dec ebx
-    jle .NlhEnd
+    jle .Increasing4bitEnd
     mov al,dh
-.SecondNlh:
+.Increasing4bitSecondUnit:
     shr al,4
     and al,dl
     stosd
     dec ebx
-    jg .NextNlh
-.NlhEnd:
+    jg .Increasing4bitNextUnit
+.Increasing4bitEnd:
     ret
 
-; For 4bit bitmaps or icons
+; For Windows 4bit bitmaps or icons
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.NybbleHl:
+.Decreasing4bit:
+    ;hack:::
+    ;jmp .DecreasingNbit
+    test ch,3                   ;misaligned bit offsets require slower but more general function
+    jnz near .DecreasingNbit
     xor eax,eax
     mov dh,0Fh
     shr dh,cl
     and dl,dh                   ;limit mask 0-15
     cmp ch,4
-    jb .NextNhl
+    jb .Decreasing4bitNextUnit
     lodsb
     shr al,cl
     and al,dl
-    jmp short .SecondNhl
-.NextNhl:
+    jmp short .Decreasing4bitSecondUnit
+.Decreasing4bitNextUnit:
     lodsb
     shr al,cl
     mov dh,al
@@ -2121,19 +2352,21 @@ ExpandTileUnit:
     and al,dl
     stosd
     dec ebx
-    jle .NhlEnd
+    jle .Decreasing4bitEnd
     and dh,dl
     mov al,dh
-.SecondNhl:
+.Decreasing4bitSecondUnit:
     stosd
     dec ebx
-    jg .NextNhl
-.NhlEnd:
+    jg .Decreasing4bitNextUnit
+.Decreasing4bitEnd:
     ret
 
 ; Possibly useful for Virtual Boy gfx
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.DbitLh:
+.Increasing2bit:
+    test ch,1                   ;misaligned bit offsets require slower but more general function
+    jnz near .IncreasingNbit
     xor eax,eax
     mov dh,03h
     lodsb                       ;get first byte
@@ -2142,48 +2375,50 @@ ExpandTileUnit:
     and dl,dh                   ;limit mask 0-3
     mov dh,al                   ;copy byte to spare
     cmp ch,2                    ;if bit offset 0-1
-    jb .Dblh1
+    jb .Increasing2bitUnit1
     cmp ch,4                    ;bit offset 2-3
-    jb .Dblh2
+    jb .Increasing2bitUnit2
     cmp ch,6                    ;if bit offset 4-5
-    jb .Dblh3
-    jmp short .Dblh4            ;else bit offset 6-7
-.DblhNext:
+    jb .Increasing2bitUnit3
+    jmp short .Increasing2bitUnit4 ;else bit offset 6-7
+.Increasing2bitNextUnit:
     lodsb
     shr al,cl
     mov dh,al
-.Dblh1:
+.Increasing2bitUnit1:
     and al,dl
     stosd
     dec ebx
-    jle .DblhEnd
+    jle .Increasing2bitEnd
     mov al,dh
-.Dblh2:
+.Increasing2bitUnit2:
     shr al,2
     and al,dl
     stosd
     dec ebx
-    jle .DblhEnd
+    jle .Increasing2bitEnd
     mov al,dh
-.Dblh3:
+.Increasing2bitUnit3:
     shr al,4
     and al,dl
     stosd
     dec ebx
-    jle .DblhEnd
+    jle .Increasing2bitEnd
     mov al,dh
-.Dblh4:
+.Increasing2bitUnit4:
     shr al,6
     and al,dl
     stosd
     dec ebx
-    jg .DblhNext
-.DblhEnd:
+    jg .Increasing2bitNextUnit
+.Increasing2bitEnd:
     ret
 
-; Possibly useful for Windows CE 4-color bitmaps.
+; Possibly useful for Virtual Boy gfx
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.DbitHl:
+.Decreasing2bit:
+    test ch,1                   ;misaligned bit offsets require slower but more general function
+    jnz near .DecreasingNbit
     xor eax,eax
     mov dh,03h
     lodsb                       ;get first byte
@@ -2192,47 +2427,47 @@ ExpandTileUnit:
     and dl,dh                   ;limit mask 0-3
     mov dh,al                   ;copy byte to spare
     cmp ch,2                    ;if bit offset 0-1
-    jb .Dbhl1
+    jb .Decreasing2bitUnit1
     cmp ch,4                    ;bit offset 2-3
-    jb .Dbhl2
+    jb .Decreasing2bitUnit2
     cmp ch,6                    ;if bit offset 4-5
-    jb .Dbhl3
-    jmp short .Dbhl4            ;else bit offset 6-7
-.DbhlNext:
+    jb .Decreasing2bitUnit3
+    jmp short .Decreasing2bitUnit4            ;else bit offset 6-7
+.Decreasing2bitNextUnit:
     lodsb
     shr al,cl
     mov dh,al
-.Dbhl1:
+.Decreasing2bitUnit1:
     shr al,6
     and al,dl
     stosd
     dec ebx
-    jle .DbhlEnd
+    jle .Decreasing2bitEnd
     mov al,dh
-.Dbhl2:
+.Decreasing2bitUnit2:
     shr al,4
     and al,dl
     stosd
     dec ebx
-    jle .DbhlEnd
+    jle .Decreasing2bitEnd
     mov al,dh
-.Dbhl3:
+.Decreasing2bitUnit3:
     shr al,2
     and al,dl
     stosd
     dec ebx
-    jle .DbhlEnd
+    jle .Decreasing2bitEnd
     mov al,dh
-.Dbhl4:
+.Decreasing2bitUnit4:
     and al,dl
     stosd
     dec ebx
-    jg .DbhlNext
-.DbhlEnd:
+    jg .Decreasing2bitNextUnit
+.Decreasing2bitEnd:
     ret
 
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.BitLh:
+.Increasing1bit:
     xor eax,eax
     movzx ecx,ch                ;copy source bit offset
     mov dh,[esi]                ;get first eight bits
@@ -2240,28 +2475,28 @@ ExpandTileUnit:
     neg ecx                     ;negate bit offset so that bits remaining = 8 - bit offset
     add ecx,byte 8              ;assume a full byte remains
     sub ebx,ecx                 ;bits left >= 8
-    jge .BlhNext
+    jge .Increasing1bitNextUnit
     add ecx,ebx                 ;less than eight bits remaining
-    jmp short .BlhNext
-.BlhNextByte:
+    jmp short .Increasing1bitNextUnit
+.Increasing1bitNextByte:
     mov dh,[esi]                ;get next eight bits
-.BlhNext:
+.Increasing1bitNextUnit:
     shr dh,1
     setc al
     stosd
     dec ecx
-    jg .BlhNext
+    jg .Increasing1bitNextUnit
     add ecx,byte 8              ;assume a full byte remains
     inc esi
     sub ebx,ecx                 ;bits left >= 8
-    jge .BlhNextByte
+    jge .Increasing1bitNextByte
     add ecx,ebx                 ;less than eight bits remaining
-    jg .BlhNextByte
-.BlhEnd:
+    jg .Increasing1bitNextByte
+.Increasing1bitEnd:
     ret
 
 ;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
-.BitHl:
+.Decreasing1bit:
     xor eax,eax
     movzx ecx,ch                ;copy source bit offset
     mov dh,[esi]                ;get first eight bits
@@ -2269,54 +2504,275 @@ ExpandTileUnit:
     neg ecx                     ;negate bit offset so that bits remaining = 8 - bit offset
     add ecx,byte 8              ;assume a full byte remains
     sub ebx,ecx                 ;bits left >= 8
-    jge .BhlNext
+    jge .Decreasing1bitNextUnit
     add ecx,ebx                 ;less than eight bits remaining
-    jmp short .BhlNext
-.BhlNextByte:
+    jmp short .Decreasing1bitNextUnit
+.Decreasing1bitNextByte:
     mov dh,[esi]                ;get next eight bits
-.BhlNext:
+.Decreasing1bitNextUnit:
     shl dh,1
     setc al
     stosd
     dec ecx
-    jg .BhlNext
+    jg .Decreasing1bitNextUnit
     add ecx,byte 8              ;assume a full byte remains
     inc esi
     sub ebx,ecx                 ;bits left >= 8
-    jge .BhlNextByte
+    jge .Decreasing1bitNextByte
     add ecx,ebx                 ;less than eight bits remaining
-    jg .BhlNextByte
-.BhlEnd:
+    jg .Decreasing1bitNextByte
+.Decreasing1bitEnd:
     ret
 
-.SetBits:
-; (al=bits, edi=BlitTileStruct structure)
-    cmp al,32                   ;is number of bits valid
-    ja .End
-    test al,al
-    jz .End
-    movzx eax,al
-    bsf esi,eax
-    shl esi,1                   ;*2 for every even/odd .ExpanderJtbl entry
-    test byte [edi+BlitTileStruct.Orientation],BlitTileStruct.BackwardsEndian  ;check if lh or hl
-    jz .UseLh                   ;logical endian
-    inc esi                     ;use high/low (backwards endian) instead of low/high routine
-.UseLh:
-    mov ebx,[.ExpanderJtbl+esi*4] ;get expander routine
-    mov [edi+BlitTileStruct.Expander],ebx
-    mov [FileTiles.Bits],eax
-.End:
+;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
+.Increasing3bit:
+.Increasing5bit:
+.Increasing6bit:
+.Increasing7bit:
+.Increasing9bit:
+.Increasing10bit:
+.Increasing11bit:
+.Increasing12bit:
+.Increasing13bit:
+.Increasing14bit:
+.Increasing15bit:
+.Increasing17bit:
+.Increasing18bit:
+.Increasing19bit:
+.Increasing20bit:
+.Increasing21bit:
+.Increasing22bit:
+.Increasing23bit:
+.Increasing24bit:
+.Increasing25bit:
+.Increasing26bit:
+.Increasing27bit:
+.Increasing28bit:
+.Increasing29bit:
+.Increasing30bit:
+.Increasing31bit:
+.IncreasingNbit:
+;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
+    .IncreasingNbitCounter equ 0
+    .IncreasingNbitMask equ 4
+    .IncreasingNbitUnitShiftAndBitOffset equ 8
+    .IncreasingNbitStackSize equ 12
+
+    push ecx                ;unit shift and bit offset
+    push edx                ;mask
+    push ebx                ;counter
+
+    test ebx,ebx
+    jz .IncreasingNbitEnd   ;empty loop
+
+    ; Restrict mask further based on unit bit size.
+    mov cl,[FileTiles.UnitBitSize]
+    mov eax,0xFFFFFFFF
+    mov ebx,ecx             ;bl=bits per unit
+    dec cl
+    shl eax,1               ;shift in 2 steps because of broken x86 wrapping behavior for >=32 shift value.
+    shl eax,cl              ;((x << 1) << (shift - 1))
+    not eax
+    and [esp+.IncreasingNbitMask],eax ;narrow unit mask. mask &= ~(0xFFFFFFFF << bitsPerUnit)
+
+    ;initialize shift counters
+    ;eax=current bits
+    ;edx=next bits
+    mov ecx,[esp+.IncreasingNbitUnitShiftAndBitOffset]
+    mov bh,32               ;bh=remaining bits counter
+    lodsd                   ;read first uint32
+    xchg cl,ch              ;now ch=unit shift, cl=bit offset
+    shr eax,cl              ;consume initial bits using bit offset
+    sub bh,cl               ;reduce remaining bit count by the number of bits just read
+    mov edx,eax             ;keep copy of remaining bits for next bits
+.IncreasingNbitNextUnit:
+    ;eax=current bits, edx=also current bits, bl=bits per unit, bh=bits remaining in edx, ch=unit shift
+    mov cl,bh               ;prep remaining bit counter for later shift
+    test bh,bh              ;check for no bits
+    jz .IncreasingNbitRanOutOfBits
+    sub bh,bl               ;bits left -= bits per unit
+    jge .IncreasingNbitHaveEnoughBits
+    lodsd                   ;fetch following uint32
+    add bh,32               ;refresh counter
+    neg cl
+    add cl,32               ;32 - remaining bits
+    xchg eax,edx            ;move old bits into current unit
+    shl eax,cl              ;align residual bits from previous uint32 to top
+    shrd eax,edx,cl         ;combine bits and combine together
+    neg cl
+    add cl,32
+    neg cl
+    add cl,bl               ;bits per unit - 32 + amount to shift up = residual bits to consume
+    shr edx,cl              ;consume initial bits using bit offset
+    jmp short .IncreasingNbitWriteValue
+.IncreasingNbitRanOutOfBits:
+    lodsd
+    mov bh,32               ;refresh counter
+    mov edx,eax
+    sub bh,bl               ;bits left -= bits per unit
+.IncreasingNbitHaveEnoughBits:
+    ;eax=current bits, edx=remaining bits, bl=bits per unit, bh=bits remaining in edx, ch=unit shift
+    mov cl,bl               ;get bits per unit
+    shr edx,cl              ;consume bits for next pass
+.IncreasingNbitWriteValue:
+    ;eax=current unit bits, edx=additional bits, bh=bits remaining in edx
+    mov cl,ch
+    shr eax,cl              ;shift element by unit shift
+    and eax,[esp+.IncreasingNbitMask]
+    stosd
+    mov eax,edx             ;update current bits to next bits
+    dec dword [esp+.IncreasingNbitCounter]
+    jg .IncreasingNbitNextUnit
+
+.IncreasingNbitEnd:
+    add esp,byte .IncreasingNbitStackSize
+    ret
+
+;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
+.Decreasing3bit:
+.Decreasing5bit:
+.Decreasing6bit:
+.Decreasing7bit:
+.Decreasing9bit:
+.Decreasing10bit:
+.Decreasing11bit:
+.Decreasing12bit:
+.Decreasing13bit:
+.Decreasing14bit:
+.Decreasing15bit:
+.Decreasing17bit:
+.Decreasing18bit:
+.Decreasing19bit:
+.Decreasing20bit:
+.Decreasing21bit:
+.Decreasing22bit:
+.Decreasing23bit:
+.Decreasing24bit:
+.Decreasing25bit:
+.Decreasing26bit:
+.Decreasing27bit:
+.Decreasing28bit:
+.Decreasing29bit:
+.Decreasing30bit:
+.Decreasing31bit:
+.DecreasingNbit:
+;(esi=packed source, edi=expanded destination, cl=unit shift, ch=bit offset, ebx=count, edx=mask)
+    .DecreasingNbitCounter equ 0
+    .DecreasingNbitMask equ 4
+    .DecreasingNbitUnitShiftAndBitOffset equ 8
+    .DecreasingNbitStackSize equ 12
+
+    push ecx                ;unit shift and bit offset
+    push edx                ;mask
+    push ebx                ;counter
+
+    test ebx,ebx
+    jz .DecreasingNbitEnd   ;empty loop
+
+    ; Restrict mask further based on unit bit size.
+    mov cl,[FileTiles.UnitBitSize]
+    mov eax,0xFFFFFFFF
+    mov ebx,ecx             ;bl=bits per unit
+    dec cl
+    shl eax,1               ;shift in 2 steps because of broken x86 wrapping behavior for >=32 shift value.
+    shl eax,cl              ;((x << 1) << (shift - 1))
+    not eax
+    and [esp+.DecreasingNbitMask],eax ;narrow unit mask. mask &= ~(0xFFFFFFFF << bitsPerUnit)
+
+    ;initialize shift counters
+    ;eax=current bits
+    ;edx=next bits
+    mov ecx,[esp+.DecreasingNbitUnitShiftAndBitOffset]
+    mov bh,32               ;bh=remaining bits counter
+    lodsd                   ;read first uint32
+    bswap eax               ;big endian
+    xchg cl,ch              ;now ch=unit shift, cl=bit offset
+    shl eax,cl              ;consume initial bits using bit offset
+    sub bh,cl               ;reduce remaining bit count by the number of bits just read
+    mov edx,eax             ;keep copy of remaining bits for next bits
+    mov cl,32
+    sub cl,bl
+    add ch,cl               ;unit shift += (32 - bits per unit)
+.DecreasingNbitNextUnit:
+    ;eax=current bits, edx=also current bits, bl=bits per unit, bh=bits remaining in edx, ch=unit shift
+    mov cl,bh               ;prep remaining bit counter for later shift
+    test bh,bh              ;check for no bits
+    jz .DecreasingNbitRanOutOfBits
+    sub bh,bl               ;bits left -= bits per unit
+    jge .DecreasingNbitHaveEnoughBits
+    lodsd                   ;fetch following uint32
+    bswap eax               ;big endian
+    add bh,32               ;refresh counter
+    neg cl
+    add cl,32               ;32 - remaining bits
+    xchg eax,edx            ;move old bits into current unit
+    shr eax,cl              ;align residual bits from previous uint32 to top
+    shld eax,edx,cl         ;combine bits and combine together
+    neg cl
+    add cl,32
+    neg cl
+    add cl,bl               ;bits per unit - 32 + amount to shift up = residual bits to consume
+    shl edx,cl              ;consume initial bits using bit offset
+    jmp short .DecreasingNbitWriteValue
+.DecreasingNbitRanOutOfBits:
+    lodsd
+    bswap eax               ;big endian
+    mov bh,32               ;refresh counter
+    mov edx,eax
+    sub bh,bl               ;bits left -= bits per unit
+.DecreasingNbitHaveEnoughBits:
+    ;eax=current bits, edx=remaining bits, bl=bits per unit, bh=bits remaining in edx, ch=unit shift
+    mov cl,bl               ;get bits per unit
+    shl edx,cl              ;consume bits for next pass
+.DecreasingNbitWriteValue:
+    ;eax=current unit bits, edx=additional bits, bh=bits remaining in edx
+    mov cl,ch
+    shr eax,cl              ;shift element by unit shift
+    and eax,[esp+.DecreasingNbitMask]
+    stosd
+    mov eax,edx             ;update current bits to next bits
+    dec dword [esp+.DecreasingNbitCounter]
+    jg .DecreasingNbitNextUnit
+
+.DecreasingNbitEnd:
+    add esp,byte .DecreasingNbitStackSize
     ret
 
 section data
 align 4
 .ExpanderJtbl:
-dd .BitLh,.BitHl
-dd .DbitLh,.DbitHl
-dd .NybbleLh,.NybbleHl
-dd .Byte,.Byte
-dd .WordLh,.WordHl
-dd .DwordLh,.DwordHl
+dd .Increasing1bit,.Decreasing1bit
+dd .Increasing2bit,.Decreasing2bit
+dd .Increasing3bit,.Decreasing3bit
+dd .Increasing4bit,.Decreasing4bit
+dd .Increasing5bit,.Decreasing5bit
+dd .Increasing6bit,.Decreasing6bit
+dd .Increasing7bit,.Decreasing7bit
+dd .Increasing8bit,.Decreasing8bit
+dd .Increasing9bit,.Decreasing9bit
+dd .Increasing10bit,.Decreasing11bit
+dd .Increasing11bit,.Decreasing12bit
+dd .Increasing12bit,.Decreasing12bit
+dd .Increasing13bit,.Decreasing13bit
+dd .Increasing14bit,.Decreasing14bit
+dd .Increasing15bit,.Decreasing15bit
+dd .Increasing16bit,.Decreasing16bit
+dd .Increasing17bit,.Decreasing17bit
+dd .Increasing18bit,.Decreasing18bit
+dd .Increasing19bit,.Decreasing19bit
+dd .Increasing20bit,.Decreasing20bit
+dd .Increasing21bit,.Decreasing21bit
+dd .Increasing22bit,.Decreasing22bit
+dd .Increasing23bit,.Decreasing23bit
+dd .Increasing24bit,.Decreasing24bit
+dd .Increasing25bit,.Decreasing25bit
+dd .Increasing26bit,.Decreasing26bit
+dd .Increasing27bit,.Decreasing27bit
+dd .Increasing28bit,.Decreasing28bit
+dd .Increasing29bit,.Decreasing29bit
+dd .Increasing30bit,.Decreasing30bit
+dd .Increasing31bit,.Decreasing31bit
+dd .Increasing32bit,.Decreasing32bit
 section code
 
 ;----------------------------------------
@@ -2361,12 +2817,19 @@ BlitTile:
 
 ;----------------------------------------
 ; (esi=source, eax=dword from source, edi=destination buffer)
+; Display single pixel.
+.ActualPixels:
+    mov [edi],al
+    ret
+
+;----------------------------------------
+; (esi=source, eax=dword from source, edi=destination buffer)
 ; Display little hex numbers with colored backgrounds
 .NumericValue:
     ;Clear the background behind the number.
     push edi
     mov esi,SmallHexFont.GlyphPixelHeight+2
-    movzx ebx,byte [FileTiles.Width];
+    movzx ebx,byte [FileTiles.TileWidth];
     mov edx,[BlitTiles.DestWrap]
     sub edx,ebx
 .NextNumBgLine:
@@ -2475,12 +2938,6 @@ BlitTile:
 .VramDefault:
     mov esi,.VramDefaultTile
     jmp short .SnesBlank
-
-;   0     1     2       3       4       5       6       7       8       9       ?
-;
-;         o   o o o   o o     o o o   o o o     o     o   o     o o   o o o   o o
-;   o     o       o     o       o       o     o   o   o   o   o   o   o   o     o o
-;         o       o     o o     o     o o o   o   o   o o o   o o     o o o   o o
 
 ;----------------------------------------
 ; (esi=source, eax=dword from source, edi=destination buffer)
@@ -2715,7 +3172,7 @@ BlitTile:
 
 ;----------------------------------------
 .InitWaveSample:
-    mov cl,[FileTiles.Bits];
+    mov ecx,[FileTiles.UnitBitSize]
     mov eax,ecx
     shl eax,3
     mov edx,[BlitTiles.DestWrap]
@@ -2813,8 +3270,10 @@ SetTileFormat:
 ; calculate pixel width of number based on current unit size
 .NumericValue:
     movzx ebx,byte [BlitTile.Radix]  ;base of the number system
-    mov cl,[edi+BlitTileStruct.Bits]
+    mov cl,[edi+BlitTileStruct.UnitBitSize]
     mov eax,1
+    dec ecx                     ;decrement an extra 1 to avoid wraparound on x86.
+    shl eax,1
     shl eax,cl                  ;create hole of zeroes equal to number of bits
     dec eax                     ;invert low zeroes to ones
     mov ecx,1                   ;number width must be at least one character
@@ -2831,8 +3290,8 @@ SetTileFormat:
     mov [BlitTile.NumDigits],cl ;save number of digits highest value has
     lea ecx,[ecx*2+ecx]         ;*3
     lea ecx,[ecx*2+4]           ;*2+4  "(ecx*6)+4"
-    mov byte [edi+BlitTileStruct.Height],7  ;set tile height
-    mov [edi+BlitTileStruct.Width],cl
+    mov byte [edi+BlitTileStruct.TileHeight],7  ;set tile height
+    mov [edi+BlitTileStruct.TileWidth],cl
     ret
 
 .FontChar:
@@ -2873,12 +3332,14 @@ SetTileFormat:
     mov [TileTable.Inc],eax     ;save increment between tile tables
     ret
 
+%if 0
 .BrrSample:
     ;test orientation
     ;test byte [FileTiles.Orientation],BlitTileStruct.OrientRotate
     ;jnz .HBrrSample
     mov word [edi+BlitTileStruct.Size],128|(16<<8)  ;set both height and width
     ret
+%endif
 
 .WaveSample:
     ;test orientation
@@ -2887,11 +3348,11 @@ SetTileFormat:
     mov word [edi+BlitTileStruct.Size],128|(1<<8)  ;set both height and width
     ret
 
-;.ActualPixels:
-;        mov word [edi+BlitTileStruct.Size],1|(1<<8)  ;set both height and width
-;        ret
+.ActualPixels:
+    mov word [edi+BlitTileStruct.Size],1|(1<<8)  ;set both height and width
+    ret
 ;.BitplaneTileImage:
-;        mov bl,[edi+BlitTileStruct.Height]        ;get tile height
+;        mov bl,[edi+BlitTileStruct.TileHeight]  ;get tile height
 ;        mov bh,8                                ;set tile width
 ;        cmp bl,4                                ;must not be less than 4
 ;        ja .Bpl_HeightNotUnder                  ;it is more
@@ -2909,11 +3370,12 @@ section data
 align 4
 .BlitterJtbl:
     dd BlitTile.ColorBlocks
+    dd BlitTile.ActualPixels
     dd BlitTile.NumericValue
     dd BlitTile.FontChar
     dd BlitTile.DoNada
     dd BlitTile.TileTable
-    dd BlitTile.WaveSample;dd BlitTile.BrrSample
+    dd BlitTile.WaveSample ;dd BlitTile.BrrSample *display raw wave sample instead
     dd BlitTile.SnesBpl
     dd BlitTile.SnesBpl
     dd BlitTile.SnesBpl
@@ -2922,6 +3384,7 @@ align 4
     dd BlitTile.SnesMode7
 .InitJtbl:
     dd BlitTile.DoNada          ;color blocks
+    dd BlitTile.DoNada          ;actual pixels
     dd BlitTile.DoNada          ;numeric
     dd BlitTile.ClearBg         ;font character
     dd BlitTile.CheckVram       ;vram default
@@ -2935,6 +3398,7 @@ align 4
     dd BlitTile.CheckVram       ;mode 7
 .ModeJtbl: ; TileFormat.Total
     dd .ColorBlocks     ;TileFormat.ColorBlocks
+    dd .ActualPixels    ;TileFormat.ActualPixels
     dd .NumericValue    ;TileFormat.NumericValue
     dd .FontChar        ;TileFormat.FontChar
     dd .Vram            ;TileFormat.Vram
@@ -2975,7 +3439,7 @@ SetViewingMode:
   .SkipMode:
     test ah,ah
     js .SkipUnit
-    mov [FileTiles.Bits],ah
+    mov [FileTiles.UnitBitSize],ah
   .SkipUnit:
     shr eax,16
     test al,al
@@ -2993,7 +3457,7 @@ SetViewingMode:
     ;ret
 
 ;------------------------------
-;(ViewWindow.WriteDataValue, ViewWindow.FilePosition, FileTiles.Bits)
+;(ViewWindow.WriteDataValue, ViewWindow.FilePosition, FileTiles.UnitBitSize)
 SetViewWindowUnit:
     mov ax,4200h                    ;function to set file position
     mov edx,[ViewWindow.FilePosition]
@@ -3003,21 +3467,21 @@ SetViewWindowUnit:
     mov ax,4000h                    ;function to write to file
     ;mov ebx,[File.Handle]           ;viewing file handle
     mov edx,ViewWindow.WriteDataValue;set source data for write
-    mov ecx,[FileTiles.Bits]        ;set bytes to write
+    mov ecx,[FileTiles.UnitBitSize] ;set bytes to write
     shr ecx,3
     jz .End
     int 21h                         ;call DOS
 .InBuffer:
     mov esi,[File.BufferBase]
     mov edi,[ViewWindow.FilePosition]
-    lea ebx,[esi+File.BufferByteSize]
+    lea ebx,[esi+File.BufferByteSize] ;compute exclusive end of buffer
     cmp edi,ebx
     jae .End
     sub edi,esi
     jb .End
     mov eax,[ViewWindow.WriteDataValue]
     add edi,File.Buffer
-    mov bl,[FileTiles.Bits]
+    mov bl,[FileTiles.UnitBitSize]
     cmp bl,8
     ja .NotByte
     mov [edi],al
@@ -3461,7 +3925,7 @@ PrintString:
 ; USER INPUT
 ;--------------------------------------------------
 ;------------------------------
-; () (cf=keypress, eax=<scan code and ASCII char>or<zero for nothing>)
+; () (cf=keypress, ah=scan code, al=ASCII character or zero for nothing, dl=modifier keys)
 ; Gets a single keypress from BIOS (not silly DOS).
 ;
 align 16
@@ -3469,8 +3933,9 @@ GetKeyPress:
     mov ah,1                ;function to check key buffer status
     int 16h                 ;call BIOS
     jz .NoneWaiting         ;zero flag is set, no keys are in buffer
-    xor eax,eax             ;function to get first key press
+    xor eax,eax             ;ah=0 function to get first key press
     int 16h                 ;call BIOS
+
 %if Personal                ;leave out for public release
     cmp ax,'q'<<8           ;Alt+F10 for grabbing screenshots :)
     jne .NoSnapshot
@@ -3478,6 +3943,29 @@ GetKeyPress:
     jmp short .NoneWaiting
 .NoSnapshot:
 %endif
+
+    ;get modifier keys (shift, control, alt...)
+    ;
+    ;   AH = 02
+    ;
+    ;   on return:
+    ;   AL = BIOS keyboard flags (located in BIOS Data Area 40:17)
+    ;
+    ;   |7|6|5|4|3|2|1|0|  AL or BIOS Data Area 40:17
+    ;    | | | | | | | `---- right shift key depressed
+    ;    | | | | | | `----- left shift key depressed
+    ;    | | | | | `------ CTRL key depressed
+    ;    | | | | `------- ALT key depressed
+    ;    | | | `-------- scroll-lock is active
+    ;    | | `--------- num-lock is active
+    ;    | `---------- caps-lock is active
+    ;    `----------- insert is active
+    mov edx,eax
+    mov ah,2
+    int 16h
+    shl eax,16
+    mov ax,dx
+
     stc                     ;set carry flag to indicate keypress
     ret
 
@@ -3569,41 +4057,67 @@ GetUserString:
     jmp short .End
 
 ;------------------------------
-; (al=key, esi=keylist struct) (cf=error keypress not found, ecx=keynumber)
+; (al=key, ah=scan code, upper ax=modifiers ctrl/alt/shift, esi=keylist struct) (cf=error keypress not found, ecx=keynumber)
 ;
 ; Pass a scan structure to it, which points to a list of keys, number of normal keys, and
 ; number of extended.
 ;
 KeyScanFor:
+    ;int3;
+
+; struct KeyList {char8_t* keyList; uint8_t normalKeyCount; uint8_t extendedKeyCount;}
+.KeyListStructSize equ 8 ; bytes
+.KeyListStructPointer equ 0
+.KeyListStructNormalKeyCount equ 4
+.KeyListStructExtendedKeyCount equ 5
+.KeyListStructExtendedKeyTupleScanCode equ 0
+.KeyListStructExtendedKeyTupleModifierMask equ 1
+.KeyListStructExtendedKeyTupleModifierState equ 2
+.KeyListStructExtendedKeyTupleSize equ 4
+; The list consists of normal key count char's,
+; followed by extended key triplets of {scan code, modifier key mask, modifier key state, pad}
+
     cld
     mov edi,[esi]
-    movzx ecx,byte [esi+4]
+    movzx ecx,byte [esi+.KeyListStructNormalKeyCount]
     test al,al
     jz .ExtendedKey
     repne scasb
     jnz .NotFound
     not cl
-    add cl,[esi+4]
+    add cl,[esi+.KeyListStructNormalKeyCount]
     clc
     ret
 
 .ExtendedKey:
+    mov edx,eax             ;modifier keys are in upper bits of eax
     add edi,ecx
-    mov al,ah
-    mov cl,[esi+5]
-    repne scasb
-    jnz .ExtendedKeyNotFound
-    not cl
-    add cl,[esi+5]
-    xor al,al               ;put null back into al
-    add cl,[esi+4]
-    clc
-    ret
+    shr edx,16              ;get modifier keys (ctrl/alt/shift)
+    mov cl,[esi+.KeyListStructExtendedKeyCount]
+    test cl,cl
+    jz .NotFound
+.ExtendedKeyNext:
+    cmp [edi+.KeyListStructExtendedKeyTupleScanCode],ah
+    mov dh,dl
+    jne .ExtendedKeyNoMatch
+    and dh,[edi+.KeyListStructExtendedKeyTupleModifierMask]
+    cmp dh,[edi+.KeyListStructExtendedKeyTupleModifierState]
+    je .ExtendedKeyFound
+.ExtendedKeyNoMatch:
+    add edi,byte .KeyListStructExtendedKeyTupleSize
+    dec cl
+    jnz .ExtendedKeyNext
+    ;jmp .NotFound
 
-.ExtendedKeyNotFound:
-    xor al,al               ;put null back into al
 .NotFound:
     stc
+    ret
+
+.ExtendedKeyFound:
+    neg cl
+    add cl,[esi+.KeyListStructExtendedKeyCount]
+    add cl,[esi+.KeyListStructNormalKeyCount]
+    clc
     ret
 
 ;--------------------------------------------------
@@ -3654,12 +4168,12 @@ section code
 
 ;==============================
 ; String to Number
-; (esi=text source, ?ebx=radix, ?ecx=length of string)
-; (eax=value, zf=no number)
+; (esi=text source)
+; (eax=value, esi=end exclusive pointer, zf=no number)
 ;
 ; Turns a string representation of a number into a 32bit unsigned number.
-; Ends at a non-numeric digit, including puncuation, extended characters,
-; null, or any other control character. Returns zero for a an empty string.
+; Ends at a non-numeric digit, including punctuation, extended characters,
+; null, or any other control character. Returns zero for an empty string.
 ;
 StringToNum:
     ;set default returned number to zero
@@ -3669,9 +4183,12 @@ StringToNum:
     ;loop
     ;return value and string length
     mov ecx,NumStringMaxLen ;default maximum of ten characters
-.AnyLength:                     ;since the largest 32bit is 4gb
+                            ;since the largest 32bit is 4gb
+.AnyLength:                  
+    ;(esi=text source, ecx=length of string)
     mov ebx,10              ;base of the decimal system
-.AnyRadix:                      ;for hexadecimal and binary (even octal)
+.AnyRadix:                  ;for hexadecimal and binary (even octal)
+    ;(esi=text source, ebx=radix, ecx=length of string)
     xor edx,edx             ;set top 32 bits of digit place to zero
     mov edi,ecx             ;copy length
     xor eax,eax             ;set return value to zero
@@ -3790,6 +4307,7 @@ ViewWindow:
 .Options:       db 0
 .UseOffsetBase  equ 1           ;whether or not to use the offset base
 .Change:        db WindowRedraw.Complete ;flags to indicate various changes
+.PaletteIndex:  db 0
 
 ; FileTiles is an instance of BlitTileStruct.
 FileTiles:
@@ -3799,8 +4317,9 @@ FileTiles:
 .SrcPtr:        dd File.Buffer
 .SrcWrap:       dd 64
 .SrcRange:      dd 8192
-.Bits:          dd 8
-.Mask:          dd 65535
+.UnitBitSize:   dd 8
+.Mask:          dd 0xFFFFFFFF
+.ShiftAndSrcBit:
 .Shift:         db 0
 .SrcBit:        db 0
 .Format:        db TileFormat.ColorBlocks
@@ -3809,31 +4328,25 @@ FileTiles:
 .DestWrap:      dd Screen.DefaultWidth
 .DestHeight:    dd ViewWindow.Height
 .DestWidth:     dd ViewWindow.Width
-.Rows:          dd 40
+.Rows:          dd 40           ;These reverse meaning if Orientation is rotated sideways.
 .Cols:          dd 64
-.Size:
-.Height:        db 4
-.Width:         db 4, 0,0
-.Change:        dd WindowRedraw.Complete
-
-.PaletteIndex:  db 0
-.PrevBits:      dd 16
-.PrevMask:      dd 65535
-.PrevShift:     db 0
-.PrevSrcBit:    db 0
-.PrevFormat:    db TileFormat.ColorBlocks
-.PrevOrient:    db 0
+.TileSize:
+.TileHeight:    db 4
+.TileWidth:     db 4
+                db 0,0          ;padding
+.SrcPtrLimit:   dd File.Buffer+File.BufferByteSize
 
 NumberedFormatsTbl:;tile format, unit size in bits, wrap, orientation
-db     TileFormat.ColorBlocks,  -1,-1,-1,-1, 0, 0, 0  ;blocks
-db     TileFormat.NumericValue, -1,-1,-1,-1, 0, 0, 0  ;numbers
-db     TileFormat.FontChar,     -1,-1,-1,-1, 0, 0, 0  ;text, byte if ASCII, word if unicode/Japanese
-db     TileFormat.Vram,         -1,-1,-1,-1, 0, 0, 0  ;vram/word/32
-db     TileFormat.TileTable,    -1,-1,-1,-1, 0, 0, 0  ;tile table
-db     TileFormat.BrrSample,     8, 9, 1,-1, 0, 0, 0  ;spc sample/9/9
-db    -1,-1,-1,-1,-1, 0, 0, 0
-db    -1,-1,-1,-1,-1, 0, 0, 0
-db    -1,-1,-1,-1,-1, 0, 0, 0
+db     TileFormat.ColorBlocks,  -1,-1,-1, 0,0,0,0  ;blocks
+db     TileFormat.ActualPixels, -1,-1,-1, 0,0,0,0  ;actual pixels
+db     TileFormat.NumericValue, -1,-1,-1, 0,0,0,0  ;numbers
+db     TileFormat.FontChar,     -1,-1,-1, 0,0,0,0  ;text, byte if ASCII, word if unicode/Japanese
+db     TileFormat.Vram,         -1,-1,-1, 0,0,0,0  ;vram/word/32
+db     TileFormat.TileTable,    -1,-1,-1, 0,0,0,0  ;tile table
+db     TileFormat.WaveSample,   -1,-1,-1, 0,0,0,0  ;wave display (used to be spc sample/9/9)
+;db     TileFormat.BrrSample,    8, 9, BlitTileStruct.OrientRotate, 0,0,0,0
+db    -1,-1,-1,-1,-1, 0, 0, 0 ;nop
+db    -1,-1,-1,-1,-1, 0, 0, 0 ;nop
 .Size equ 9
 
 align 4
@@ -3914,6 +4427,13 @@ SmallHexFont:
 .GlyphPixelWidth    equ 5
 .GlyphPixelHeight   equ 5
 
+; Experimental numeric glyphs:
+;   0     1     2       3       4       5       6       7       8       9       ?
+;
+;         o   o o o   o o     o o o   o o o     o     o   o     o o   o o o   o o
+;   o     o       o     o       o       o     o   o   o   o   o   o   o   o     o o
+;         o       o     o o     o     o o o   o   o   o o o   o o     o o o   o o
+
 RainbowPalette:     incbin "rainbow.pal"
 
 Mouse.DefaultPointerImage:
@@ -3922,45 +4442,50 @@ Mouse.DefaultPointerImage:
 ;          (0.........1.........2.........3.........4.........5.........6.........7.........)
 Text:
 .KeyHelp:
-        db SccWhite,"Tilemap Viewer ",SccWhite,ProgramVersionStr," 2001 - File pattern viewer",SccCr
-        db SccBlack,"<-",SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccBlack,"->",SccCr
+        db SccWhite,"Tilemap Viewer ",SccWhite,ProgramVersionStr," 2021 - File pattern viewer",SccCr
+        db SccBlack,"(:",SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccBlack,":)",SccCr
         db SccCr
         ;db SccRed,"                ","T",SccYellow,"i",SccGreen,"l",SccCyan,"e",SccBlue,"m",SccPurple,"a",SccRed,"p ",SccYellow,"V",SccGreen,"i",SccCyan,"e",SccBlue,"w",SccPurple,"e",SccRed,"r ",SccWhite,ProgramVersionStr,SccCr,SccCr
-        db SccGreen,"Scrolling forward/backward:",SccCr
+        db SccGreen,"Moving around:",SccCr
         db SccCyan,"  ",24,32,25,32,27,32,26,SccWhite,"           Step row/column",SccCr
         db SccCyan,"  PgUp PgDn         ",SccWhite,"Step 16 rows",SccCr
         db SccCyan,"  Home End          ",SccWhite,"Step 16 columns",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,27,32,26,SccWhite,")        Step single byte",SccCr
+        db SccCyan,"  Ctrl",SccWhite,"+",SccCyan,"Shift",SccWhite,"+(",SccCyan,27,32,26,SccWhite,")  Step single bit",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"PgUp PgDn",SccWhite,")  Jump 32k (one low ROM bank)",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"Home End",SccWhite,")   Jump to beginning or end",SccCr
+        db SccCyan,"  g      ",SccWhite,"           Goto position (Hex address or bg#)",SccCr
         db SccCr
         db SccGreen,"Changing window wrap:",SccCr
         db SccCyan,"  [ ]    ",SccWhite,"Decrease/Increase width by one",SccCr
         db SccCyan,"  { }    ",SccWhite,"Half/Double width",SccCr
-        db SccCyan,"  o      ",SccWhite,"Orientation right-down/down-right",SccCr
+        db SccCyan,"  w      ",SccWhite,"Set wrap width",SccCr
+        db SccCyan,"  o      ",SccWhite,"Orientation right-down/down-right/...",SccCr
         db SccCr
         db SccGreen,"Changing unit:",SccCr
-        db SccCyan,"  u      ",SccWhite,"Toggle unit size (1,2,4,8,16,32 bit)",SccCr
+        db SccCyan,"  u      ",SccWhite,"Set unit size (1-32 bits)",SccCr
         db SccCyan,"  U      ",SccWhite,"Next unit size",SccCr
+        db SccCyan,"  e      ",SccWhite,"Toggle endianness (increasing LE/decreasing BE)",SccCr
         db SccCyan,"  - +    ",SccWhite,"Decrease/Increase shift",SccCr
         db SccCyan,"  / *    ",SccWhite,"Decrease/Increase bitmask",SccCr
         db SccCr
         db SccGreen,"Changing display format:",SccCr
-        db SccCyan,"  m M    ",SccWhite,"Cycle through modes",SccCr
+        db SccCyan,"  m      ",SccWhite,"Toggle with other mode",SccCr
+        db SccCyan,"  M      ",SccWhite,"Cycle through modes",SccCr
         db SccCyan,"  1      ",SccWhite,"Colored blocks",SccCr
-        db SccCyan,"  2      ",SccWhite,"Hex numbers",SccCr
-        db SccCyan,"  3      ",SccWhite,"ASCII character set",SccCr
-        db SccCyan,"  4      ",SccWhite,"VRAM graphics",SccCr
-        db SccCyan,"  5      ",SccWhite,"Tile table graphics",SccCr
-        db SccCyan,"  6      ",SccWhite,"BRR sound sample",SccCr
+        db SccCyan,"  2      ",SccWhite,"Pixels",SccCr
+        db SccCyan,"  3      ",SccWhite,"Hex numbers",SccCr
+        db SccCyan,"  4      ",SccWhite,"ASCII character set",SccCr
+        db SccCyan,"  5      ",SccWhite,"VRAM graphics",SccCr
+        db SccCyan,"  6      ",SccWhite,"Tile table graphics",SccCr
+        db SccCyan,"  7      ",SccWhite,"Wave sound sample",SccCr
         db SccCr
         db SccGreen,"Other:",SccCr
-        db SccCyan,"  g      ",SccWhite,"Goto position (Hex address or bg#)",SccCr
         db SccCyan,"  h      ",SccWhite,"Offset radix hex/dec",SccCr
         db SccCyan,"  b      ",SccWhite,"Base offset on/off",SccCr
         db SccCyan,"  B      ",SccWhite,"Set offset base to current position",SccCr
-        db SccCyan,"  w      ",SccWhite,"Write unit to file with new hex value",SccCr
-        db SccCyan,"  Del    ",SccWhite,"Write another unit to same value as 'w'",SccCr
+        db SccCyan,"  c      ",SccWhite,"Write color of first element to file",SccCr
+        db SccCyan,"  Del    ",SccWhite,"Change another unit to same color value",SccCr
         db SccCyan,"  F1     ",SccWhite,"See this help",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+",SccCyan,"o ",SccWhite,"Open file",SccCr
         db SccCyan,"  Esc    ",SccWhite,"Go do better things",SccCr
@@ -3968,47 +4493,46 @@ Text:
         ;db 0
 .Info:
         db "Tilemap Viewer Usage:",13,10
-        db 10
-        db "Usage:",13,10
-        db "  tmv [-options] mainfile [[-moreoptions] file]...",13,10
-        db 10
+        db 13,10
+        db "Usage:    tmv [-options] mainfilename.ext [[-moreoptions] filename]...",13,10
+        db 13,10
         db "Options:",13,10
         db "  -g #          Goto relative position (in hex)",13,10
-        db "  -w #          Set tile wrap width (1-512)",13,10
+        db "  -w #          Set tile wrap width (1-2048)",13,10
         db "  -m #          Viewing mode (1-6)",13,10
-        db "  -u #          Unit size in bits (8,16)",13,10
-        db "  -o            Sideways orientation",13,10
+        db "  -u #          Unit size in bits (1-32)",13,10
+        db "  -o #          Orientation (0-7)",13,10
         db "  -r            Open file as read-only",13,10
         db "  -v o,b        Load VRAM from",13,10
         db "                (file offset,tile base)",13,10
         db "  -t o,h,w,b,f  Load tile table from",13,10
         db "                (offset,height,width,bytes,flip)",13,10
-        db 10
+        db 13,10
         db "Examples:",13,10
         db "  tmv zelda.zst",13,10
         db "  tmv -g 2000 -u 16 zelda.zst -t 78000,2,2,2 zelda.smc",13,10
         db "  tmv -g 110000 -w 256 mario2.smc",13,10
         db "  tmv -g 127CE2 -w 32 -m 2 dkc.fig",13,10
         db "  tmv -t 20AAD6,4,4,2 -g 203836 -w 16 -u 16 -o dkc.fig dkc.zs9",13,10
-        db 10
+        db 13,10
         db "Compiled with NASM/YASM compiler and WDOSX.",13,10
-        db "Viewer written by Dwayne Robinson.",13,10
-        db 10
-        db "email:    FDwR@hotmail.com",13,10
-        db "homepage: http://pikensoft.com/",13,10
-        db "          http://members.tripod.com/FDwR/snes.htm",13,10
+        db "Viewer written by Dwayne Robinson, for curiosity's sake.",13,10
+        db 13,10
+        db "  email:    FDwR@hotmail.com",13,10
+        db "  homepage: http://pikensoft.com/",13,10
+        db "            http://members.tripod.com/FDwR/snes.htm",13,10
         db 0,"$"
 .FileOpenError:         db "Could not open the file. Check that it was spelled right.",0,"$"
 ;.FileShareError:       db "Could not open the file for editing. Attempting read-only mode.",0,"$"
 .FileReadError:         db "An error occurred trying to read file.",0,"$"
 .NoFilesGiven:          db "No file was given to view. Please specify a savestate, ROM, or other file.",0,"$"
 .UnknownParameter:      db "Unknown parameter in command line.",0,"$"
-.ZSNESSavestateID:      db "ZSNES Save State File"
+.ZSNESSavestateID:      db "ZSNES Save State File" ; File signature to compare against.
 .ZSNESSavestateID_Len:  equ $-.ZSNESSavestateID
-;.StatusBar_Relative:    db "relative"
-;.StatusBar_Absolute:    db "absolute"
-.PromptColorValue:      db "Color value",0
-.PromptGotoPosition:    db "Goto position",0
+.PromptColorValue:      db "Write new color value to file: #",0
+.PromptGotoPosition:    db "Goto position: # (0-filelastbyte)",0
+.PromptWrapWidth:       db "Wrap width: # (1-2048)",0
+.PromptUnitBitSize:     db "Unit bit size: # (1-32)",0
 .PromptOpenFilename:    db "Open filename",0
 %ifdef debug
 .ForwardPartial:        db 'forward partial  ",0,"$'
@@ -4018,11 +4542,12 @@ Text:
 %endif
 
 StatusBar:
-.Pos:   db "@12345678.9hr "
-.Wrap:  db "x123 "
-.Bits:  db "#12l "
-.Mask:  db "&1234 "
-.Shift: db ">>12",0
+.Pos:   db "g12345678.9hr "
+.Wrap:  db "w1234 "
+.Bits:  db "u12l "
+.Mask:  db "&12345678 "
+.Shift: db ">>12 "
+.Orientation: db "o#",0
 .PixelHeight equ GuiFont.GlyphPixelHeight
 .PixelWidth  equ Screen.DefaultWidth-5-5
 .PixelY equ Screen.DefaultHeight-.PixelHeight-5
@@ -4040,10 +4565,11 @@ section bss
 alignb 4
 File:
 .Handle:        resd 1          ;DOS handle for reading file
-.Length:        resd 1          ;what else, the file's length
+.Length:        resd 1          ;main file's length
 .BufferBase:    resd 1          ;file position first byte in buffer is from
 .Position:      resd 1
 .Buffer:        resb File.BufferByteSize
+.BufferPadding: resd 1          ;follow buffer with a single uint32 just to ensure misaligned reads are viable.
 .Atr_Direction  equ 1           ;indicates which direction was last taken, 0=backwards, 1=forwards
 .Atr_ReadOnly   equ 2           ;file is supposed to be opened in read only mode
 .Type:          resb 0          ;indicates savestate, ROM, or other

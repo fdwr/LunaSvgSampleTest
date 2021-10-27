@@ -1,0 +1,11 @@
+{
+  // Run FontCommandTool with this file.
+  // FontCommandTool @RebuildFontMetadata.json
+
+  FontFiles="c:\\windows\\fonts\\**\*.TT?"
+  ProcessFontSetMetadata{
+    BaseFilePath="c:\\windows\\fonts\\"
+    BaseServerPath="http://dwayner-test/Fonts/"
+    Output="fonts.json"
+  }
+}

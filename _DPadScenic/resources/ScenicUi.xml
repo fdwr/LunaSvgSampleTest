@@ -1,0 +1,370 @@
+<!--
+// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
+// ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+// THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
+// PARTICULAR PURPOSE.
+//
+// Copyright (c) Microsoft Corporation. All rights reserved
+-->
+
+<Application xmlns="http://schemas.microsoft.com/windows/2009/Scenic/Intent">
+
+  <Application.Commands>
+    <Command Name="QuickAccessToolbar" Comment="This is the Quick Access Toolbar" Symbol="CommandIdQuickAccessToolbar" Id="40000" />
+    <Command Name="FileMenu" Comment="The application menu anchor" Symbol="CommandIdFileMenu" Id="50000" />
+    <Command Name="MRUList" Comment="The Most Recently Used Menu" Symbol="CommandIdMRUList" Id="50010" >
+      <Command.LabelTitle>MRU List</Command.LabelTitle>
+    </Command>
+
+    <Command Name="TabHome" Symbol="CommandIdTabHome" Id="30000" LabelTitle="Home" />
+    <Command Name="GroupMain" Symbol="CommandIdGroupMain" Id="30001" LabelTitle="Main" />
+    <Command Name="GroupEdit" Symbol="CommandIdGroupEdit" Id="30002">
+      <Command.LabelTitle>Edit</Command.LabelTitle>
+      <Command.LargeImages>
+        <Image Source="Paste.bmp"/>
+      </Command.LargeImages>
+    </Command>
+    <Command Name="GroupParagraph" Symbol="CommandIdGroupParagraph" Id="30003" LabelTitle="Paragraph" />
+    <Command Name="GroupView" Symbol="CommandIdGroupView" Id="30004" LabelTitle="View" />
+    <Command Name="GroupFont" Symbol="CommandIdGroupFont" Id="30005" LabelTitle="Font" />
+    <Command Name="GroupSamples" Symbol="CommandIdGroupSamples" Id="30006" LabelTitle="Samples" />
+
+    <Command Name="Paste" Symbol="CommandIdPaste" Id="30013" LabelTitle="Paste">
+      <Command.TooltipDescription>Paste text from the clipboard.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="Paste.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="Cut" Symbol="CommandIdCut" Id="30014" LabelTitle="Cut">
+      <Command.TooltipDescription>Copy the selected text to the clipboard and delete.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="Cut.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="Copy" Symbol="CommandIdCopy" Id="30015" LabelTitle="Copy">
+      <Command.TooltipDescription>Copy the selected text to the clipboard.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="Copy.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="Delete" Symbol="CommandIdDelete" Id="30016" LabelTitle="Delete">
+      <Command.TooltipDescription>Delete the selected text.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="Delete.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="Font" Symbol="CommandIdFont" Id="30017" LabelTitle="Font" />
+
+    <Command Name="AlignLeft" Symbol="CommandIdAlignLeft" Id="30018" LabelTitle="Align leading">
+      <Command.TooltipDescription>Align text to leading edge.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignLeft.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="AlignHCenter" Symbol="CommandIdAlignHCenter" Id="30019" LabelTitle="Align horizontal center">
+      <Command.TooltipDescription>Align text to horizontal center.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignHCenter.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="AlignRight" Symbol="CommandIdAlignRight" Id="30020" LabelTitle="Align trailing">
+      <Command.TooltipDescription>Align text to trailing edge.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignRight.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="AlignTop" Symbol="CommandIdAlignTop" Id="30021" LabelTitle="Align near">
+      <Command.TooltipDescription>Align text to near edge of layout.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignTop.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="AlignVCenter" Symbol="CommandIdAlignVCenter" Id="30022" LabelTitle="Align vertical center">
+      <Command.TooltipDescription>Align text to vertical center.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignVCenter.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="AlignBottom" Symbol="CommandIdAlignBottom" Id="30023" LabelTitle="Align far">
+      <Command.TooltipDescription>Align text to far edge of layout.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="AlignBottom.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="LeftToRight" Symbol="CommandIdLeftToRight" Id="30024" LabelTitle="Left to right">
+      <Command.TooltipDescription>Text reading direction flows right-to-left (Latin, Thai, horizontal CJK...).</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="LeftToRight.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="RightToLeft" Symbol="CommandIdRightToLeft" Id="30025" LabelTitle="Right to left">
+      <Command.TooltipDescription>Text reading direction flows right-to-left (Arabic, Hebrew...).</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="RightToLeft.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="Wrap" Symbol="CommandIdWrap" Id="30026" LabelTitle="Wrap text">
+      <Command.TooltipDescription>Wrap text to layout edges.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="Wrap.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="Trim" Symbol="CommandIdTrim" Id="30027" LabelTitle="Trim text">
+      <Command.TooltipDescription>Trim text to layout edges.</Command.TooltipDescription>
+      <Command.SmallImages>
+        <Image Source="Trim.bmp"/>
+      </Command.SmallImages>
+    </Command>
+
+    <Command Name="ZoomIn" Symbol="CommandIdZoomIn" Id="30028" LabelTitle="Zoom in">
+      <Command.TooltipDescription>Increases document zoom.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="ZoomIn.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="ZoomOut" Symbol="CommandIdZoomOut" Id="30029" LabelTitle="Zoom out">
+      <Command.TooltipDescription>Decreases document zoom.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="ZoomOut.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="RotateCW" Symbol="CommandIdRotateCW" Id="30030" LabelTitle="Rotate CW">
+      <Command.TooltipDescription>Rotate view clockwise, right 90°.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="RotateCW.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="RotateACW" Symbol="CommandIdRotateACW" Id="30031" LabelTitle="Rotate ACW">
+      <Command.TooltipDescription>Rotate document view anticlockwise, left 90°</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="RotateACW.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="FlipHorizontal" Symbol="CommandIdFlipHorizontal" Id="30032" LabelTitle="Flip horizontal">
+      <Command.TooltipDescription>Flip document view horizontally.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="FlipHorizontal.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="FlipVertical" Symbol="CommandIdFlipVertical" Id="30033" LabelTitle="Flip vertical">
+      <Command.TooltipDescription>Flip document view vertically.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="FlipVertical.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="ResetView" Symbol="CommandIdResetView" Id="30034" LabelTitle="Reset view">
+      <Command.TooltipDescription>Reset the document view to default zoom and orientation.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="ResetView.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="RenderD2D" Symbol="CommandIdRenderD2D" Id="30035" LabelTitle="Render D2D">
+      <Command.TooltipDescription>Render document using D2D hardware render target.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="RenderD2D.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="RenderDW" Symbol="CommandIdRenderDW" Id="30036" LabelTitle="Render DirectWrite">
+      <Command.TooltipDescription>Render document using DirectWrite software render target.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="RenderDW.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="LoadSample" Symbol="CommandIdLoadSample" Id="30037" LabelTitle="Load sample">
+      <Command.TooltipDescription>Select a sample to load.</Command.TooltipDescription>
+      <Command.LargeImages>
+        <Image Source="LoadSample.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="LoadSample0" Symbol="CommandIdLoadSample0" Id="30040" LabelTitle="Introduction" />
+    <Command Name="LoadSample1" Symbol="CommandIdLoadSample1" Id="30041" LabelTitle="Multilingual" />
+    <Command Name="LoadSample2" Symbol="CommandIdLoadSample2" Id="30042" LabelTitle="Arabic" />
+    <Command Name="LoadSample3" Symbol="CommandIdLoadSample3" Id="30043" LabelTitle="Chinese" />
+
+    <Command Name="Exit" Comment="Exit command" Symbol="CommandIdExit" Id="31000" >
+      <Command.LabelTitle>Exit Button</Command.LabelTitle>
+      <Command.LargeImages>
+        <Image Source="ExitL.bmp"/>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="ContextMenu" Symbol="CommandIdContextMenu" Id="32000" />
+    <Command Name="ContextMenuOnly" Symbol="CommandIdContextMenuOnly" Id="32001" />
+
+  </Application.Commands>
+
+  <Application.Views>
+    <Ribbon>
+      <Ribbon.ApplicationMenu>
+        <ApplicationMenu CommandName="FileMenu">
+          <ApplicationMenu.RecentItems>
+            <RecentItems CommandName="MRUList" MaxCount="1" />
+          </ApplicationMenu.RecentItems>
+          <MenuGroup Class="MajorItems">
+            <Button CommandName="Exit" />
+          </MenuGroup>
+        </ApplicationMenu>
+      </Ribbon.ApplicationMenu>
+
+      <Ribbon.QuickAccessToolbar>
+        <QuickAccessToolbar CommandName="QuickAccessToolbar" />
+      </Ribbon.QuickAccessToolbar>
+
+      <Ribbon.Tabs>
+        <Tab CommandName="TabHome">
+          <Tab.ScalingPolicy>
+            <ScalingPolicy>
+              <ScalingPolicy.IdealSizes>
+                <Scale Group="GroupEdit" Size="Large"/>
+                <Scale Group="GroupParagraph" Size="Large"/>
+              </ScalingPolicy.IdealSizes>
+              <Scale Group ="GroupEdit" Size="Medium"/>
+              <Scale Group ="GroupView" Size="Popup"/>
+              <Scale Group ="GroupParagraph" Size="Popup"/>
+              <Scale Group ="GroupEdit" Size="Popup"/>
+            </ScalingPolicy>
+          </Tab.ScalingPolicy>
+          
+          <Group CommandName="GroupEdit" SizeDefinition ="BigButtonsAndSmallButtonsOrInputs">
+            <ControlGroup>
+              <Button CommandName="Paste"/>
+            </ControlGroup>
+            <ControlGroup>
+              <Button CommandName="Cut"/>
+              <Button CommandName="Copy"/>
+              <Button CommandName="Delete"/>
+            </ControlGroup>
+          </Group>
+
+          <Group CommandName="GroupFont">
+            <FontControl
+              CommandName = "Font"
+              IsStrikethroughButtonVisible = "true"
+              IsUnderlineButtonVisible = "true"
+              FontType = "FontWithColor"
+              ShowVerticalFonts = "false"
+            />
+          </Group>
+
+          <Group CommandName="GroupParagraph" SizeDefinition="ButtonGroups">
+            <ControlGroup>
+              <ControlGroup>
+                <ToggleButton CommandName="AlignLeft"/>
+                <ToggleButton CommandName="AlignHCenter"/>
+                <ToggleButton CommandName="AlignRight"/>
+              </ControlGroup>
+              <ControlGroup/>
+              <ControlGroup>
+                <ToggleButton CommandName="LeftToRight"/>
+                <ToggleButton CommandName="RightToLeft"/>
+              </ControlGroup>
+            </ControlGroup>
+            <ControlGroup>
+              <ControlGroup>
+                <ToggleButton CommandName="AlignTop" />
+                <ToggleButton CommandName="AlignVCenter" />
+                <ToggleButton CommandName="AlignBottom" />
+              </ControlGroup>
+              <ControlGroup/>
+              <ControlGroup>
+                <ToggleButton CommandName="Wrap"/>
+                <ToggleButton CommandName="Trim"/>
+              </ControlGroup>
+            </ControlGroup>
+          </Group>
+
+          <Group CommandName="GroupView" SizeDefinition="ButtonGroups">
+            <ControlGroup>
+              <ControlGroup>
+                <Button CommandName="ZoomIn" />
+                <Button CommandName="ZoomOut" />
+                <Button CommandName="ResetView" />
+              </ControlGroup>
+              <ControlGroup>
+                <ToggleButton CommandName="RenderD2D" />
+                <ToggleButton CommandName="RenderDW" />
+              </ControlGroup>
+            </ControlGroup>
+            <ControlGroup>
+              <ControlGroup>
+                <Button CommandName="RotateCW" />
+                <Button CommandName="RotateACW" />
+                <Button CommandName="FlipHorizontal" />
+                <Button CommandName="FlipVertical" />
+              </ControlGroup>
+            </ControlGroup>
+          </Group>
+
+          <Group CommandName="GroupSamples" SizeDefinition="OneButton">
+            <DropDownButton CommandName="LoadSample">
+              <Button CommandName="LoadSample0"/>
+              <Button CommandName="LoadSample1"/>
+              <Button CommandName="LoadSample2"/>
+              <Button CommandName="LoadSample3"/>
+            </DropDownButton>
+          </Group>
+
+        </Tab>
+      </Ribbon.Tabs>    
+    </Ribbon>
+
+    <ContextPopup>
+      <ContextPopup.ContextMenus>
+        <ContextMenu Name="ContextMenu">
+          <MenuGroup Class="StandardItems">
+            <Button CommandName="Cut"/>
+            <Button CommandName="Copy"/>
+            <Button CommandName="Paste"/>
+            <Button CommandName="Delete"/>
+          </MenuGroup>
+          <MenuGroup Class="StandardItems">
+            <ToggleButton CommandName="AlignLeft"/>
+            <ToggleButton CommandName="AlignHCenter"/>
+            <ToggleButton CommandName="AlignRight"/>
+          </MenuGroup>
+          <MenuGroup Class="StandardItems">
+            <ToggleButton CommandName="AlignTop"/>
+            <ToggleButton CommandName="AlignVCenter"/>
+            <ToggleButton CommandName="AlignBottom"/>
+          </MenuGroup>
+          <MenuGroup Class="StandardItems">
+            <ToggleButton CommandName="Wrap"/>
+            <ToggleButton CommandName="Trim"/>
+          </MenuGroup>
+          <MenuGroup Class="StandardItems">
+            <ToggleButton CommandName="LeftToRight"/>
+            <ToggleButton CommandName="RightToLeft"/>
+          </MenuGroup>
+        </ContextMenu>
+      </ContextPopup.ContextMenus>
+      <ContextPopup.ContextMaps>
+        <ContextMap CommandName="ContextMenuOnly" ContextMenu="ContextMenu" />
+      </ContextPopup.ContextMaps>
+    </ContextPopup>
+
+  </Application.Views>
+
+</Application>

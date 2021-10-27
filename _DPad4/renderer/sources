@@ -1,0 +1,24 @@
+
+#!include ..\sources.inc
+
+TARGETNAME=renderer
+TARGETTYPE=LIBRARY
+TEST_CODE=1
+
+#WARNING_LEVEL=W3
+#MSC_WARNING_LEVEL=$(MSC_WARNING_LEVEL:W4=W3)
+
+SOURCES=\
+    InlineImage.cpp \
+    RenderTarget.cpp \
+
+INCLUDES=\
+    $(SDK_INC_PATH); \
+    $(WINDOWS_INC_PATH); \
+    $(INCLUDES); \
+
+# Allow runtime type identification.
+USE_RTTI=1
+
+PRECOMPILED_INCLUDE = precomp.h
+PRECOMPILED_CXX = 1

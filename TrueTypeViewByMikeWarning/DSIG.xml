@@ -1,0 +1,14 @@
+<table description="Digital signature table">
+    <entry name="ulVersion" type="ULONG" semantic="version"/>
+    <entry name="usNumSigs" type="USHORT"/>
+    <entry name="usFlag" type="USHORT" semantic="bitfield">
+        <bitfield bit="0" description="Cannot be resigned"/>
+    </entry>
+    <subtable repeat="usNumSigs">
+        <entry name="ulFormat" type="ULONG" semantic="enum">
+            <enum value="1" description="PKCS#7"/>
+        </entry>       
+        <entry name="ulLength" type="ULONG"/>
+        <entry name="ulOffset" type="ULONG"/>
+    </subtable>
+</table>

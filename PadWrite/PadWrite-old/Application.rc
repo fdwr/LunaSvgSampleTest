@@ -1,0 +1,149 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+1                       ICON                    "DWriteIcon.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// IMAGE
+//
+
+INLINEOBJECTS           IMAGE                   "InlineObjects.png"
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+1 MENU 
+BEGIN
+    POPUP "Edit"
+    BEGIN
+        MENUITEM "Copy text",                   CommandIdCopy
+        MENUITEM "Paste text",                  CommandIdPaste
+    END
+    POPUP "View"
+    BEGIN
+        MENUITEM "Zoom in",                     CommandIdZoomIn
+        MENUITEM "Zoom out",                    CommandIdZoomOut
+        MENUITEM "Rotate",                      CommandIdRotateCW
+        MENUITEM "Reset view",                  CommandIdResetView
+        MENUITEM SEPARATOR
+        MENUITEM "Render to DIB",               CommandIdRenderDW
+        MENUITEM "Render to D2D surface",       CommandIdRenderD2D
+    END
+    POPUP "Font"
+    BEGIN
+        MENUITEM "Arial",                       CommandIdFontArial
+        MENUITEM "Segoe UI",                    CommandIdFontSegoeUI
+        MENUITEM "Gabriola",                    CommandIdFontGabriola
+        MENUITEM SEPARATOR
+        MENUITEM "Light weight",                CommandIdWeightLight
+        MENUITEM "Regular weight",              CommandIdWeightRegular
+        MENUITEM "Heavy weight",                CommandIdWeightHeavy
+        MENUITEM SEPARATOR
+        MENUITEM "Narrow stretch",              CommandIdStretchNarrow
+        MENUITEM "Regular stretch",             CommandIdStretchRegular
+        MENUITEM "Wide stretch",                CommandIdStretchWide
+        MENUITEM SEPARATOR
+        MENUITEM "Italic slant",                CommandIdSlantItalic
+        MENUITEM "Regular slant",               CommandIdSlantRegular
+        MENUITEM SEPARATOR
+        MENUITEM "8 em",                        CommandIdFontSize8
+        MENUITEM "10 em",                       CommandIdFontSize10
+        MENUITEM "12 em",                       CommandIdFontSize12
+        MENUITEM "14 em",                       CommandIdFontSize14
+        MENUITEM "16 em",                       CommandIdFontSize16
+        MENUITEM "18 em",                       CommandIdFontSize18
+        MENUITEM "20 em",                       CommandIdFontSize20
+        MENUITEM "30 em",                       CommandIdFontSize30
+        MENUITEM "60 em",                       CommandIdFontSize60
+    END
+    POPUP "Format"
+    BEGIN
+        MENUITEM "Underline",                   CommandIdUnderline
+        MENUITEM "Strikethrough",               CommandIdStrikethrough
+        MENUITEM SEPARATOR
+        MENUITEM "Leading alignment",           CommandIdAlignLeading
+        MENUITEM "Centered alignment",          CommandIdAlignHCenter
+        MENUITEM "Trailing alignment",          CommandIdAlignTrailing
+        MENUITEM SEPARATOR
+        MENUITEM "Left-to-right",               CommandIdLeftToRight
+        MENUITEM "Right-to-left",               CommandIdRightToLeft
+        MENUITEM SEPARATOR
+        MENUITEM "Wrap",                        CommandIdWrap CHECKED
+        MENUITEM "Trim",                        CommandIdTrim
+        MENUITEM SEPARATOR
+        MENUITEM "Red color",                   CommandIdColorRed
+        MENUITEM "Green color",                 CommandIdColorGreen
+        MENUITEM "Blue color",                  CommandIdColorBlue
+        MENUITEM "Black color",                 CommandIdColorBlack
+    END
+END
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
