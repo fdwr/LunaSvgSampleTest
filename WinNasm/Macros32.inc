@@ -68,11 +68,11 @@
         %assign %$c 0
         %rep ((%0-1) / 3)
             cmp %1, %3
-            j%2 near %$i%$c
+            j%2 near %$i%$c             ;at least one matched, and so jump to true condition.
             %rotate 3
         %endrep
         cmp %1, %3
-        j%-2 near %$i
+        j%-2 near %$i                   ;last condition failed, and so jumpd to false condition.
     %$i%$c:
     %endif
 %endmacro
@@ -81,13 +81,14 @@
     %push if
     %if %0 = 3
         cmp %1, %3
-        j%-2 near %$i
+        j%-2 near %$i                   ;jump to negative condition (%- means invert the condition code)
     %else
         %rep (%0 / 3)
             cmp %1, %3
-            j%-2 near %$i
+            j%-2 near %$i               ;jump to negative condition (%- means invert the condition code)
             %rotate 3
         %endrep
+        ;else fall through to true condition
     %endif
 %endmacro
 

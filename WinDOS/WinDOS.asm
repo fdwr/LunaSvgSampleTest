@@ -15,7 +15,6 @@
 
 ;%define debug
 
-
 %ifdef DosVer
 %elifdef WinVer
 %else
@@ -150,10 +149,28 @@ section data
 .hpal:              dd 0                    ;palette handle
 .hdib:              dd 0                    ;DIB section handle
 .threadId:          dd 0                    ;thread identifier
-;.scanCode:          dd 0                    ;hardware scancode
-;.virtualKeyCode:    dd 0                    ;Windows virtual code key
-;.keyChar:           dd 0                    ;Unicode character
+;.scanCode:         dd 0                    ;hardware scancode
+;.virtualKeyCode:   dd 0                    ;Windows virtual code key
+;.keyChar:          dd 0                    ;Unicode character
 .biosKeyCode:       dd 0                    ;upper byte is scan code, lower is character
+;   AH = 00 or 01
+.modifierKeys:      dd 0
+;   AH = 02
+;
+;   on return:
+;   AL = BIOS keyboard flags (located in BIOS Data Area 40:17)
+;
+;   |7|6|5|4|3|2|1|0|  AL or BIOS Data Area 40:17
+;    | | | | | | | `---- right shift key depressed
+;    | | | | | | `----- left shift key depressed
+;    | | | | | `------ CTRL key depressed
+;    | | | | `------- ALT key depressed
+;    | | | `-------- scroll-lock is active
+;    | | `--------- num-lock is active
+;    | `---------- caps-lock is active
+;    `----------- insert is active
+;
+;   https://stanislavs.org/helppc/int_16-2.html
 .mouseX:            dd 0
 .mouseY:            dd 0
 .mouseButtons:      dd 0
@@ -282,7 +299,7 @@ WinDosInitialize:
     mov ecx,[WinDos.rect+RECT.bottom]
     sub eax,[WinDos.rect+RECT.left]
     sub ecx,[WinDos.rect+RECT.top]
-    api CreateWindowEx, WS_EX_ACCEPTFILES|WS_EX_CONTROLPARENT, WinDos.windowClassName, WinDos.programName, .WindowStyle, 0,0, eax,ecx, NULL, NULL, WinDos.baseAddress, NULL
+    api CreateWindowEx, WS_EX_ACCEPTFILES|WS_EX_CONTROLPARENT, WinDos.windowClassName, WinDos.programName, .WindowStyle, CW_USEDEFAULT,CW_USEDEFAULT, eax,ecx, NULL, NULL, WinDos.baseAddress, NULL
     debugwrite "window handle=%X", eax
     stringz .errorMessageCreateWindow,"Failed to create window class (CreateWindow)."
     mov esi,.errorMessageCreateWindow
@@ -574,16 +591,24 @@ WinDosMessageProc:
 
 .KeyDown:
     xor ebx,ebx                         ;no key modifiers by default
-    api GetKeyState, VK_SHIFT
-    shl al,1                            ;key is down if 80h is set
-    rcl ebx,1                           ;set MOD_SHIFT
+    api GetKeyState, VK_MENU
+    shl al,1                            ;bit 7 (0x80) has the keypress state (quite oddly, not bit 0)
+    rcl ebx,1                           ;set MOD_ALT
     api GetKeyState, VK_CONTROL
     shl al,1
     rcl ebx,1                           ;set MOD_CONTROL
-    api GetKeyState, VK_MENU
-    shl al,1
-    rcl ebx,1                           ;set MOD_ALT
-    
+    api GetKeyState, VK_SHIFT
+    mov ah,al
+    shl al,1                            ;key is down if 80h is set
+    rcl ebx,1                           ;set MOD_SHIFT
+    shl ah,1                            ;replicate shift again - we don't care about L vs R key
+    rcl ebx,1
+    ;   |7|6|5|4|3|2|1|0|  AL or BIOS Data Area 40:17
+    ;    | | | | | | | `---- right shift key depressed
+    ;    | | | | | | `----- left shift key depressed
+    ;    | | | | | `------ CTRL key depressed
+    ;    | | | | `------- ALT key depressed
+    mov [WinDos.modifierKeys],ebx
 section data
     ; Just a subset of extended keys (the ones I actually care about).
     .KeyCodeEntry_size equ 4
@@ -613,12 +638,18 @@ section data
     KeyCodeEntry VK_RIGHT,0,04D00h
     KeyCodeEntry VK_HOME,0,04700h
     KeyCodeEntry VK_END,0,04F00h
-    KeyCodeEntry VK_NEXT,MOD_CONTROL,07600h
-    KeyCodeEntry VK_PRIOR,MOD_CONTROL,08400h
-    KeyCodeEntry VK_LEFT,MOD_CONTROL,07300h
-    KeyCodeEntry VK_RIGHT,MOD_CONTROL,07400h
-    KeyCodeEntry VK_HOME,MOD_CONTROL,07700h
-    KeyCodeEntry VK_END,MOD_CONTROL,07500h
+    KeyCodeEntry VK_NEXT,100b,07600h    ;100b == CONTROL
+    KeyCodeEntry VK_PRIOR,100b,08400h   ;100b == CONTROL
+    KeyCodeEntry VK_LEFT,100b,07300h    ;100b == CONTROL
+    KeyCodeEntry VK_RIGHT,100b,07400h   ;100b == CONTROL
+    KeyCodeEntry VK_HOME,100b,07700h    ;100b == CONTROL
+    KeyCodeEntry VK_END,100b,07500h     ;100b == CONTROL
+    KeyCodeEntry VK_NEXT,111b,07600h    ;111b == CONTROL|SHIFT
+    KeyCodeEntry VK_PRIOR,111b,08400h   ;111b == CONTROL|SHIFT
+    KeyCodeEntry VK_LEFT,111b,07300h    ;111b == CONTROL|SHIFT
+    KeyCodeEntry VK_RIGHT,111b,07400h   ;111b == CONTROL|SHIFT
+    KeyCodeEntry VK_HOME,111b,07700h    ;111b == CONTROL|SHIFT
+    KeyCodeEntry VK_END,111b,07500h     ;111b == CONTROL|SHIFT
     KeyCodeEntry VK_INSERT,0,05200h
     KeyCodeEntry VK_DELETE,0,05300h
     KeyCodeEntry VK_NEXT,0,05100h
@@ -746,6 +777,8 @@ WinDosInt16h: ;BIOS
     je .00
     cmp ah,1                    ;function to check key buffer status
     je .01
+    cmp ah,2                    ;function to check key buffer status
+    je .02
     ;Unsupported BIOS function
     mov dword [esp+WinDosStackReg.eax],0x8000; ;return invalid function in ah
 .ReturnFailure:
@@ -767,9 +800,13 @@ WinDosInt16h: ;BIOS
     jmp short .00
 .01: ;check key buffer status
     mov eax,[WinDos.biosKeyCode]
-    cmp eax,0
+    cmp eax,0                           ;set zf flag https://stanislavs.org/helppc/int_16-1.html
     mov [esp+WinDosStackReg.eax],eax
     je .ReturnFailure
+    jmp short .ReturnSuccess
+.02: ;read keyboard flags
+    mov eax,[WinDos.modifierKeys]
+    mov [esp+WinDosStackReg.eax],al
     jmp short .ReturnSuccess
 
 
