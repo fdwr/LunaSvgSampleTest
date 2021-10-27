@@ -1,5 +1,5 @@
 ========
-  Tilemap Viewer .191 (c)2021 PikenSo�t
+  Tilemap Viewer .191 (c)1998-2021 PikenSoft
   File pattern viewer (speedy and tiny)
   By Dwayne Robinson, using Yasm/Nasm/WDOSX/Alink
   http://pikensoft.com/
@@ -265,7 +265,6 @@ Keys
     o           Change orientation normal/flipped horizontal/vertical/sideways...
 
   Viewing modes:
-    m M         Cycle through modes
     1           Colored blocks
     2           Actual pixels
     3           Hex numbers
@@ -286,8 +285,6 @@ Keys
     b           Relative or absolute (use file base or not)
     B           Set base to current position
     h           Hex or decimal offset
-    c           Change value of unit at window base (top-left)
-    Del         Sets units to value last entered (with 'c')
 
     F1          Key help
     Esc         Go do better things
@@ -367,7 +364,8 @@ Past:
             ZSNES savestates.
 2001-01-29  Added bitmasking and right shifting to select only specific bits
             of the units.
-2016-01-20  Ported to Windows.
+2016-01-20  Ported to Windows (simply wrap in a window, no standard Windows UI
+            or even mouse support).
 2021-10-23  Fixed 32-bit bitmasking and narrow numeric display width.
             Increased max wrap width to 2048. Fixed shifted command line
             parameters. Added help parameters "-h" and "-?".  Extended
@@ -377,8 +375,12 @@ Past:
             Added manual wrap width entry via 'w' key.
             Added 1:1 pixels mode.
             Added endianness key toggle with 'e'.
+            Removed 'Del' key from modifying top/left element in file, as it
+            was dangerous (write occurs immediately without a save step) and
+            was incomplete anyway (only worked correctly for uint8/uint16).
 
 Future: (hopes, no promises)
+- Unify this with SpriteView and BgMapper to avoid duplicate functionality
 - Edit the file with mouse
 - Export the data viewed in the window to a separate file
 - Fill a selected range with a single value or pattern

@@ -69,6 +69,7 @@ TileFormat:
 .TileTable      equ 5
 ;.BrrSample     equ 6
 .WaveSample     equ 6
+.TotalUserAccessible equ 7
 .FirstBplMode   equ 7
 .Snes2          equ 7
 .Snes4          equ 8
@@ -360,12 +361,6 @@ CheckStartOptions:
     mov [StartOptions.Goto],esi
     or dword [StartOptions.Flags],StartOptions.Flags_Goto
     jmp .Next
-;.UnitAdjust:
-;    call .GetNext
-;    jbe near .End
-;    call .GetNumber
-;    mov [ViewWindow.UnitAdjust],eax
-;    jmp .Next
 .WrapWidth:
     call .GetNext
     jbe near .End
@@ -452,7 +447,7 @@ CheckStartOptions:
     jbe .TileByteSizeOk
     mov al,2
   .TileByteSizeOk:
-    mov [TileTable.Bytes],al
+    mov [TileTable.BytesPerElement],al
     call .GetNumber
     jz near .Next
     or byte [TileTable.Options],TileTable.Flipped
@@ -1058,12 +1053,6 @@ ViewWindowScroll:
     mov eax,[FileTiles.SrcWrap]
     inc eax
     jmp .CheckWidth
-;.DecAdjust:
-;    dec dword [ViewWindow.UnitAdjust]
-;    jmp .SetFullChange
-;.IncAdjust:
-;    inc dword [ViewWindow.UnitAdjust]
-;    jmp .SetFullChange
 .HalfWrap:
     mov eax,[FileTiles.SrcWrap]
     shr eax,1
@@ -1218,13 +1207,21 @@ ViewWindowScroll:
     or byte [ViewWindow.Options],ViewWindow.UseOffsetBase   ;set to relative
     jmp .SetStatBarChange
 
+.PreviousMode:
+    int3;
+    mov al,[FileTiles.Format]
+    sub al,1                        ;set next mode (use sub instead of broken dec which doesn't set the carry flag)
+    jnc .SetViewMode
+    mov al,TileFormat.TotalUserAccessible-1
+    jmp short .SetViewMode
 .NextMode:
     mov al,[FileTiles.Format]
     inc al                          ;set next mode
-    cmp al,TileFormat.Total
+    cmp al,TileFormat.TotalUserAccessible
     jb .SetViewMode
     xor al,al
 .SetViewMode:
+    ;(al=mode)
     mov edi,FileTiles
     call SetTileFormat              ;set up current mode
     jmp .SetFullChange
@@ -1341,12 +1338,16 @@ db "e"
 db "h"
 db "b"
 db "B"
+%if 0 ;disable until I can correct the cycling
 db "m"
 db "M"
+%endif
 db "g"
 db "f"
 db "w"
+%if Personal
 db "c"
+%endif
 db "o"
 db "p"
 .KeysListNumbersOffset  equ $-.KeysList
@@ -1363,7 +1364,9 @@ db 118,0,0,0         ;Ctrl+PgDn +32k
 db 132,0,0,0         ;Ctrl+PgUp -32k
 db 119,0,0,0         ;Ctrl+Home
 db 117,0,0,0         ;Ctrl+End
+%if Personal
 db 83,0,0,0          ;Delete
+%endif
 db 59,0,0,0          ;Home
 .KeysListExtendedKeyCount equ ($-.KeysList)/4-.KeysListNormalKeyCount
 
@@ -1384,12 +1387,16 @@ dd .ToggleEndianness;'e' toggle between increasing/decreasing endianness
 dd .ToggleHexDec    ;'h' toggle between decimal and hex
 dd .ToggleUseBase   ;'b' use or do not use offset base
 dd .SetPosToBase    ;'B' set offset base to current file position
-dd .NextMode        ;'m'
-dd .NextMode        ;'M'
+%if 0 ;disable until I can correct the cycling
+dd .NextMode        ;'m' - disable until I can correct the cycling
+dd .PreviousMode    ;'M'
+%endif
 dd .Goto            ;'g' goto position
 dd .FindBytes       ;'f' find data
 dd .AskWrapWidth    ;'w' set wrap width
+%if Personal
 dd .SetColorValue   ;'c' set color data value
+%endif
 dd .NextOrientation ;'o' normal or sideways
 dd .NextPalette     ;'p'
 dd .SetViewingMode  ;'1'
@@ -1412,7 +1419,9 @@ dd .BankForward     ;Ctrl+PgDn
 dd .BankBackward    ;Ctrl+PgUp +-32k
 dd .ScrollFarHome   ;Ctrl+Home
 dd .ScrollFarEnd    ;Ctrl+End
+%if Personal
 dd .WriteData       ;Delete  change unit to current "color"
+%endif
 dd .Help            ;F1      help!
 
 .ScrollKeys:        ;See KeyScanFor.KeyListStruct
@@ -1617,7 +1626,7 @@ align 4
 .Change:            db -1
 section code
 
-;(esi=control string ptr) (esi=ptr to new position)
+;(esi=control string ptr, edi=current string pointer, ecx=relative row) (esi=ptr to new position)
 ;Returns pointer within control string to specified row or label.
 ControlStringSeekRow:
 ;(esi, ecx=new row)
@@ -1625,17 +1634,21 @@ ControlStringSeekRow:
 ;(esi, edi=previous ptr, ecx=rows from current row)
 .Relative:
     dec ecx
-    ;jc .End                 ;end if rows was zero
-    js .FindBackwards       ;work backwards
+    jc .FoundForwardMatch       ;zero rows
+    js .FindBackwards           ;scan backwards for negative numbers
 .FindForwards:
     mov esi,edi
 .FindForNext:
     mov al,[edi]
     inc edi
     test al,al
-    jz .EndForFind
+    jz .EndForFind              ;end of string
     cmp al,SccCr
-    jne .FindForNext
+    jne .FindForNext            ;not carriage return, and so continue
+    cmp byte [edi],SccLf
+    jne .FoundForwardMatch      ;no line feed after carriage return
+    inc edi                     ;skip line feed
+.FoundForwardMatch:
     mov esi,edi
     dec ecx
     jns .FindForNext
@@ -1644,24 +1657,28 @@ ControlStringSeekRow:
 .EndForFind:
     stc
     ret
-.FindBackwards:;.FindBackNext:
+.FindBackwards:
+.FindBackNext:
     cmp edi,esi
     jbe .EndBackFind
     dec edi
-    cmp byte [edi],SccCr
-    jne .FindBackwards
+    mov al,[edi]
+    cmp al,SccLf
+    je .FindBackNext            ;skip all line feeds
+    cmp al,SccCr
+    jne .FindBackNext           ;continue until finding a CR or front of string
     inc ecx
-    js .FindBackwards
+    js .FindBackNext            ;still negative, so continue
+    cmp byte [edi+1],SccLf
+    jne .FoundBackwardMatch     ;no line feed after carriage return
+    inc edi                     ;skip line feed
+.FoundBackwardMatch:
     lea esi,[edi+1]
     clc
     ret
 .EndBackFind:
     cmp ecx,-1
     ret
-;(esi, ecx=four character label)
-;.Label:
-;.End:
-;    ret
 
 ;------------------------------
 %if 0
@@ -3039,7 +3056,7 @@ BlitTile:
     shl edx,3                   ;*8
     push dword [TileTable.Size] ;save rows/cols
     push edx                    ;save increment to next destination row
-    imul dword [TileTable.Inc]  ;get eax * size_per_tile_table
+    imul dword [TileTable.BytesPerTileEntry]  ;get eax * size_per_tile_table_element
     push edi                    ;save destination
     and eax,32767               ;wrap within 32k
     lea esi,[eax+TileTable]     ;set source
@@ -3329,7 +3346,7 @@ SetTileFormat:
     mov [edi+BlitTileStruct.Size],cx  ;set both height and width
     imul ah                     ;rows * cols (upper two bytes are zero)
     shl eax,1                   ;*2 since each cell is a word
-    mov [TileTable.Inc],eax     ;save increment between tile tables
+    mov [TileTable.BytesPerTileEntry],eax ;save increment between tile tables
     ret
 
 %if 0
@@ -3458,6 +3475,7 @@ SetViewingMode:
 
 ;------------------------------
 ;(ViewWindow.WriteDataValue, ViewWindow.FilePosition, FileTiles.UnitBitSize)
+;Only works with 8-bit and 16-bit unit sizes. Does not respect endianness.
 SetViewWindowUnit:
     mov ax,4200h                    ;function to set file position
     mov edx,[ViewWindow.FilePosition]
@@ -4368,10 +4386,10 @@ alignb 4
 TileTable:          resb 32768
 section data
 .Size:
-.Height:            db 2
-.Width:             db 2
-.Bytes:             db 2,0
-.Inc:               dd 0        ;byte size of each tile group
+.Height:            db 1
+.Width:             db 1
+.BytesPerElement:   db 2,0
+.BytesPerTileEntry: dd 0        ;byte size of each tile group
 
 section bss
 alignb 4
@@ -4454,7 +4472,7 @@ Text:
         db SccCyan,"  Ctrl",SccWhite,"+",SccCyan,"Shift",SccWhite,"+(",SccCyan,27,32,26,SccWhite,")  Step single bit",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"PgUp PgDn",SccWhite,")  Jump 32k (one low ROM bank)",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"Home End",SccWhite,")   Jump to beginning or end",SccCr
-        db SccCyan,"  g      ",SccWhite,"           Goto position (Hex address or bg#)",SccCr
+        db SccCyan,"  g      ",SccWhite,"           Goto file position or bg#)",SccCr
         db SccCr
         db SccGreen,"Changing window wrap:",SccCr
         db SccCyan,"  [ ]    ",SccWhite,"Decrease/Increase width by one",SccCr
@@ -4463,15 +4481,16 @@ Text:
         db SccCyan,"  o      ",SccWhite,"Orientation right-down/down-right/...",SccCr
         db SccCr
         db SccGreen,"Changing unit:",SccCr
-        db SccCyan,"  u      ",SccWhite,"Set unit size (1-32 bits)",SccCr
+        db SccCyan,"  u      ",SccWhite,"Set unit size (1-32 bits) e.g. '4-'",SccCr
         db SccCyan,"  U      ",SccWhite,"Next unit size",SccCr
-        db SccCyan,"  e      ",SccWhite,"Toggle endianness (increasing LE/decreasing BE)",SccCr
+        db SccCyan,"  e      ",SccWhite,"Toggle endianness (+LE/-BE)",SccCr
         db SccCyan,"  - +    ",SccWhite,"Decrease/Increase shift",SccCr
         db SccCyan,"  / *    ",SccWhite,"Decrease/Increase bitmask",SccCr
         db SccCr
         db SccGreen,"Changing display format:",SccCr
-        db SccCyan,"  m      ",SccWhite,"Toggle with other mode",SccCr
-        db SccCyan,"  M      ",SccWhite,"Cycle through modes",SccCr
+        %if 0 ;disable until I can correct the cycling
+        db SccCyan,"  m/M    ",SccWhite,"Cycle through modes",SccCr
+        %endif
         db SccCyan,"  1      ",SccWhite,"Colored blocks",SccCr
         db SccCyan,"  2      ",SccWhite,"Pixels",SccCr
         db SccCyan,"  3      ",SccWhite,"Hex numbers",SccCr
@@ -4484,8 +4503,8 @@ Text:
         db SccCyan,"  h      ",SccWhite,"Offset radix hex/dec",SccCr
         db SccCyan,"  b      ",SccWhite,"Base offset on/off",SccCr
         db SccCyan,"  B      ",SccWhite,"Set offset base to current position",SccCr
-        db SccCyan,"  c      ",SccWhite,"Write color of first element to file",SccCr
-        db SccCyan,"  Del    ",SccWhite,"Change another unit to same color value",SccCr
+        ;db SccCyan,"  c      ",SccWhite,"Write color of first element to file",SccCr
+        ;db SccCyan,"  Del    ",SccWhite,"Change another unit to same color value",SccCr
         db SccCyan,"  F1     ",SccWhite,"See this help",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+",SccCyan,"o ",SccWhite,"Open file",SccCr
         db SccCyan,"  Esc    ",SccWhite,"Go do better things",SccCr
@@ -4494,7 +4513,7 @@ Text:
 .Info:
         db "Tilemap Viewer Usage:",13,10
         db 13,10
-        db "Usage:    tmv [-options] mainfilename.ext [[-moreoptions] filename]...",13,10
+        db "tmv [-options] mainfilename.ext [[-moreoptions] filename]...",13,10
         db 13,10
         db "Options:",13,10
         db "  -g #          Goto relative position (in hex)",13,10
@@ -4518,9 +4537,9 @@ Text:
         db "Compiled with NASM/YASM compiler and WDOSX.",13,10
         db "Viewer written by Dwayne Robinson, for curiosity's sake.",13,10
         db 13,10
-        db "  email:    FDwR@hotmail.com",13,10
-        db "  homepage: http://pikensoft.com/",13,10
-        db "            http://members.tripod.com/FDwR/snes.htm",13,10
+        db "email:    FDwR@hotmail.com",13,10
+        db "homepage: http://pikensoft.com/",13,10
+        db "          http://members.tripod.com/FDwR/snes.htm",13,10
         db 0,"$"
 .FileOpenError:         db "Could not open the file. Check that it was spelled right.",0,"$"
 ;.FileShareError:       db "Could not open the file for editing. Attempting read-only mode.",0,"$"
