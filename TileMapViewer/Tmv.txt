@@ -129,7 +129,7 @@ System
 ========
 Features
 ========
-- Byte/Word unit size
+- Variable unit size
 - Variable tile wrap
 - Flexible scrolling
 - Hex/Dec offset
@@ -142,16 +142,18 @@ Features
 - Spc sample view
 - Other modes
 
-Byte/Word unit size
+Variable unit size
 -------------------
-  Tilemaps can use either bytes or words as their grid units, so you can
-  toggle between the two. For example, "Mario World" and "Mario All-Stars" use
-  bytes, while "Zelda:LTTP" and "Metroid 3" use words.
+  Tilemaps can be uint8/unint16 or any other size you want from 1-32 bits,
+  even crazy sizes like 3-bit or 13-bit. 24-bit is not uncommon, and I've
+  encountered 12-bit too. For example, "Mario World" and "Mario All-Stars"
+  use uint8 while "Zelda:LTTP" and "Metroid 3" use uint16. Many bitmaps use
+  RGB 24-bit, and some tables use 12-bit to pack more space.
 
 Variable tile wrap
 ------------------
   Since tilemaps can come in any size width, it allows any variable wrap,
-  1-512 tiles. Common wraps include multiples of two (16,32,64) so there are
+  1-2048 tiles. Common wraps include multiples of two (16,32,64) so there are
   shortcut keys for doubling and halving the wrap. "Mario World" uses multiple
   sections each 16 tiles wide, while "Zelda:LTTP" uses a large 64 tile wide
   grid. Levels in "Metroid 3" and "Cybernator" (by Konami) do not have a fixed
@@ -190,7 +192,8 @@ Relative/Absolute offset
 
 Colored Blocks
 --------------
-  Hundreds of little colored blocks to aid pattern recognization.
+  Hundreds of little colored blocks to aid pattern recognization. You can also
+  display them as pure pixels.
 
 Numeric display
 ---------------
@@ -233,7 +236,7 @@ Spc Sample View
 Other modes
 -----------
   By coincidence, TileView can display mode 7 graphics, fx chip graphics, and
-  even small 256-color bitmaps less than 512 pixels wide (of course you might
+  even small 256-color bitmaps less than 2048 pixels wide (of course you might
   rather use Paint since all the colors would be messed up). These are not
   special modes of TileView, just the normal colored block mode set to a
   certain unit size and wrap width. For mode 7 graphics (as they would be
@@ -253,6 +256,7 @@ Keys
     PgUp PgDn          16 rows
     Home End           16 columns
     Ctrl+(Left/Right)  Byte forward or backward
+    Ctrl+Shift+(L/R)   Bit forward or backward
     Ctrl+(PgUp/PgDn)   32k at a time (for bank movement)
     Ctrl+(Home/End)    Jump to beginning or end of file
                        Press Home once to jump to the base offset,
@@ -301,7 +305,7 @@ Command line parameters
   "zelda.zst" despite the goto being in between.
 
   -g   Goto position, either a hex address or bg number.
-  -w   Set tile wrap width (1-512).
+  -w   Set tile wrap width (1-2048).
   -u   Set unit size to byte or word (8,16).
   -m   Viewing mode (1-6).
   -v   Load VRAM from following file, a ZSNES savestate.
