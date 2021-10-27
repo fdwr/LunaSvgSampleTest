@@ -216,9 +216,9 @@ Other useful utilites
 As far as I know, nobody else has written (or at least released) something quite like TileView, so I can't exactly mention any other such utilities. Maybe nobody thought of such a thing. Below are some utilities that might be useful along with TileView.
 
 - Hex Workshop   Great Windows hex-editor.
-    Breakpoint     http://www.bpsoft.com/
+    Breakpoint   http://www.bpsoft.com/
 - HexPose        Fast hex and alternate character set editor.
-    SnowBro        http://home.sol.no/~kenhanse/nes/index.htm
+    SnowBro      http://home.sol.no/~kenhanse/nes/index.htm
 
 
 =======
