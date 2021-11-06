@@ -46,9 +46,15 @@ public:
             runEndPosition()
         { }
 
-        UINT32 textPosition;    // Current text position
-        UINT32 runIndex;        // Associated analysis run covering this position
-        UINT32 runEndPosition;  // Text position where this run ends
+        uint32_t textPosition;    // Current text position
+        uint32_t runIndex;        // Associated analysis run covering this position
+        uint32_t runEndPosition;  // Text position where this run ends
+    };
+
+    enum JustificationMode
+    {
+        JustificationModeNone,
+        JustificationModeInterword,
     };
 
 public:
@@ -56,10 +62,13 @@ public:
     :   dwriteFactory_(SafeAcquire(dwriteFactory)),
         fontFace_(),
         numberSubstitution_(),
-        readingDirection_(DWRITE_READING_DIRECTION_LEFT_TO_RIGHT),
+        readingDirection_(ReadingDirectionLeftToRightTopToBottom),
+        glyphOrientationMode_(GlyphOrientationModeDefault),
+        justificationMode_(JustificationModeInterword),
         fontEmSize_(12),
         maxSpaceWidth_(8),
-        isTextAnalysisComplete_(false)
+        isTextAnalysisComplete_(false),
+        treatAsIsolatedCharacters_(false)
     {
     }
 
@@ -71,14 +80,37 @@ public:
     }
 
     STDMETHODIMP SetTextFormat(IDWriteTextFormat* textFormat);
-
     STDMETHODIMP SetNumberSubstitution(IDWriteNumberSubstitution* numberSubstitution);
-
-    // Perform analysis on the given text, converting text to glyphs.
-    STDMETHODIMP AnalyzeText(
-        const wchar_t* text,            // [textLength]
-        UINT32 textLength
+    STDMETHODIMP SetReadingDirection(ReadingDirection readingDirection);
+    STDMETHODIMP SetGlyphOrientationMode(GlyphOrientationMode glyphOrientationMode);
+    STDMETHODIMP SetJustificationMode(JustificationMode justificationMode);
+    STDMETHODIMP SetTreatAsIsolatedCharacters(bool treatAsIsolatedCharacters);
+    STDMETHODIMP SetFont(
+        const wchar_t* fontFamilyName,
+        DWRITE_FONT_WEIGHT fontWeight = DWRITE_FONT_WEIGHT_NORMAL,
+        DWRITE_FONT_STRETCH fontStretch = DWRITE_FONT_STRETCH_NORMAL,
+        DWRITE_FONT_STYLE fontSlope = DWRITE_FONT_STYLE_NORMAL,
+        float fontEmSize = 0
         );
+
+    GlyphOrientationMode GetGlyphOrientationMode();
+    ReadingDirection GetReadingDirection();
+
+    STDMETHODIMP CopyToClipboard();
+    STDMETHODIMP PasteFromClipboard();
+
+    STDMETHODIMP SetText(
+        const wchar_t* text, // [textLength]
+        uint32_t textLength
+        );
+
+    STDMETHODIMP GetText(
+        OUT const wchar_t** text, // [textLength]
+        OUT uint32_t* textLength
+        );
+
+    // Perform analysis on the current text, converting text to glyphs.
+    STDMETHODIMP AnalyzeText();
 
     // Reflow the text analysis into 
     STDMETHODIMP FlowText(
@@ -87,20 +119,27 @@ public:
         );
 
 protected:
-    STDMETHODIMP ShapeGlyphRuns(IDWriteTextAnalyzer* textAnalyzer);
+    STDMETHODIMP CreateFormattedRuns() throw();
+
+    STDMETHODIMP ShapeGlyphRuns(IDWriteTextAnalyzer* textAnalyzer) throw();
 
     STDMETHODIMP ShapeGlyphRun(
         IDWriteTextAnalyzer* textAnalyzer,
-        UINT32 runIndex,
-        IN OUT UINT32& glyphStart
-        );
+        uint32_t runIndex,
+        IN OUT uint32_t& glyphStart
+        ) throw();
+
+    STDMETHODIMP ShapeSimpleGlyphRun(
+        uint32_t runIndex,
+        IN OUT uint32_t& glyphStart
+        ) throw();
 
     STDMETHODIMP FitText(
         const ClusterPosition& clusterStart,
-        UINT32 textEnd,
+        uint32_t textEnd,
         float maxWidth,
         OUT ClusterPosition* clusterEnd
-        );
+        ) throw();
 
     STDMETHODIMP ProduceGlyphRuns(
         FlowLayoutSink* flowSink,
@@ -110,28 +149,28 @@ protected:
         ) const throw();
 
     STDMETHODIMP ProduceJustifiedAdvances(
-        const FlowLayoutSource::RectF& rect,
+        float maxWidth,
         const ClusterPosition& clusterStart,
         const ClusterPosition& clusterEnd,
         OUT std::vector<float>& justifiedAdvances
         ) const throw();
 
     void ProduceBidiOrdering(
-        UINT32 spanStart,
-        UINT32 spanCount,
-        OUT UINT32* spanIndices         // [spanCount]
+        uint32_t spanStart,
+        uint32_t spanCount,
+        OUT uint32_t* spanIndices         // [spanCount]
         ) const throw();
 
     void SetClusterPosition(
         IN OUT ClusterPosition& cluster,
-        UINT32 textPosition
+        uint32_t textPosition
         ) const throw();
 
     void AdvanceClusterPosition(
         IN OUT ClusterPosition& cluster
         ) const throw();
 
-    UINT32 GetClusterGlyphStart(
+    uint32_t GetClusterGlyphStart(
         const ClusterPosition& cluster
         ) const throw();
 
@@ -141,8 +180,8 @@ protected:
         ) const throw();
 
     float GetClusterRangeWidth(
-        UINT32 glyphStart,
-        UINT32 glyphEnd,
+        uint32_t glyphStart,
+        uint32_t glyphEnd,
         const float* glyphAdvances      // [glyphEnd]
         ) const throw();
 
@@ -150,22 +189,26 @@ protected:
     IDWriteFactory* dwriteFactory_;
 
     // Input information.
+    std::wstring formattedText_;
     std::wstring text_;
     wchar_t localeName_[LOCALE_NAME_MAX_LENGTH];
-    DWRITE_READING_DIRECTION readingDirection_;
+    ReadingDirection readingDirection_;
+    GlyphOrientationMode glyphOrientationMode_;
+    JustificationMode justificationMode_;
     IDWriteFontFace* fontFace_;
     IDWriteNumberSubstitution* numberSubstitution_;
     float fontEmSize_;
 
     // Output text analysis results
-    std::vector<TextAnalysis::Run> runs_;
+    std::vector<TextAnalysis::LinkedRun> runs_;
     std::vector<DWRITE_LINE_BREAKPOINT> breakpoints_;
     std::vector<DWRITE_GLYPH_OFFSET> glyphOffsets_;
-    std::vector<UINT16> glyphClusters_;
-    std::vector<UINT16> glyphIndices_;
+    std::vector<uint16_t> glyphClusters_;
+    std::vector<uint16_t> glyphIndices_;
     std::vector<float>  glyphAdvances_;
 
     float maxSpaceWidth_;           // maximum stretch of space allowed for justification
     bool isTextAnalysisComplete_;   // text analysis was done.
+    bool treatAsIsolatedCharacters_;// ignore most text analysis
 };
 // </SnippetFlowLayouth>

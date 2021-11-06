@@ -1,4 +1,3 @@
-// <SnippetCommonh>
 // THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF
 // ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
@@ -44,6 +43,12 @@
 #define _USE_MATH_DEFINES
 #endif
 
+
+#ifndef __FUNCTIONW__
+#define __FUNCTIONW__ L""
+#endif
+
+
 ////////////////////////////////////////
 // Common headers:
 
@@ -66,9 +71,11 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <unknwn.h>
+#include <CommDlg.h>
+#include <CommCtrl.h>
 
-#include <dwrite.h>
-#include <intsafe.h>
+#include <dwrite_1.h>
+#include <stdint.h>
 #include <strsafe.h>
 
 
@@ -84,9 +91,9 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define STRINGIZE_(s) STRINGIZE2_(s)
 #define STRINGIZE2_(s) #s
 
-#define FAILURE_LOCATION L"\r\nFunction: " TEXT(__FUNCTION__) L"\r\nLine: " TEXT(STRINGIZE_(__LINE__))
+#define FAILURE_LOCATION L"\r\nFunction: " TEXT(__FUNCTION__) L"\r\nFile: " TEXT(__FILE__) L"\r\nLine: " TEXT(STRINGIZE_(__LINE__))
 
-#if (_MSC_VER >= 1200) // want to use std::min and std::max
+#if (_MSC_VER >= 1200 && _MSC_VER < 1500) // want to use std::min and std::max
 #undef min
 #undef max
 #define min(x,y) _cpp_min(x,y)
@@ -104,40 +111,35 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define APPLICATION_TITLE "CustomLayout - DirectWrite script layer SDK sample"
 
 
-////////////////////////////////////////
-// COM inheritance helpers.
+enum {
+    UnicodeMax = 0x10FFFF
+};
 
-
-// Releases a COM object and nullifies pointer.
-template <typename InterfaceType>
-inline void SafeRelease(InterfaceType** currentObject)
+// Needed text editor backspace deletion.
+inline bool IsSurrogate(UINT32 ch) throw()
 {
-    if (*currentObject != NULL)
-    {
-        (*currentObject)->Release();
-        *currentObject = NULL;
-    }
+    // 0xD800 <= ch <= 0xDFFF
+    return (ch & 0xF800) == 0xD800;
 }
 
 
-// Acquires an additional reference, if non-null.
-template <typename InterfaceType>
-inline InterfaceType* SafeAcquire(InterfaceType* newObject)
+inline bool IsLeadingSurrogate(UINT32 ch) throw()
 {
-    if (newObject != NULL)
-        newObject->AddRef();
-
-    return newObject;
+    // 0xD800 <= ch <= 0xDBFF
+    return (ch & 0xFC00) == 0xD800;
 }
 
 
-// Sets a new COM object, releasing the old one.
-template <typename InterfaceType>
-inline void SafeSet(InterfaceType** currentObject, InterfaceType* newObject)
+inline bool IsTrailingSurrogate(UINT32 ch) throw()
 {
-    SafeAcquire(newObject);
-    SafeRelease(currentObject);
-    *currentObject = newObject;
+    // 0xDC00 <= ch <= 0xDFFF
+    return (ch & 0xFC00) == 0xDC00;
+}
+
+
+inline UINT32 MakeUnicodeCodepoint(UINT32 leading, UINT32 trailing) throw()
+{
+    return ((leading & 0x03FF) << 10 | (trailing & 0x03FF)) + 0x10000;
 }
 
 
@@ -156,6 +158,56 @@ inline HRESULT ExceptionToHResult() throw()
     {
         return E_FAIL;
     }
+}
+
+
+////////////////////////////////////////
+// COM inheritance helpers.
+
+
+// Releases a COM object and nullifies pointer.
+template <typename InterfaceType>
+inline void SafeRelease(IN OUT InterfaceType** currentObject)
+{
+    if (*currentObject != nullptr)
+    {
+        (*currentObject)->Release();
+        *currentObject = nullptr;
+    }
+}
+
+
+// Acquires an additional reference, if non-null.
+template <typename InterfaceType>
+inline InterfaceType* SafeAcquire(InterfaceType* newObject)
+{
+    if (newObject != nullptr)
+        newObject->AddRef();
+
+    return newObject;
+}
+
+
+// Sets a new COM object, releasing the old one.
+template <typename InterfaceType>
+inline void SafeSet(IN OUT InterfaceType** currentObject, InterfaceType* newObject)
+{
+    SafeAcquire(newObject);
+    SafeRelease(currentObject);
+    *currentObject = newObject;
+}
+
+
+template <typename InterfaceTypeOld, typename InterfaceTypeNew>
+inline HRESULT SafeQueryInterface(InterfaceTypeOld* oldObject, IN OUT InterfaceTypeNew** newObject)
+{
+    SafeRelease(newObject);
+    if (oldObject != nullptr)
+    {
+        return oldObject->QueryInterface(__uuidof(**newObject), reinterpret_cast<void**>(newObject));
+    }
+
+    return S_OK;
 }
 
 
@@ -178,9 +230,9 @@ public:
     // IUnknown interface
     IFACEMETHOD(QueryInterface)(IID const& iid, OUT void** ppObject)
     {
-        *ppObject = NULL;
+        *ppObject = nullptr;
         InterfaceChain::QueryInterfaceInternal(iid, ppObject);
-        if (*ppObject == NULL)
+        if (*ppObject == nullptr)
             return E_NOINTERFACE;
 
         AddRef();
@@ -189,12 +241,12 @@ public:
 
     IFACEMETHOD_(ULONG, AddRef)()
     {
-        return InterlockedIncrement((volatile LONG*)&refValue_);
+        return InterlockedIncrement(&refValue_);
     }
 
     IFACEMETHOD_(ULONG, Release)()
     {
-        ULONG newCount = InterlockedDecrement((volatile LONG*)&refValue_);
+        ULONG newCount = InterlockedDecrement(&refValue_);
         if (newCount == 0)
             delete this;
 
@@ -263,4 +315,3 @@ public:
         *ppObject = static_cast<InterfaceName*>(this);
     }
 };
-// </SnippetCommonh>

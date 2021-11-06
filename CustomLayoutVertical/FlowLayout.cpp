@@ -16,18 +16,47 @@
 #include "FlowSink.h"
 #include "FlowLayout.h"
 
-// todo: fake
-#define E_NOT_SUFFICIENT_BUFFER 12345
-
 
 namespace
 {
     // Estimates the maximum number of glyph indices needed to hold a string of 
     // a given length.  This is the formula given in the Uniscribe SDK and should
     // cover most cases. Degenerate cases will require a reallocation.
-    UINT32 EstimateGlyphCount(UINT32 textLength)
+    uint32_t EstimateGlyphCount(uint32_t textLength)
     {
         return 3 * textLength / 2 + 16;
+    }
+
+    HRESULT GetGlyphMetrics(
+        IDWriteFontFace* fontFace,
+        DWRITE_MEASURING_MODE measuringMode,
+        float fontEmSize,
+        bool isSideways,
+        uint32_t glyphCount,
+        __in_ecount(glyphCount) uint16_t* glyphIds,
+        __out_ecount(glyphCount) DWRITE_GLYPH_METRICS* glyphRunMetrics
+        )
+    {
+        // Call the right function depending on the measuring mode.
+        switch (measuringMode)
+        {
+        case DWRITE_MEASURING_MODE_GDI_CLASSIC:
+        case DWRITE_MEASURING_MODE_GDI_NATURAL:
+            return fontFace->GetGdiCompatibleGlyphMetrics(
+                fontEmSize,
+                1.0, // pixelsPerDip
+                nullptr, // transform
+                measuringMode == DWRITE_MEASURING_MODE_GDI_NATURAL,
+                glyphIds,
+                glyphCount,
+                glyphRunMetrics,
+                isSideways
+                );
+
+        case DWRITE_MEASURING_MODE_NATURAL:
+        default:
+            return fontFace->GetDesignGlyphMetrics(glyphIds, glyphCount, glyphRunMetrics, isSideways);
+        }
     }
 }
 
@@ -40,30 +69,11 @@ STDMETHODIMP FlowLayout::SetTextFormat(IDWriteTextFormat* textFormat)
 
     HRESULT hr = S_OK;
 
-    IDWriteFontCollection*  fontCollection  = NULL;
-    IDWriteFontFamily*      fontFamily      = NULL;
-    IDWriteFont*            font            = NULL;
-
     wchar_t fontFamilyName[100];
 
-    readingDirection_   = textFormat->GetReadingDirection();
-    fontEmSize_         = textFormat->GetFontSize();
+    // note the reading direction from the format is ignored
 
     hr = textFormat->GetLocaleName(localeName_, ARRAYSIZE(localeName_));
-
-    ////////////////////
-    // Map font and style to fontFace.
-
-    if (SUCCEEDED(hr))
-    {
-        // Need the font collection to map from font name to actual font.
-        textFormat->GetFontCollection(&fontCollection);
-        if (fontCollection == NULL)
-        {
-            // No font collection was set in the format, so use the system default.
-            hr = dwriteFactory_->GetSystemFontCollection(&fontCollection);
-        }
-    }
 
     // Find matching family name in collection.
     if (SUCCEEDED(hr))
@@ -71,7 +81,52 @@ STDMETHODIMP FlowLayout::SetTextFormat(IDWriteTextFormat* textFormat)
         hr = textFormat->GetFontFamilyName(fontFamilyName, ARRAYSIZE(fontFamilyName));
     }
 
-    UINT32 fontIndex  = 0;
+    if (SUCCEEDED(hr))
+    {
+        hr = SetFont(
+                fontFamilyName,
+                textFormat->GetFontWeight(),
+                textFormat->GetFontStretch(),
+                textFormat->GetFontStyle(),
+                textFormat->GetFontSize()
+                );
+    }
+
+    return S_OK;
+}
+
+
+STDMETHODIMP FlowLayout::SetFont(
+    const wchar_t* fontFamilyName,
+    DWRITE_FONT_WEIGHT fontWeight,
+    DWRITE_FONT_STRETCH fontStretch,
+    DWRITE_FONT_STYLE fontSlope,
+    float fontEmSize
+    )
+{
+    HRESULT hr = S_OK;
+
+    IDWriteFontCollection*  fontCollection  = nullptr;
+    IDWriteFontFamily*      fontFamily      = nullptr;
+    IDWriteFont*            font            = nullptr;
+
+    if (fontEmSize > 0)
+        fontEmSize_ = fontEmSize;
+
+    ////////////////////
+    // Map font and style to fontFace.
+
+    if (SUCCEEDED(hr))
+    {
+        // Need the font collection to map from font name to actual font.
+        if (fontCollection == nullptr)
+        {
+            // No font collection was set in the format, so use the system default.
+            hr = dwriteFactory_->GetSystemFontCollection(&fontCollection);
+        }
+    }
+
+    uint32_t fontIndex  = 0;
     if (SUCCEEDED(hr))
     {
         BOOL fontExists = false;
@@ -93,9 +148,9 @@ STDMETHODIMP FlowLayout::SetTextFormat(IDWriteTextFormat* textFormat)
     if (SUCCEEDED(hr))
     {
         hr = fontFamily->GetFirstMatchingFont(
-                textFormat->GetFontWeight(),
-                textFormat->GetFontStretch(),
-                textFormat->GetFontStyle(),
+                fontWeight,
+                fontStretch,
+                fontSlope,
                 &font
                 );
     }
@@ -110,7 +165,7 @@ STDMETHODIMP FlowLayout::SetTextFormat(IDWriteTextFormat* textFormat)
     SafeRelease(&fontFamily);
     SafeRelease(&fontCollection);
 
-    return S_OK;
+    return hr;
 }
 
 
@@ -122,40 +177,121 @@ STDMETHODIMP FlowLayout::SetNumberSubstitution(IDWriteNumberSubstitution* number
 }
 
 
-STDMETHODIMP FlowLayout::AnalyzeText(
-    const wchar_t* text,                // [textLength]
-    UINT32 textLength
+STDMETHODIMP FlowLayout::SetReadingDirection(ReadingDirection readingDirection)
+{
+    readingDirection_ = readingDirection;
+    return S_OK;
+}
+
+
+ReadingDirection FlowLayout::GetReadingDirection()
+{
+    return readingDirection_;
+}
+
+
+STDMETHODIMP FlowLayout::SetGlyphOrientationMode(GlyphOrientationMode glyphOrientationMode)
+{
+    glyphOrientationMode_ = glyphOrientationMode;
+    return S_OK;
+}
+
+
+GlyphOrientationMode FlowLayout::GetGlyphOrientationMode()
+{
+    return glyphOrientationMode_;
+}
+
+
+STDMETHODIMP FlowLayout::SetJustificationMode(JustificationMode justificationMode)
+{
+    justificationMode_ = justificationMode;
+    return S_OK;
+}
+
+
+STDMETHODIMP FlowLayout::SetTreatAsIsolatedCharacters(bool treatAsIsolatedCharacters)
+{
+    treatAsIsolatedCharacters_ = treatAsIsolatedCharacters;
+    return S_OK;
+}
+
+
+STDMETHODIMP FlowLayout::SetText(
+    const wchar_t* text, // [textLength]
+    uint32_t textLength
     ) throw()
 {
     // Analyzes the given text and keeps the results for later reflow.
 
     isTextAnalysisComplete_ = false;
 
-    if (fontFace_ == NULL)
-        return E_FAIL; // Need a font face to determine metrics.
-
-    HRESULT hr = S_OK;
-
     try
     {
-        text_.assign(text, textLength);
+        formattedText_.assign(text, textLength);
     }
     catch (...)
     {
-        hr = ExceptionToHResult();
+        return ExceptionToHResult();
     }
 
+    return S_OK;
+}
+
+
+STDMETHODIMP FlowLayout::GetText(
+    OUT const wchar_t** text, // [textLength]
+    OUT uint32_t* textLength
+    ) throw()
+{
+    *text = &formattedText_[0];
+    *textLength = static_cast<uint32_t>(formattedText_.size());
+
+    return S_OK;
+}
+
+
+STDMETHODIMP FlowLayout::AnalyzeText() throw()
+{
+    // Analyzes the given text and keeps the results for later reflow.
+
+    HRESULT hr = S_OK;
+
+    isTextAnalysisComplete_ = false;
+
+    if (fontFace_ == nullptr)
+        return E_FAIL; // Need a font face to determine metrics.
+
     // Query for the text analyzer's interface.
-    IDWriteTextAnalyzer* textAnalyzer = NULL;
+    IDWriteTextAnalyzer*  textAnalyzer0 = nullptr;
+    IDWriteTextAnalyzer1* textAnalyzer  = nullptr;
     if (SUCCEEDED(hr))
     {
-        hr = dwriteFactory_->CreateTextAnalyzer(&textAnalyzer);
+        hr = dwriteFactory_->CreateTextAnalyzer(&textAnalyzer0);
+    }
+    if (SUCCEEDED(hr))
+    {
+        hr = textAnalyzer0->QueryInterface(__uuidof(*textAnalyzer), reinterpret_cast<void**>(&textAnalyzer));
+    }
+
+    if (SUCCEEDED(hr))
+    {
+        hr = CreateFormattedRuns();
     }
 
     // Record the analyzer's results.
     if (SUCCEEDED(hr))
     {
-        TextAnalysis textAnalysis(text, textLength, localeName_, numberSubstitution_, readingDirection_);
+        TextAnalysis textAnalysis(
+            text_.c_str(),
+            static_cast<uint32_t>(text_.size()),
+            localeName_,
+            numberSubstitution_,
+            readingDirection_,
+            glyphOrientationMode_,
+            treatAsIsolatedCharacters_
+            );
+
         hr = textAnalysis.GenerateResults(textAnalyzer, runs_, breakpoints_);
     }
 
@@ -170,7 +306,297 @@ STDMETHODIMP FlowLayout::AnalyzeText(
         isTextAnalysisComplete_ = true;
     }
 
+    SafeRelease(&textAnalyzer0);
     SafeRelease(&textAnalyzer);
+
+    return hr;
+}
+
+
+namespace
+{
+    // For embedded formatting markup in the input string
+    struct FormattingCode
+    {
+        wchar_t* name;
+        int32_t  code;
+
+        enum {
+            NoMatch=-1,
+            ReadingDirection,
+            GlyphOrientation,
+            LineGap,
+            OpeningBrace,
+            ClosingBrace,
+            LeftToRightEmbedding,
+            RightToLeftEmbedding,
+            PopEmbedding,
+        };
+    };
+
+    const FormattingCode g_FormattingCodes[] =
+    {
+        {L"dir" ,       FormattingCode::ReadingDirection},
+        {L"or" ,        FormattingCode::GlyphOrientation},
+        {L"linegap" ,   FormattingCode::LineGap},
+        {L"op" ,        FormattingCode::OpeningBrace},
+        {L"lre" ,       FormattingCode::LeftToRightEmbedding},
+        {L"rle" ,       FormattingCode::RightToLeftEmbedding},
+        {L"pdf" ,       FormattingCode::PopEmbedding},
+    };
+
+    const FormattingCode g_ReadingDirectionCodes[] =
+    {
+        {L"rd",         ReadingDirectionLeftToRightTopToBottom},
+        {L"ld",         ReadingDirectionRightToLeftTopToBottom},
+        {L"ru",         ReadingDirectionLeftToRightBottomToTop},
+        {L"lu",         ReadingDirectionRightToLeftBottomToTop},
+        {L"dr",         ReadingDirectionTopToBottomLeftToRight},
+        {L"ur",         ReadingDirectionBottomToTopLeftToRight},
+        {L"dl",         ReadingDirectionTopToBottomRightToLeft},
+        {L"ul",         ReadingDirectionBottomToTopRightToLeft},
+        {L"lr-tb",      ReadingDirectionLeftToRightTopToBottom},
+        {L"rl-tb",      ReadingDirectionRightToLeftTopToBottom},
+        {L"lr-bt",      ReadingDirectionLeftToRightBottomToTop},
+        {L"rl-bt",      ReadingDirectionRightToLeftBottomToTop},
+        {L"tb-lr",      ReadingDirectionTopToBottomLeftToRight},
+        {L"bt-lr",      ReadingDirectionBottomToTopLeftToRight},
+        {L"tb-rl",      ReadingDirectionTopToBottomRightToLeft},
+        {L"bt-rl",      ReadingDirectionBottomToTopRightToLeft},
+        {L"undefined",  ReadingDirectionUndefined},
+    };
+
+    const FormattingCode g_GlyphOrientationModeCodes[] =
+    {
+        {L"default",    GlyphOrientationModeDefault},
+        {L"stacked",    GlyphOrientationModeStacked},
+        {L"upright",    GlyphOrientationModeUpright},
+        {L"rotated",    GlyphOrientationModeRotated},
+        {L"cw0",        GlyphOrientationModeLeftToRightTopToBottom},
+        {L"cw90",       GlyphOrientationModeTopToBottomRightToLeft},
+        {L"cw180",      GlyphOrientationModeRightToLeftBottomToTop},
+        {L"cw270",      GlyphOrientationModeBottomToTopLeftToRight},
+        {L"rd",         GlyphOrientationModeLeftToRightTopToBottom},
+        {L"ld",         GlyphOrientationModeRightToLeftTopToBottom},
+        {L"ru",         GlyphOrientationModeLeftToRightBottomToTop},
+        {L"lu",         GlyphOrientationModeRightToLeftBottomToTop},
+        {L"dr",         GlyphOrientationModeTopToBottomLeftToRight},
+        {L"ur",         GlyphOrientationModeBottomToTopLeftToRight},
+        {L"dl",         GlyphOrientationModeTopToBottomRightToLeft},
+        {L"ul",         GlyphOrientationModeBottomToTopRightToLeft},
+        {L"undefined",  GlyphOrientationModeUndefined},
+    };
+
+    const FormattingCode g_BooleanCodes[] =
+    {
+        {L"false",      false},
+        {L"true",       true},
+        {L"f",          false},
+        {L"t",          true},
+        {L"0",          false},
+        {L"1",          true},
+        {L"yes",        false},
+        {L"no",         true},
+    };
+
+    int32_t GetFormattingCode(
+        const FormattingCode* formattingCodes,
+        size_t formattingCodesCount,
+        const wchar_t* name
+        )
+    {
+        // Linear search for matching name.
+        for (uint32_t i = 0; i < formattingCodesCount; ++i)
+        {
+            if (wcscmp(formattingCodes[i].name, name) == 0)
+            {
+                return formattingCodes[i].code;
+            }
+        }
+
+        return FormattingCode::NoMatch;
+    }
+
+    void PushFormattedRun(
+        uint32_t textPositionEnd,
+        IN OUT std::vector<TextAnalysis::LinkedRun>& runs,
+        IN OUT TextAnalysis::LinkedRun& run
+        )
+    {
+        if (textPositionEnd > run.textStart)
+        {
+            runs.push_back(run);
+            TextAnalysis::LinkedRun& lastRun = runs.back();
+            lastRun.nextRunIndex             = static_cast<uint32_t>(runs.size());
+            lastRun.textLength               = textPositionEnd - run.textStart;
+            run.textStart                    = textPositionEnd;
+        }
+    }
+}
+
+
+STDMETHODIMP FlowLayout::CreateFormattedRuns() throw()
+{
+    HRESULT hr = S_OK;
+
+    try
+    {
+        text_.reserve(formattedText_.size());
+        text_.clear();
+        runs_.clear();
+
+        TextAnalysis::LinkedRun run;
+        run.textStart = 0;
+        run.readingDirection = ReadingDirectionUndefined;
+        run.glyphOrientationMode = GlyphOrientationModeUndefined;
+        run.useLineGap = true;
+        uint32_t textPositionEnd = 0;
+
+        const wchar_t openingEscapeCharacter = '{';
+        const wchar_t closingEscapeCharacter = '}';
+
+        const uint32_t formattedTextLength = static_cast<uint32_t>(formattedText_.size());
+        const wchar_t* formattedTextStart = formattedText_.c_str();
+        const wchar_t* formattedTextEnd = formattedTextStart + formattedTextLength;
+
+        // Read the formatted string in segments.
+        for (uint32_t segmentStartPosition = 0, segmentEndPosition = 0;
+             segmentStartPosition < formattedTextLength;
+             segmentStartPosition = segmentEndPosition
+             )
+        {
+            // Find the start and end of the next segment of text (either plain text or formatting code).
+            const bool isPlainText      = (formattedTextStart[segmentStartPosition] != openingEscapeCharacter);
+            const wchar_t* segmentStart = &formattedTextStart[segmentStartPosition];
+            const wchar_t* segmentEnd   = std::find(segmentStart,
+                                                    formattedTextEnd,
+                                                    isPlainText ? openingEscapeCharacter : closingEscapeCharacter
+                                                    );
+            segmentEndPosition = static_cast<uint32_t>(segmentEnd - formattedTextStart);
+
+            if (isPlainText) // copy span of text verbatim
+            {
+                // Just insert text. We'll update the run later.
+                text_.insert(text_.end(), segmentStart, segmentEnd);
+            }
+            else if (segmentEnd >= formattedTextEnd) // Skip to end of text if no closing character.
+            {
+                break;
+            }
+            else // act on embedded code
+            {
+                ++segmentStart;       // skip '{'
+                ++segmentEndPosition; // skip '}'
+
+                // Match formatting code name.
+                const wchar_t* nameEnd = std::find(segmentStart, segmentEnd, '=');
+                std::wstring nameString(segmentStart, nameEnd);
+                std::wstring valueString(nameEnd + (nameEnd < segmentEnd ? 1 : 0), segmentEnd);
+
+                int32_t nameCode = GetFormattingCode(g_FormattingCodes, ARRAYSIZE(g_FormattingCodes), nameString.c_str());
+
+                // Set state according to formatting code.
+                switch (nameCode)
+                {
+                case FormattingCode::ReadingDirection:
+                    PushFormattedRun(textPositionEnd, IN OUT runs_, IN OUT run);
+                    if (valueString.empty())
+                    {
+                        run.readingDirection = ReadingDirectionUndefined;
+                    }
+                    else
+                    {
+                        int32_t nameCode = GetFormattingCode(
+                            g_ReadingDirectionCodes,
+                            ARRAYSIZE(g_ReadingDirectionCodes),
+                            valueString.c_str()
+                            );
+
+                        if (nameCode != FormattingCode::NoMatch)
+                            run.readingDirection = ReadingDirection(nameCode);
+                    }
+                    
+                    break;
+
+                case FormattingCode::GlyphOrientation:
+                    PushFormattedRun(textPositionEnd, IN OUT runs_, IN OUT run);
+                    if (valueString.empty())
+                    {
+                        run.glyphOrientationMode = GlyphOrientationModeUndefined;
+                    }
+                    else
+                    {
+                        int32_t nameCode = GetFormattingCode(
+                            g_GlyphOrientationModeCodes,
+                            ARRAYSIZE(g_GlyphOrientationModeCodes),
+                            valueString.c_str()
+                            );
+
+                        if (nameCode != FormattingCode::NoMatch)
+                            run.glyphOrientationMode = GlyphOrientationMode(nameCode);
+                    }
+                    break;
+
+                case FormattingCode::LineGap:
+                    PushFormattedRun(textPositionEnd, IN OUT runs_, IN OUT run);
+                    if (valueString.empty())
+                    {
+                        run.useLineGap = true; // default
+                    }
+                    else
+                    {
+                        int32_t nameCode = GetFormattingCode(
+                            g_BooleanCodes,
+                            ARRAYSIZE(g_BooleanCodes),
+                            valueString.c_str()
+                            );
+                        if (nameCode != FormattingCode::NoMatch)
+                        {
+                            run.useLineGap = !!nameCode;
+                        }
+                    }
+                    break;
+
+                case FormattingCode::OpeningBrace:
+                    text_.push_back('{');
+                    break;
+
+                case FormattingCode::ClosingBrace:
+                    text_.push_back('}');
+                    break;
+
+                case FormattingCode::LeftToRightEmbedding:
+                    text_.push_back(L'\x202A');
+                    break;
+
+                case FormattingCode::RightToLeftEmbedding:
+                    text_.push_back(L'\x202B');
+                    break;
+
+                case FormattingCode::PopEmbedding:
+                    text_.push_back(L'\x202C');
+                    break;
+
+                default: // error
+                    text_.push_back('?');
+                    text_.insert(text_.end(), segmentStart, segmentEnd);
+                    text_.push_back('?');
+                    break;
+                }
+            }
+
+            textPositionEnd = static_cast<uint32_t>(text_.size());
+        }
+
+        PushFormattedRun(textPositionEnd, IN OUT runs_, IN OUT run);
+
+        // Loop runs back onto themselves.
+        runs_.back().nextRunIndex = 0;
+    }
+    catch (...)
+    {
+        hr = ExceptionToHResult();
+    }
 
     return hr;
 }
@@ -182,10 +608,10 @@ STDMETHODIMP FlowLayout::ShapeGlyphRuns(IDWriteTextAnalyzer* textAnalyzer)
 
     HRESULT hr = S_OK;
 
-    UINT32 textLength = static_cast<UINT32>(text_.size());
+    uint32_t textLength = static_cast<uint32_t>(text_.size());
 
     // Estimate the maximum number of glyph indices needed to hold a string.
-    UINT32 estimatedGlyphCount = EstimateGlyphCount(textLength);
+    uint32_t estimatedGlyphCount = EstimateGlyphCount(textLength);
 
     try
     {
@@ -194,15 +620,25 @@ STDMETHODIMP FlowLayout::ShapeGlyphRuns(IDWriteTextAnalyzer* textAnalyzer)
         glyphAdvances_.resize(estimatedGlyphCount);
         glyphClusters_.resize(textLength);
 
-        UINT32 glyphStart = 0;
+        uint32_t glyphStart = 0;
 
         // Shape each run separately. This is needed whenever script, locale,
         // or reading direction changes.
-        for (UINT32 runIndex = 0; runIndex < runs_.size(); ++runIndex)
+        for (uint32_t runIndex = 0; runIndex < runs_.size(); ++runIndex)
         {
-            hr = ShapeGlyphRun(textAnalyzer, runIndex, glyphStart);
+            if (treatAsIsolatedCharacters_)
+            {
+                hr = ShapeSimpleGlyphRun(runIndex, glyphStart);
+            }
+            else
+            {
+                hr = ShapeGlyphRun(textAnalyzer, runIndex, glyphStart);
+            }
+
             if (FAILED(hr))
+            {
                 break;
+            }
         }
 
         glyphIndices_.resize(glyphStart);
@@ -220,8 +656,8 @@ STDMETHODIMP FlowLayout::ShapeGlyphRuns(IDWriteTextAnalyzer* textAnalyzer)
 
 STDMETHODIMP FlowLayout::ShapeGlyphRun(
     IDWriteTextAnalyzer* textAnalyzer,
-    UINT32 runIndex,
-    IN OUT UINT32& glyphStart
+    uint32_t runIndex,
+    IN OUT uint32_t& glyphStart
     )
 {
     // Shapes a single run of text into glyphs.
@@ -236,14 +672,14 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
 
     try
     {
-        TextAnalysis::Run& run  = runs_[runIndex];
-        UINT32 textStart        = run.textStart;
-        UINT32 textLength       = run.textLength;
-        UINT32 maxGlyphCount    = static_cast<UINT32>(glyphIndices_.size() - glyphStart);
-        UINT32 actualGlyphCount = 0;
+        TextAnalysis::LinkedRun& run = runs_[runIndex];
+        uint32_t textStart           = run.textStart;
+        uint32_t textLength          = run.textLength;
+        uint32_t maxGlyphCount       = static_cast<uint32_t>(glyphIndices_.size() - glyphStart);
+        uint32_t actualGlyphCount    = 0;
 
-        run.glyphStart          = glyphStart;
-        run.glyphCount          = 0;
+        run.glyphStart               = glyphStart;
+        run.glyphCount               = 0;
 
         if (textLength == 0)
             return S_OK; // Nothing to do..
@@ -261,7 +697,7 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
         if (textLength > maxGlyphCount)
         {
             maxGlyphCount = EstimateGlyphCount(textLength);
-            UINT32 totalGlyphsArrayCount = glyphStart + maxGlyphCount;
+            uint32_t totalGlyphsArrayCount = glyphStart + maxGlyphCount;
             glyphIndices_.resize(totalGlyphsArrayCount);
         }
 
@@ -271,19 +707,38 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
         ////////////////////
         // Get the glyphs from the text, retrying if needed.
 
-        // Missing feature tags.
-        enum
-        {
-            DWRITE_FONT_FEATURE_TAG_VERTICAL_KERNING                    = DWRITE_MAKE_OPENTYPE_TAG('v','k','r','n'),
-            DWRITE_FONT_FEATURE_TAG_PROPORTIONAL_VERTICAL_METRICS       = DWRITE_MAKE_OPENTYPE_TAG('v','p','a','l')
-        };
+        DWRITE_FONT_FEATURE verticalFontFeatures[] = {DWRITE_FONT_FEATURE_TAG_VERTICAL_WRITING, 1};
+        DWRITE_TYPOGRAPHIC_FEATURES verticalFontFeatureList = {&verticalFontFeatures[0], 1};
+        DWRITE_TYPOGRAPHIC_FEATURES emptyFontFeatureList = {nullptr, 0};
+        DWRITE_TYPOGRAPHIC_FEATURES const* fontFeatureListPointer = nullptr;
+        const uint32_t fontFeatureLengths[1] = {textLength};
 
-        DWRITE_FONT_FEATURE fontFeature = {DWRITE_FONT_FEATURE_TAG(DWRITE_FONT_FEATURE_TAG_PROPORTIONAL_VERTICAL_METRICS), 1};
-        DWRITE_TYPOGRAPHIC_FEATURES fontFeatures = {&fontFeature, 1};
-        DWRITE_TYPOGRAPHIC_FEATURES const* fontFeaturesPointers = {&fontFeatures};
-        const UINT32 fontFeatureLengths[1] = {textLength};
-        DBG_UNREFERENCED_LOCAL_VARIABLE(fontFeaturesPointers);
-        DBG_UNREFERENCED_LOCAL_VARIABLE(fontFeatureLengths);
+        bool useFontFeatures = false;
+
+        GlyphOrientationMode glyphOrientationMode = TextAnalysis::Resolve(run.glyphOrientationMode, glyphOrientationMode_);
+
+        if (TextAnalysis::RequiresVerticalGlyphVariants(glyphOrientationMode, run.isSideways))
+        {
+            // The mode requires variants, but it's not a sideways run.
+            // So explicitly request vertical subtitution.
+            if (!run.isSideways)
+            {
+                fontFeatureListPointer = &verticalFontFeatureList;
+                useFontFeatures = true;
+            }
+        }
+        else
+        {
+            // The mode does not require variants, but it's a sideways run.
+            // So explicitly disable vertical subtitution.
+            if (run.isSideways)
+            {
+                fontFeatureListPointer = &emptyFontFeatureList;
+                useFontFeatures = true;
+            }
+        }
+        // Otherwise just allow shaping to choose appropriate features respective
+        // to the sideways flag.
 
         int tries = 0;
         do
@@ -293,19 +748,13 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
                 textLength,
                 fontFace_,
                 run.isSideways,         // isSideways,
-                (run.bidiLevel & 1),    // isRightToLeft
+                run.isReversed,         // RTL for horizontal, BTT for vertical
                 &run.script,
                 localeName_,
-                (run.isNumberSubstituted) ? numberSubstitution_ : NULL,
-#if 0
-                &fontFeaturesPointers, // DWRITE_TYPOGRAPHIC_FEATURES const* features,
-                fontFeatureLengths, // UINT32 const* featureLengths,
-                ARRAYSIZE(fontFeatureLengths), // featureCount,
-#else
-                NULL,                   // features
-                NULL,                   // featureLengths
-                0,                      // featureCount
-#endif
+                (run.isNumberSubstituted) ? numberSubstitution_ : nullptr,
+                useFontFeatures ? &fontFeatureListPointer : nullptr, // DWRITE_TYPOGRAPHIC_FEATURES const* features,
+                useFontFeatures ? fontFeatureLengths : nullptr, // uint32_t const* featureLengths,
+                useFontFeatures ? ARRAYSIZE(fontFeatureLengths) : 0, // featureCount,
                 maxGlyphCount,          // maxGlyphCount
                 &glyphClusters_[textStart],
                 &textProps[0],
@@ -318,8 +767,8 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
             if (hr == E_NOT_SUFFICIENT_BUFFER)
             {
                 // Try again using a larger buffer.
-                maxGlyphCount                = EstimateGlyphCount(maxGlyphCount);
-                UINT32 totalGlyphsArrayCount = glyphStart + maxGlyphCount;
+                maxGlyphCount                  = EstimateGlyphCount(maxGlyphCount);
+                uint32_t totalGlyphsArrayCount = glyphStart + maxGlyphCount;
 
                 glyphProps.resize(maxGlyphCount);
                 glyphIndices_.resize(totalGlyphsArrayCount);
@@ -350,11 +799,11 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
             fontFace_,
             fontEmSize_,
             run.isSideways,
-            (run.bidiLevel & 1),    // isRightToLeft
+            run.isReversed,         // RTL for horizontal, BTT for vertical
             &run.script,
             localeName_,
-            NULL,                   // features
-            NULL,                   // featureRangeLengths
+            nullptr,                // features
+            nullptr,                // featureRangeLengths
             0,                      // featureRanges
             &glyphAdvances_[glyphStart],
             &glyphOffsets_[glyphStart]
@@ -389,6 +838,134 @@ STDMETHODIMP FlowLayout::ShapeGlyphRun(
 }
 
 
+STDMETHODIMP FlowLayout::ShapeSimpleGlyphRun(
+    uint32_t runIndex,
+    IN OUT uint32_t& glyphStart
+    )
+{
+    // Just use direct CMAP.
+
+    HRESULT hr = S_OK;
+
+    try
+    {
+        TextAnalysis::LinkedRun& run = runs_[runIndex];
+        uint32_t textStart           = run.textStart;
+        uint32_t textLength          = run.textLength;
+
+        run.glyphStart               = glyphStart;
+        run.glyphCount               = 0;
+        run.script.script            = 0xFFFF;
+        run.script.shapes            = DWRITE_SCRIPT_SHAPES_DEFAULT;
+
+        if (textLength == 0)
+            return S_OK; // Nothing to do..
+
+        ////////////////////
+        // Convert UTF16 to UTF32/UCS4
+
+        std::vector<uint32_t> codePoints(textLength);
+        uint32_t codepointCount = 0;
+        wchar_t const* text = &text_[textStart];
+
+        for (uint32_t i = 0; i < textLength; ++i)
+        {
+            uint32_t trailing, leading = text[i];
+
+            glyphClusters_[textStart + i] = static_cast<uint16_t>(codepointCount);
+
+            if (IsLeadingSurrogate(leading)
+            &&  i + 1 < textLength
+            &&  IsTrailingSurrogate(trailing = text[i + 1])
+            )
+            {
+                i++;
+                glyphClusters_[textStart + i] = static_cast<uint16_t>(codepointCount);
+                codePoints[codepointCount++] = MakeUnicodeCodepoint(leading, trailing);
+            }
+            else
+            {
+                codePoints[codepointCount++] = leading;
+            }
+        }
+
+        ////////////////////
+        // Get default glyphs.
+
+        uint32_t const glyphCount = codepointCount;
+        uint32_t const totalGlyphsArrayCount = glyphStart + glyphCount;
+        glyphIndices_.resize(totalGlyphsArrayCount);
+
+        hr = fontFace_->GetGlyphIndices(&codePoints[0], glyphCount, &glyphIndices_[glyphStart]);
+
+        if (FAILED(hr))
+            return hr;
+
+        ////////////////////
+        // Get the glyph metrics for glyph placement.
+
+        DWRITE_FONT_METRICS fontMetrics;
+        fontFace_->GetMetrics(&fontMetrics);
+
+        std::vector<DWRITE_GLYPH_METRICS> glyphRunMetrics(glyphCount);
+        hr = GetGlyphMetrics(
+            fontFace_,
+            DWRITE_MEASURING_MODE_NATURAL,
+            fontEmSize_,
+            run.isSideways,
+            glyphCount,
+            &glyphIndices_[glyphStart],
+            OUT &glyphRunMetrics[0]
+            );
+
+        if (FAILED(hr))
+            return hr;
+
+        glyphAdvances_.resize(std::max(static_cast<size_t>(totalGlyphsArrayCount), glyphAdvances_.size()));
+        glyphOffsets_.resize( std::max(static_cast<size_t>(totalGlyphsArrayCount), glyphOffsets_.size()));
+
+        for (uint32_t i = 0; i < glyphCount; ++i)
+        {
+            INT32 advanceDesignUnits = run.isSideways ? glyphRunMetrics[i].advanceHeight : glyphRunMetrics[i].advanceWidth;
+            float advanceFloat = advanceDesignUnits * fontEmSize_ / fontMetrics.designUnitsPerEm;
+            glyphAdvances_[glyphStart + i] = advanceFloat;
+        }
+
+        ////////////////////
+        // Get the vertical glyph variants
+
+        GlyphOrientationMode glyphOrientationMode = TextAnalysis::Resolve(run.glyphOrientationMode, glyphOrientationMode_);
+
+        if (TextAnalysis::RequiresVerticalGlyphVariants(glyphOrientationMode, run.isSideways))
+        {
+            IDWriteFontFace1* fontFace1 = nullptr;
+            hr = SafeQueryInterface(fontFace_, &fontFace1);
+
+            if (SUCCEEDED(hr))
+            {
+                hr = fontFace1->GetVerticalGlyphVariants(glyphCount, &glyphIndices_[glyphStart], &glyphIndices_[glyphStart]);
+            }
+            SafeRelease(&fontFace1);
+            
+            if (FAILED(hr))
+                return hr;
+        }
+
+        ////////////////////
+        // Set the final glyph count of this run and advance the starting glyph.
+        run.glyphCount = glyphCount;
+        glyphStart    += glyphCount;
+
+    }
+    catch (...)
+    {
+        hr = ExceptionToHResult();
+    }
+
+    return hr;
+}
+
+
 STDMETHODIMP FlowLayout::FlowText(
     FlowLayoutSource* flowSource,
     FlowLayoutSink* flowSink
@@ -401,45 +978,58 @@ STDMETHODIMP FlowLayout::FlowText(
 
     HRESULT hr = S_OK;
 
+    // Set initial cluster position to beginning of text.
+    ClusterPosition cluster, nextCluster;
+    SetClusterPosition(cluster, 0);
+
+    const TextAnalysis::LinkedRun& firstRun = runs_[cluster.runIndex];
+    const bool useLineGap = firstRun.useLineGap;
+
     // Determine the font line height, needed by the flow source.
     DWRITE_FONT_METRICS fontMetrics = {};
     fontFace_->GetMetrics(&fontMetrics);
 
-    float fontHeight = (fontMetrics.ascent + fontMetrics.descent + fontMetrics.lineGap)
-                     * fontEmSize_ / fontMetrics.designUnitsPerEm;
+    int32_t designFontHeight = (fontMetrics.ascent + fontMetrics.descent)
+                             + (useLineGap ? fontMetrics.lineGap : 0);
+
+    float fontHeight = designFontHeight * fontEmSize_ / fontMetrics.designUnitsPerEm;
 
     // Get ready for series of glyph runs.
-    hr = flowSink->Prepare(static_cast<UINT32>(glyphIndices_.size()));
+    hr = flowSink->Prepare(static_cast<uint32_t>(glyphIndices_.size()));
 
     if (SUCCEEDED(hr))
     {
-        // Set initial cluster position to beginning of text.
-        ClusterPosition cluster, nextCluster;
-        SetClusterPosition(cluster, 0);
-
         FlowLayoutSource::RectF rect;
-        UINT32 textLength = static_cast<UINT32>(text_.size());
+        uint32_t textLength = static_cast<uint32_t>(text_.size());
 
         // Iteratively pull rect's from the source,
         // and push as much text will fit to the sink.
         while (cluster.textPosition < textLength)
         {
             // Pull the next rect from the source.
-            if (FAILED(flowSource->GetNextRect(fontHeight, &rect)))
+            if (FAILED(flowSource->GetNextRect(fontHeight, readingDirection_, &rect)))
                 break;
 
-            if (rect.right - rect.left <= 0)
+            if (rect.right <= rect.left && rect.bottom <= rect.top)
                 break; // Stop upon reaching zero sized rects.
 
-            // Fit as many clusters between breakpoints that will go in.
-            if (FAILED(FitText(cluster, textLength, rect.right - rect.left, &nextCluster)))
-                break;
+            // Determine length of line.
+            float uSize = (readingDirection_ & ReadingDirectionPrimaryAxis)
+                        ? rect.bottom - rect.top
+                        : rect.right  - rect.left;
 
-            // Push the glyph runs to the sink.
-            if (FAILED(ProduceGlyphRuns(flowSink, rect, cluster, nextCluster)))
-                break;
+            if (uSize >= 0)
+            {
+                // Fit as many clusters between breakpoints that will go in.
+                if (FAILED(FitText(cluster, textLength, uSize, &nextCluster)))
+                    break;
 
-            cluster = nextCluster;
+                // Push the glyph runs to the sink.
+                if (FAILED(ProduceGlyphRuns(flowSink, rect, cluster, nextCluster)))
+                    break;
+
+                cluster = nextCluster;
+            }
         }
     }
 
@@ -449,7 +1039,7 @@ STDMETHODIMP FlowLayout::FlowText(
 
 STDMETHODIMP FlowLayout::FitText(
     const ClusterPosition& clusterStart,
-    UINT32 textEnd,
+    uint32_t textEnd,
     float maxWidth,
     OUT ClusterPosition* clusterEnd
     )
@@ -463,8 +1053,8 @@ STDMETHODIMP FlowLayout::FitText(
     // a hard break.
     ClusterPosition cluster(clusterStart);
     ClusterPosition nextCluster(clusterStart);
-    UINT32 validBreakPosition   = cluster.textPosition;
-    UINT32 bestBreakPosition    = cluster.textPosition;
+    uint32_t validBreakPosition = cluster.textPosition;
+    uint32_t bestBreakPosition  = cluster.textPosition;
     float textWidth             = 0;
 
     while (cluster.textPosition < textEnd)
@@ -485,6 +1075,11 @@ STDMETHODIMP FlowLayout::FitText(
         }
 
         validBreakPosition = nextCluster.textPosition;
+
+        if (treatAsIsolatedCharacters_ && textWidth >= maxWidth)
+        {
+            break;
+        }
 
         // See if we can break after this character cluster, and if so,
         // mark it as the new potential break point.
@@ -525,18 +1120,26 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
 
     HRESULT hr = S_OK;
 
+    const bool isVertical = (readingDirection_ & ReadingDirectionPrimaryAxis) != 0;
+    const bool isReversedPrimaryDirection = (readingDirection_ & ReadingDirectionPrimaryProgression) != 0;
+
+    // Determine length of line.
+    const float uSize = (readingDirection_ & ReadingDirectionPrimaryAxis)
+                      ? rect.bottom - rect.top
+                      : rect.right  - rect.left;
+
     ////////////////////////////////////////
     // Figure out how many runs we cross, because this is the number
     // of distinct glyph runs we'll need to reorder visually.
 
-    UINT32 runIndexEnd = clusterEnd.runIndex;
+    uint32_t runIndexEnd = clusterEnd.runIndex;
     if (clusterEnd.textPosition > runs_[runIndexEnd].textStart)
         ++runIndexEnd; // Only partially cover the run, so round up.
 
     // Fill in mapping from visual run to logical sequential run.
-    UINT32 bidiOrdering[100];
-    UINT32 totalRuns = runIndexEnd - clusterStart.runIndex;
-    totalRuns = std::min(totalRuns, static_cast<UINT32>(ARRAYSIZE(bidiOrdering)));
+    uint32_t bidiOrdering[100];
+    uint32_t totalRuns = runIndexEnd - clusterStart.runIndex;
+    totalRuns = std::min(totalRuns, static_cast<uint32_t>(ARRAYSIZE(bidiOrdering)));
 
     ProduceBidiOrdering(
         clusterStart.runIndex,
@@ -548,7 +1151,7 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
     // Ignore any trailing whitespace
 
     // Look backward from end until we find non-space.
-    UINT32 trailingWsPosition = clusterEnd.textPosition;
+    uint32_t trailingWsPosition = clusterEnd.textPosition;
     for ( ; trailingWsPosition > clusterStart.textPosition; --trailingWsPosition)
     {
         if (!breakpoints_[trailingWsPosition-1].isWhitespace)
@@ -558,35 +1161,38 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
     ClusterPosition clusterWsEnd(clusterStart);
     SetClusterPosition(clusterWsEnd, trailingWsPosition);
 
-
     ////////////////////////////////////////
     // Produce justified advances to reduce the jagged edge.
 
     std::vector<float> justifiedAdvances;
-    hr = ProduceJustifiedAdvances(rect, clusterStart, clusterWsEnd, justifiedAdvances);
-    UINT32 justificationGlyphStart = GetClusterGlyphStart(clusterStart);
+    hr = ProduceJustifiedAdvances(uSize, clusterStart, clusterWsEnd, justifiedAdvances);
+    uint32_t justificationGlyphStart = GetClusterGlyphStart(clusterStart);
 
 
     ////////////////////////////////////////
     // Determine starting point for alignment.
 
-    float x = rect.left;
-    float y = rect.bottom;
+    float u         = (isVertical) ? rect.top  : rect.left;
+    float v         = (isVertical) ? rect.left : rect.top;
+    float ascent    = 0;
+    float descent   = 0;
+    float central   = 0;
 
     if (SUCCEEDED(hr))
     {
         DWRITE_FONT_METRICS fontMetrics;
         fontFace_->GetMetrics(&fontMetrics);
 
-        float descent   = (fontMetrics.descent * fontEmSize_ / fontMetrics.designUnitsPerEm);
-        y -= descent;
+        ascent  = (fontMetrics.ascent  * fontEmSize_ / fontMetrics.designUnitsPerEm);
+        descent = (fontMetrics.descent * fontEmSize_ / fontMetrics.designUnitsPerEm);
+        central = (((fontMetrics.descent + fontMetrics.ascent) / 2) * fontEmSize_ / fontMetrics.designUnitsPerEm);
 
-        if (readingDirection_ == DWRITE_READING_DIRECTION_RIGHT_TO_LEFT)
+        if (isReversedPrimaryDirection)
         {
             // For RTL, we neeed the run width to adjust the origin
             // so it starts on the right side.
-            UINT32 glyphStart = GetClusterGlyphStart(clusterStart);
-            UINT32 glyphEnd   = GetClusterGlyphStart(clusterWsEnd);
+            uint32_t glyphStart = GetClusterGlyphStart(clusterStart);
+            uint32_t glyphEnd   = GetClusterGlyphStart(clusterWsEnd);
 
             if (glyphStart < glyphEnd)
             {
@@ -595,7 +1201,7 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
                     glyphEnd   - justificationGlyphStart,
                     &justifiedAdvances.front()
                     );
-                x = rect.right - lineWidth;
+                u += uSize - lineWidth;
             }
         }
     }
@@ -608,8 +1214,8 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
         for (size_t i = 0; i < totalRuns; ++i)
         {
             const TextAnalysis::Run& run    = runs_[bidiOrdering[i]];
-            UINT32 glyphStart               = run.glyphStart;
-            UINT32 glyphEnd                 = glyphStart + run.glyphCount;
+            uint32_t glyphStart             = run.glyphStart;
+            uint32_t glyphEnd               = glyphStart + run.glyphCount;
 
             // If the run is only partially covered, we'll need to find
             // the subsection of glyphs that were fit.
@@ -637,23 +1243,66 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
                                 &justifiedAdvances.front()
                                 );
 
+            // Adjust glyph run to the appropriate baseline.
+
+            float vAdjustment;
+            if (run.isSideways)
+            {
+                vAdjustment = central;
+            }
+            else
+            {
+                if ((run.glyphOrientation & GlyphOrientationFlipVertical) != 0)
+                {
+                    // Common case in vertical. Uncommon in horizontal, but
+                    // could occur for RTL Ogham or Mongolian.
+                    //
+                    //     2         3          6           7
+                    //  88    88  88    88  8888888888  88    88
+                    //  88   88    88   88      88  88    8888  88
+                    //  888888      888888    8888  88      88  88
+                    //  88    88  88    88  88    88    8888888888
+                    //  888888      888888
+                    //
+                    vAdjustment = descent;
+                }
+                else
+                {
+                    // Common case in horizontal. Uncommon case in vertical,
+                    // but occurs for Arabic in TTB stacked vertical or BTT
+                    // Latin.
+                    //
+                    //     0         1          4           5     
+                    //  888888      888888  8888888888    88    88
+                    //  88    88  88    88  88  88      88  8888  
+                    //  888888      888888  88  8888    88  88    
+                    //  88   88    88   88    88    88  8888888888
+                    //  88    88  88    88  
+                    //
+                    vAdjustment = ascent;
+                }
+            }
+            float adjustedV = v + vAdjustment;
+            float adjustedU = u + ((run.bidiLevel & 1) ? runWidth : 0); // origin starts from right if RTL
+
             // Flush this glyph run.
             hr = flowSink->SetGlyphRun(
-                (run.bidiLevel & 1) ? (x + runWidth) : (x), // origin starts from right if RTL
-                y,
+                isVertical ? adjustedV : adjustedU,
+                isVertical ? adjustedU : adjustedV,
                 glyphEnd - glyphStart,
                 &glyphIndices_[glyphStart],
                 &justifiedAdvances[glyphStart - justificationGlyphStart],
                 &glyphOffsets_[glyphStart],
                 fontFace_,
                 fontEmSize_,
-                run.bidiLevel,
+                run.glyphOrientation,
+                run.isReversed,
                 run.isSideways
                 ); 
             if (FAILED(hr))
                 break;
 
-            x += runWidth;
+            u += runWidth;
         }
     }
 
@@ -662,9 +1311,9 @@ STDMETHODIMP FlowLayout::ProduceGlyphRuns(
 
 
 void FlowLayout::ProduceBidiOrdering(
-    UINT32 spanStart,
-    UINT32 spanCount,
-    OUT UINT32* spanIndices     // [spanCount]
+    uint32_t spanStart,
+    uint32_t spanCount,
+    OUT uint32_t* spanIndices     // [spanCount]
     ) const throw()
 {
     // Produces an index mapping from sequential order to visual bidi order.
@@ -675,7 +1324,7 @@ void FlowLayout::ProduceBidiOrdering(
     // http://www.unicode.org/reports/tr9/tr9-17.html 
 
     // Fill all entries with initial indices
-    for (UINT32 i = 0; i < spanCount; ++i)
+    for (uint32_t i = 0; i < spanCount; ++i)
     {
         spanIndices[i] = spanStart + i;
     }
@@ -684,13 +1333,13 @@ void FlowLayout::ProduceBidiOrdering(
         return;
 
     size_t runStart = 0;
-    UINT32 currentLevel = runs_[spanStart].bidiLevel;
+    uint32_t currentLevel = runs_[spanStart].bidiLevel;
 
     // Rearrange each run to produced reordered spans.
     for (size_t i = 0; i < spanCount; ++i )
     {
         size_t runEnd       = i + 1;
-        UINT32 nextLevel    = (runEnd < spanCount)
+        uint32_t nextLevel  = (runEnd < spanCount)
                             ? runs_[spanIndices[runEnd]].bidiLevel
                             : 0; // past last element
 
@@ -711,7 +1360,7 @@ void FlowLayout::ProduceBidiOrdering(
         do // currentLevel > nextLevel
         {
             // Recede to find start of the run and previous level.
-            UINT32 previousLevel;
+            uint32_t previousLevel;
             for (;;)
             {
                 if (runStart <= 0) // reached front of index list
@@ -744,7 +1393,7 @@ void FlowLayout::ProduceBidiOrdering(
 
 
 STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
-    const FlowLayoutSource::RectF& rect,
+    float maxWidth,
     const ClusterPosition& clusterStart,
     const ClusterPosition& clusterEnd,
     OUT std::vector<float>& justifiedAdvances
@@ -754,8 +1403,8 @@ STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
     // using the breakpoint analysis whitespace property.
 
     // Copy out default, unjustified advances.
-    UINT32 glyphStart   = GetClusterGlyphStart(clusterStart);
-    UINT32 glyphEnd     = GetClusterGlyphStart(clusterEnd);
+    uint32_t glyphStart = GetClusterGlyphStart(clusterStart);
+    uint32_t glyphEnd   = GetClusterGlyphStart(clusterEnd);
 
     try
     {
@@ -766,10 +1415,12 @@ STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
         return ExceptionToHResult();
     }
 
+    if (justificationMode_ == JustificationModeNone)
+        return S_OK; // Nothing to justify.
+
     if (glyphEnd - glyphStart == 0)
         return S_OK; // No glyphs to modify.
 
-    float maxWidth = rect.right - rect.left;
     if (maxWidth <= 0)
         return S_OK; // Text can't fit anyway.
 
@@ -778,7 +1429,7 @@ STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
     // First, count how many spaces there are in the text range.
 
     ClusterPosition cluster(clusterStart);
-    UINT32 whitespaceCount = 0;
+    uint32_t whitespaceCount = 0;
 
     while (cluster.textPosition < clusterEnd.textPosition)
     {
@@ -820,6 +1471,121 @@ STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
 
 
 ////////////////////////////////////////////////////////////////////////////////
+// Helpers
+
+HRESULT FlowLayout::CopyToClipboard()
+{
+    // Copies selected text to clipboard.
+
+    HRESULT hr = E_FAIL;
+
+    DWRITE_TEXT_RANGE selectionRange = {0, static_cast<uint32_t>(formattedText_.size())};
+    if (selectionRange.length <= 0)
+    {
+        return S_OK;
+    }
+
+    // Open and empty existing contents.
+    if (!OpenClipboard(nullptr))
+    {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+    }
+    else
+    {
+        if (!EmptyClipboard())
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+        else
+        {
+            // Allocate room for the text
+            size_t byteSize         = sizeof(wchar_t) * (selectionRange.length + 1);
+            HGLOBAL hClipboardData  = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, byteSize);
+
+            if (hClipboardData != nullptr)
+            {
+                void* memory = GlobalLock(hClipboardData);  // [byteSize] in bytes
+
+                if (memory == nullptr)
+                {
+                    hr = HRESULT_FROM_WIN32(GetLastError());
+                }
+                else
+                {
+                    // Copy text to memory block.
+                    const wchar_t* text = formattedText_.c_str();
+                    memcpy(memory, &text[selectionRange.startPosition], byteSize);
+                    GlobalUnlock(hClipboardData);
+
+                    if (SetClipboardData(CF_UNICODETEXT, hClipboardData) != nullptr)
+                    {
+                        hClipboardData = nullptr; // system now owns the clipboard, so don't touch it.
+                        hr = S_OK;
+                    }
+                }
+                GlobalFree(hClipboardData); // free if failed (still non-null)
+            }
+            CloseClipboard();
+        }
+    }
+
+    return hr;
+}
+
+
+HRESULT FlowLayout::PasteFromClipboard()
+{
+    // Copy Unicode text from clipboard.
+
+    HRESULT hr = E_FAIL;
+
+    if (!OpenClipboard(nullptr))
+    {
+        hr = HRESULT_FROM_WIN32(GetLastError());
+    }
+    else
+    {
+        HGLOBAL hClipboardData = GetClipboardData(CF_UNICODETEXT);
+
+        if (hClipboardData == nullptr)
+        {
+            hr = HRESULT_FROM_WIN32(GetLastError());
+        }
+        else
+        {
+            // Get text and size of text.
+            size_t byteSize                 = GlobalSize(hClipboardData);
+            void* memory                    = GlobalLock(hClipboardData); // [byteSize] in bytes
+            const wchar_t* text             = reinterpret_cast<const wchar_t*>(memory);
+            uint32_t textLength             = static_cast<uint32_t>(wcsnlen(text, byteSize / sizeof(wchar_t)));
+
+            if (memory == nullptr)
+            {
+                hr = HRESULT_FROM_WIN32(GetLastError());
+            }
+            else
+            {
+                try
+                {
+                    formattedText_.assign(text, textLength);
+                    hr = S_OK;
+                }
+                catch (...)
+                {
+                    hr = ExceptionToHResult();
+                }
+
+                GlobalUnlock(hClipboardData);
+            }
+        }
+        CloseClipboard();
+    }
+
+    return hr;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 // Text/cluster navigation.
 //
 // Since layout should never split text clusters, we want to move ahead whole
@@ -827,7 +1593,7 @@ STDMETHODIMP FlowLayout::ProduceJustifiedAdvances(
 
 void FlowLayout::SetClusterPosition(
     IN OUT ClusterPosition& cluster,
-    UINT32 textPosition
+    uint32_t textPosition
     ) const throw()
 {
     // Updates the current position and seeks its matching text analysis run.
@@ -845,14 +1611,14 @@ void FlowLayout::SetClusterPosition(
         // seeked one), we can save some time. Otherwise restart from
         // the beginning.
 
-        UINT32 newRunIndex = 0;
+        uint32_t newRunIndex = 0;
         if (textPosition >= runs_[cluster.runIndex].textStart)
         {
             newRunIndex = cluster.runIndex;
         }
 
         // Find new run that contains the text position.
-        newRunIndex = static_cast<UINT32>(
+        newRunIndex = static_cast<uint32_t>(
                             std::find(runs_.begin() + newRunIndex, runs_.end(), textPosition)
                             - runs_.begin()
                             );
@@ -860,7 +1626,7 @@ void FlowLayout::SetClusterPosition(
         // Keep run index within the list, rather than pointing off the end.
         if (newRunIndex >= runs_.size())
         {
-            newRunIndex  = static_cast<UINT32>(runs_.size() - 1);
+            newRunIndex  = static_cast<uint32_t>(runs_.size() - 1);
         }
 
         // Cache the position of the next analysis run to efficiently
@@ -884,8 +1650,8 @@ void FlowLayout::AdvanceClusterPosition(
     //  - A single codepoint to several glyphs (diacritics decomposed into distinct glyphs)
     //  - Multiple codepoints are coalesced into a single glyph.
     //
-    UINT32 textPosition = cluster.textPosition;
-    UINT32 clusterId    = glyphClusters_[textPosition];
+    uint32_t textPosition = cluster.textPosition;
+    uint32_t clusterId    = glyphClusters_[textPosition];
 
     for (++textPosition; textPosition < cluster.runEndPosition; ++textPosition)
     {
@@ -904,13 +1670,13 @@ void FlowLayout::AdvanceClusterPosition(
 }
 
 
-UINT32 FlowLayout::GetClusterGlyphStart(const ClusterPosition& cluster) const throw()
+uint32_t FlowLayout::GetClusterGlyphStart(const ClusterPosition& cluster) const throw()
 {
     // Maps from text position to corresponding starting index in the glyph array.
     // This is needed because there isn't a 1:1 correspondence between text and
     // glyphs produced.
 
-    UINT32 glyphStart = runs_[cluster.runIndex].glyphStart;
+    uint32_t glyphStart = runs_[cluster.runIndex].glyphStart;
 
     return (cluster.textPosition < glyphClusters_.size())
         ? glyphStart + glyphClusters_[cluster.textPosition]
@@ -934,8 +1700,8 @@ float FlowLayout::GetClusterRangeWidth(
 
 
 float FlowLayout::GetClusterRangeWidth(
-    UINT32 glyphStart,
-    UINT32 glyphEnd,
+    uint32_t glyphStart,
+    uint32_t glyphEnd,
     const float* glyphAdvances          // [glyphEnd]
     ) const throw()
 {
