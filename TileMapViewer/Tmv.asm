@@ -1855,7 +1855,7 @@ RedrawViewingWindow:
     push dword StatusBar.PixelHeight|((StatusBar.PixelWidth)<<16) ;height/width
     push dword (StatusBar.PixelY)|(StatusBar.PixelX<<16)  ;row/col
     call DrawBox
-    add esp,byte 12
+    add esp,byte 10
     ret
 
 ;----------------------------------------
@@ -1890,8 +1890,67 @@ CopyNullTerminatedString:
     ret
 
 ;----------------------------------------
-;(esi=ptr to title) (esi=string, ecx=string length, cf=escape)
+;(esi=prompt text, ebx=extended description) (esi=string, ecx=string length, zf=escape or empty string)
 ViewingWindowPrompt:
+%if 0 ; Not ready yet.
+.PromptText equ 0
+.Title equ 4
+.ParamBytes equ 8
+
+.DialogWidth equ 200
+.DialogHeight equ 100
+.DialogTop equ (Screen.DefaultHeight - .DialogHeight) / 2
+.DialogLeft equ (Screen.DefaultWidth - .DialogWidth) / 2
+.PromptWidth equ 120
+.PromptHeight equ GuiFont.GlyphPixelHeight + 2*2
+.PromptTop equ .DialogTop + GuiFont.GlyphPixelHeight + 2*2
+.PromptLeft equ (.DialogWidth - .PromptWidth) / 2
+.DialogCharHeight equ .DialogHeight / GuiFont.GlyphPixelHeight
+.DialogCharWidth equ .DialogWidth / GuiFont.GlyphPixelWidth
+;!!!
+    pushparams32_rtl esi,ebx
+
+    cld
+    mov edi,CharStrBuffer
+    mov ecx,CharStrBuffer_Len
+    call CopyNullTerminatedString ;(esi=source, edi=dest, ecx=length)
+
+    ;push dword       ;color
+    ;push dword (Screen.DefaultHeight-6-6)|((Screen.DefaultWidth-8)<<16) ;height/width
+    ;push dword 6|(4<<16)       ;row/col
+    ;pushcall DrawBox, 6|(4<<16), ((Screen.DefaultHeight-6-6)|((Screen.DefaultWidth-8)<<16)), GuiColorBack
+    ;pushcall DrawBox, 6|(4<<16)
+    ;add esp,byte 4
+
+    pushcall DrawBox, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth), GuiColorBack
+    pushcall DrawBorder, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth)
+
+    ;mov esi,[esp+.Title]
+    ;pushcall PrintControlString, esi, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogCharHeight, .DialogCharWidth) 
+
+    ; Get typed string. Pass maxlength and zero default length.
+    ;;call Mouse.Hide
+    ;pushcall GetUserString, CharStrBuffer, makeyxparam(.PromptTop, .PromptLeft), CharStrBuffer_Len<<8
+
+    push word CharStrBuffer_Len<<8 ;maxlength and zero default length
+    push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
+    push dword CharStrBuffer
+    call GetUserString
+    lea esp,[esp+10]
+
+    push eax                    ;save string length
+    ;;call Mouse.Show
+    pop ecx                     ;get string length
+
+    mov byte [ViewWindow.Change],WindowRedraw.StatusBar
+
+    add esp,byte .ParamBytes
+    mov esi,CharStrBuffer       ;return pointer to text
+    test ecx,ecx                ;set zf
+    ret
+
+%else
+
     cld
     mov edi,CharStrBuffer
     mov ecx,CharStrBuffer_Len
@@ -1899,7 +1958,7 @@ ViewingWindowPrompt:
 
     call RedrawViewingWindow.StatusBarClearBackground
 
-    push dword CharStrBuffer_Len<<8 ;maxlength and zero default length
+    push word CharStrBuffer_Len<<8 ;maxlength and zero default length
     push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
     push dword CharStrBuffer
     call Mouse.Hide
@@ -1910,8 +1969,35 @@ ViewingWindowPrompt:
     mov esi,CharStrBuffer       ;return pointer to text
     mov ecx,CharStrBuffer_Len
     popf
-    lea esp,[esp+12]
+    lea esp,[esp+10]
     ret
+%endif
+
+;----------------------------------------
+;(esi=ptr to title) (esi=string, ecx=string length, cf=escape)
+%if 0
+ViewingWindowMenu:
+    ;cld
+    ;mov edi,CharStrBuffer
+    ;mov ecx,CharStrBuffer_Len
+    ;call CopyNullTerminatedString
+
+    ;call RedrawViewingWindow.StatusBarClearBackground
+
+    ;push dword CharStrBuffer_Len<<8 ;maxlength and zero default length
+    ;push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
+    ;push dword CharStrBuffer
+    ;call Mouse.Hide
+    ;call GetUserString
+    ;pushf                       ;save cf for Escape and zf for null string
+    ;call Mouse.Show
+    ;mov byte [ViewWindow.Change],WindowRedraw.StatusBar
+    ;mov esi,CharStrBuffer       ;return pointer to text
+    ;mov ecx,CharStrBuffer_Len
+    ;popf
+    ;lea esp,[esp+12]
+    ;ret
+%endif
 
 ;----------------------------------------
 ; Given a source unit buffer, source expander, tile blitter, and destination

@@ -18,23 +18,32 @@ class DECLSPEC_UUID("7712E74A-C7E0-4664-B58E-854394F2ACB4") FlowLayoutSink
         > > >
 {
 public:
-    FlowLayoutSink()
+    FlowLayoutSink(IDWriteFactory* dwriteFactory)
+    :   dwriteFactory_(SafeAcquire(dwriteFactory)),
+        textAnalyzer_()
     { }
+
+    ~FlowLayoutSink()
+    {
+        SafeRelease(&dwriteFactory_);
+        SafeRelease(&textAnalyzer_);
+    }
 
     STDMETHODIMP Reset();
 
-    STDMETHODIMP Prepare(UINT32 glyphCount);
+    STDMETHODIMP Prepare(uint32_t glyphCount);
 
     STDMETHODIMP SetGlyphRun(
         float x,
         float y,
-        UINT32 glyphCount,
-        const UINT16* glyphIndices, // [glyphCount]
+        uint32_t glyphCount,
+        const uint16_t* glyphIndices, // [glyphCount]
         const float* glyphAdvances, // [glyphCount]
         const DWRITE_GLYPH_OFFSET* glyphOffsets, // [glyphCount]
         IDWriteFontFace* fontFace,
         float fontEmSize,
-        UINT8 bidiLevel,
+        uint8_t glyphOrientation,
+        bool isReversed,
         bool isSideways
         );
 
@@ -59,7 +68,7 @@ protected:
             fontEmSize(),
             glyphStart(),
             glyphCount(),
-            bidiLevel(),
+            glyphOrientation(),
             isSideways(),
             isReversed(),
             x(),
@@ -93,14 +102,14 @@ protected:
         float fontEmSize;
         float x;
         float y;
-        UINT32 glyphStart;
-        UINT32 glyphCount;
-        UINT8 bidiLevel;
+        uint32_t glyphStart;
+        uint32_t glyphCount;
+        uint8_t glyphOrientation;
         bool isSideways;
         bool isReversed;
 
         void Convert(
-            const UINT16* glyphIndices,                 // [glyphCount]
+            const uint16_t* glyphIndices,               // [glyphCount]
             const float* glyphAdvances,                 // [glyphCount]
             const DWRITE_GLYPH_OFFSET* glyphOffsets,    // [glyphCount]
             OUT DWRITE_GLYPH_RUN* glyphRun
@@ -108,8 +117,11 @@ protected:
     };
 
     std::vector<CustomGlyphRun>         glyphRuns_;
-    std::vector<UINT16>                 glyphIndices_;
+    std::vector<uint16_t>               glyphIndices_;
     std::vector<float>                  glyphAdvances_;
     std::vector<DWRITE_GLYPH_OFFSET>    glyphOffsets_;
+
+    IDWriteFactory* dwriteFactory_;
+    mutable IDWriteTextAnalyzer1* textAnalyzer_; // lazily initialized
 };
 // </SnippetFlowSinkh>

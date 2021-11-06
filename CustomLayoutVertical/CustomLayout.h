@@ -16,15 +16,16 @@ class MainWindow
 {
 public:
     MainWindow()
-    :   hwnd_(NULL),
-        hmonitor_(NULL),
-        textMode_(CommandIdTextLatin),
+    :   hwnd_(nullptr),
+        hmonitor_(nullptr),
+        textSample_(CommandIdTextLatin),
         dwriteFactory_(),
         renderingParams_(),
         renderTarget_(),
         flowLayoutSource_(),
         flowLayoutSink_(),
-        flowLayout_()
+        flowLayout_(),
+        characterMapBase_(0)
     { }
 
     ~MainWindow()
@@ -37,11 +38,14 @@ public:
         SafeRelease(&flowLayout_);
     }
 
+    HRESULT Initialize();
+    WPARAM RunMessageLoop();
+
     static ATOM RegisterWindowClass();
     static LRESULT CALLBACK WindowProc(HWND parentHwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-    HRESULT Initialize();
-    WPARAM RunMessageLoop();
+    STDMETHODIMP ReflowLayout();
+    STDMETHODIMP SetCustomLayoutFontFromLogFont(const LOGFONT& logFont);
 
 public:
     const static wchar_t* g_windowClassName;
@@ -51,11 +55,19 @@ protected:
     void OnSize();
     void OnMove();
     void OnCommand(UINT commandId);
+    void OnKeyDown(UINT keyCode);
 
-    STDMETHODIMP ReflowLayout();
-    STDMETHODIMP SetLayoutText(UINT commandId);
+    STDMETHODIMP SetLayoutSampleText(UINT commandId);
     STDMETHODIMP SetLayoutShape(UINT commandId);
     STDMETHODIMP SetLayoutNumbers(UINT commandId);
+    STDMETHODIMP SetReadingDirection(UINT commandId);
+    STDMETHODIMP SetGlyphOrientationMode(UINT commandId);
+    STDMETHODIMP SetJustification(UINT commandId);
+    STDMETHODIMP SetCharacterMapBase(uint32_t characterMapBase);
+    STDMETHODIMP OnChooseFont();
+    STDMETHODIMP CopyToClipboard();
+    STDMETHODIMP CopyImageToClipboard();
+    STDMETHODIMP PasteFromClipboard();
 
     HWND hwnd_;
     HMONITOR hmonitor_;
@@ -68,7 +80,8 @@ protected:
     FlowLayoutSink*             flowLayoutSink_;
     FlowLayout*                 flowLayout_;
 
-    int textMode_;
+    int textSample_;
+    uint32_t characterMapBase_;
 
 private:
     // No copy construction allowed.

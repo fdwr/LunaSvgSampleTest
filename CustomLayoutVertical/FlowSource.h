@@ -11,6 +11,8 @@
 //----------------------------------------------------------------------------
 #pragma once
 
+enum ReadingDirection;
+
 class DECLSPEC_UUID("84600D90-8F09-480f-9275-D71125FCD0C3") FlowLayoutSource
     :   public ComBase<
             QiListSelf<FlowLayoutSource,
@@ -21,7 +23,9 @@ public:
     enum FlowShape
     {
         FlowShapeCircle,
-        FlowShapeFunnel
+        FlowShapeFunnel,
+        FlowShapeRectangle,
+        FlowShapeGrid,
     };
 
     struct RectF
@@ -35,7 +39,9 @@ public:
     FlowLayoutSource()
     :   flowShape_(FlowShapeCircle),
         width_(300),
-        height_(300)
+        height_(300),
+        currentU_(),
+        currentV_()
     {
         Reset();
     }
@@ -43,13 +49,13 @@ public:
     STDMETHODIMP Reset();
     STDMETHODIMP SetShape(FlowShape flowShape);
     STDMETHODIMP SetSize(float width, float height);
-    STDMETHODIMP GetNextRect(float fontHeight, OUT RectF* nextRect);
+    STDMETHODIMP GetNextRect(float fontHeight, ReadingDirection readingDirection, OUT RectF* nextRect);
 
 protected:
     FlowShape flowShape_;
     float width_;
     float height_;
-
-    float currentY_;
+    float currentU_;
+    float currentV_;
 };
 // </SnippetFlowSourceh>

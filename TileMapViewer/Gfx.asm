@@ -237,37 +237,48 @@ DrawBox:
 ; (uint16 toprow, uint16 leftcolumn, uint16 height, uint16 width)
 ;
 DrawBorder:
-    movzx ebx,word [esp+4]
-    movzx edx,word [esp+6]
-    movzx ecx,word [esp+10]
+;!!! todo:
+.Top equ 4
+.Left equ 6
+.Height equ 8
+.Width equ 10
+.Color equ 12   ; 4 bytes, top, left, bottom, right
+    movzx ebx,word [esp+.Top]
+    movzx edx,word [esp+.Left]
+    movzx ecx,word [esp+.Width]
     dec ebx
     dec edx
+    ; Draw top line
     add ecx,byte 2
     mov al,GuiColorBottom
     call BlitLineFast.Horizontal
     ;dec ebx
-    ;mov al,GuiColorMidBtm
+    ;mov al,GuiColorMidBottom
     ;call BlitLineFast.Horizontal
-    add bx,[esp+8]
+    add bx,[esp+.Height]
     ;add ebx,byte 2
+    ; Draw bottom line
     inc ebx
-    mov al,GuiColorTop
+    ;mov al,GuiColorTop
+    mov al,GuiColorMidTop
     call BlitLineFast.Horizontal
     ;inc ebx
     ;mov al,GuiColorMidTop
     ;call BlitLineFast.Horizontal
 
-    movzx ebx,word [esp+4]              ;get row
-    movzx ecx,word [esp+8]              ;get height
+    movzx ebx,word [esp+.Top]
+    movzx ecx,word [esp+.Height]
     ;dec ebx
     ;add ecx,byte 2
+    ; Draw left line
     mov al,GuiColorBottom
     call BlitLineFast.Vertical
     ;dec edx
-    ;mov al,GuiColorMidBtm
+    ;mov al,GuiColorMidBottom
     ;call BlitLineFast.Vertical
-    add dx,[esp+10]
+    add dx,[esp+.Width]
     ;add edx,byte 2
+    ; Draw right line
     inc edx
     mov al,GuiColorTop
     call BlitLineFast.Vertical
@@ -277,7 +288,7 @@ DrawBorder:
     ret
 
 ;------------------------------
-; (al=color, ebx=row, edx=column, ecx=line_length)
+; (al=color, ebx=row, edx=column, ecx=line_length) ()
 ;
 BlitLineFast:
 .Horizontal:
