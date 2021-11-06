@@ -1867,7 +1867,7 @@ RedrawViewingWindow:
     push dword StatusBar.PixelHeight|((StatusBar.PixelWidth)<<16) ;height/width
     push dword (StatusBar.PixelY)|(StatusBar.PixelX<<16)  ;row/col
     call DrawBox
-    add esp,byte 10
+    add esp,byte 12
     ret
 
 ;----------------------------------------
@@ -1970,7 +1970,7 @@ ViewingWindowPrompt:
 
     call RedrawViewingWindow.StatusBarClearBackground
 
-    push word CharStrBuffer_Len<<8 ;maxlength and zero default length
+    push dword CharStrBuffer_Len<<8 ;maxlength and zero default length
     push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
     push dword CharStrBuffer
     call Mouse.Hide
@@ -1981,7 +1981,7 @@ ViewingWindowPrompt:
     mov esi,CharStrBuffer       ;return pointer to text
     mov ecx,CharStrBuffer_Len
     popf
-    lea esp,[esp+10]
+    lea esp,[esp+12]
     ret
 %endif
 
