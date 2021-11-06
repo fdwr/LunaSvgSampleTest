@@ -1,9 +1,21 @@
 ;Things To Fix:
 ;  Rewrite in C++! (tired of this asm)
 ;  Give it a real GUI!
-;  Numbered format tables
+;  Numbered format tables *what did I mean by this?
 ;  Complete separating FileTiles from BlitTiles to allow multiple views
-
+;
+; Add little menu on Escape key:
+;   Help (F1)
+;   Open file (Ctrl+O)
+;   Goto (g)
+;   Mode (m)
+;   Next mode (M)
+;   Orientation (o)
+;   Next orientation (O)
+;   Unit size (u)
+;   Wrap width (w)
+;   Quit (ctrl+Q)
+;
 ; Tilemap Viewer - Savestate/Rom array viewer
 ; PikenSoft (c)2001-2018
 ;
