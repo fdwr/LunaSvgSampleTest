@@ -3,7 +3,8 @@
 ; PrintCharString
 ; PrintCharStringStd
 ; PrintControlString
-; DrawBorder
+; DrawBorderConvex
+; DrawBorderConcave
 ; BlitLineFast
 ; DrawRect
 ; DrawPatternBox
@@ -235,14 +236,44 @@ DrawBox:
 
 ;------------------------------
 ; (uint16 toprow, uint16 leftcolumn, uint16 height, uint16 width)
+; Note the border is actually drawn around the given rectangle coordinates.
+;
+DrawBorderConvex:
+    ;          top                 left             bottom               right
+    push dword (GuiColorMidTop<<0)|(GuiColorTop<<8)|(GuiColorBottom<<16)|(GuiColorBottom<<24)
+    push dword [esp+12]
+    push dword [esp+12]
+    call DrawBorder
+    add esp,byte 3*4
+    ret
+
+;------------------------------
+; (uint16 toprow, uint16 leftcolumn, uint16 height, uint16 width)
+; Note the border is actually drawn around the given rectangle coordinates.
+;
+DrawBorderConcave:
+    ;          top                 left                bottom               right
+    push dword (GuiColorBottom<<0)|(GuiColorBottom<<8)|(GuiColorMidTop<<16)|(GuiColorTop<<24)
+    push dword [esp+12]
+    push dword [esp+12]
+    call DrawBorder
+    add esp,byte 3*4
+    ret
+
+;------------------------------
+; (uint16 toprow, uint16 leftcolumn, uint16 height, uint16 width, uint32 color)
+; Note the border is actually drawn around the given rectangle coordinates.
 ;
 DrawBorder:
-;!!! todo:
 .Top equ 4
 .Left equ 6
 .Height equ 8
 .Width equ 10
-.Color equ 12   ; 4 bytes, top, left, bottom, right
+.Color equ 12       ; 4 bytes, top, left, bottom, right
+.ColorTop equ 12    ; 1 byte, top
+.ColorLeft equ 13   ; 1 byte, left
+.ColorBottom equ 14 ; 1 byte, bottom
+.ColorRight equ 15  ; 1 byte, right
     movzx ebx,word [esp+.Top]
     movzx edx,word [esp+.Left]
     movzx ecx,word [esp+.Width]
@@ -250,7 +281,7 @@ DrawBorder:
     dec edx
     ; Draw top line
     add ecx,byte 2
-    mov al,GuiColorBottom
+    mov al,[esp+.ColorTop]
     call BlitLineFast.Horizontal
     ;dec ebx
     ;mov al,GuiColorMidBottom
@@ -260,7 +291,7 @@ DrawBorder:
     ; Draw bottom line
     inc ebx
     ;mov al,GuiColorTop
-    mov al,GuiColorMidTop
+    mov al,[esp+.ColorBottom]
     call BlitLineFast.Horizontal
     ;inc ebx
     ;mov al,GuiColorMidTop
@@ -271,7 +302,7 @@ DrawBorder:
     ;dec ebx
     ;add ecx,byte 2
     ; Draw left line
-    mov al,GuiColorBottom
+    mov al,[esp+.ColorLeft]
     call BlitLineFast.Vertical
     ;dec edx
     ;mov al,GuiColorMidBottom
@@ -280,7 +311,7 @@ DrawBorder:
     ;add edx,byte 2
     ; Draw right line
     inc edx
-    mov al,GuiColorTop
+    mov al,[esp+.ColorRight]
     call BlitLineFast.Vertical
     ;inc edx
     ;mov al,GuiColorMidTop

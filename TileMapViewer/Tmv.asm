@@ -55,6 +55,14 @@ Screen.DefaultWidth     equ 320
 Screen.DefaultHeight    equ 200
 %endif
 
+DefaultTileFont.GlyphPixelWidth     equ 8
+DefaultTileFont.GlyphPixelHeight    equ 8
+DefaultTileFont.GlyphPixelCount     equ DefaultTileFont.GlyphPixelHeight * DefaultTileFont.GlyphPixelWidth
+GuiFont.GlyphPixelHeight            equ 7
+GuiFont.GlyphPixelWidth             equ 5
+SmallHexFont.GlyphPixelWidth        equ 5
+SmallHexFont.GlyphPixelHeight       equ 5
+
 WindowRedraw:
 .StatusBar      equ 1
 .Partial        equ 1
@@ -614,7 +622,8 @@ GetFileNameFromUser:
     stc
 %else ; DosVer
     ; [todo] Ask for name via typeable prompt, same as goto function.
-    mov esi,Text.PromptOpenFilename
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptOpenFilename
     call ViewingWindowPrompt
     ;(esi=typed string, cf=cancel)
     mov eax,esi
@@ -633,6 +642,7 @@ OpenGivenViewingFile:
 
     ;call RedrawViewingWindowPage
     mov byte [ViewWindow.Change],WindowRedraw.Complete
+    ; TODO: Update color palette too.
     ret
 
 ;------------------------------
@@ -911,6 +921,7 @@ SetGraphicsMode:
 
 ;------------------------------
 ;(esi=palette table uint24[256]) ()
+;TODO: Keep in range 0 to 255, not VGA 0 to 63.
 SetPalette:
     cld
     mov dx,3C8h
@@ -1137,7 +1148,8 @@ ViewWindowScroll:
     jmp .SetStatBarChange
 
 .SetColorValue:
-    mov esi,Text.PromptColorValue
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptColorValue
     call ViewingWindowPrompt
     jbe near .WaitForInput          ;cancel
     mov ecx,4                       ;set string length
@@ -1154,7 +1166,8 @@ ViewWindowScroll:
     jmp .WaitForInput
 
 .AskWrapWidth:
-    mov esi,Text.PromptWrapWidth
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptWrapWidth
     call ViewingWindowPrompt
     jbe near .SetStatBarChange      ;cancel
     ; esi=string, ecx=string length
@@ -1175,7 +1188,8 @@ ViewWindowScroll:
     jmp short .ValidWrapWidth
 
 .AskUnitSize:
-    mov esi,Text.PromptUnitBitSize
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptUnitBitSize
     call ViewingWindowPrompt
     jbe near .SetStatBarChange      ;cancel
     ; esi=string, ecx=string length
@@ -1254,7 +1268,8 @@ ViewWindowScroll:
     jmp .SetFullChange
 
 .Goto:
-    mov esi,Text.PromptGotoPosition
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptGotoPosition
     call ViewingWindowPrompt
     jbe near .SetStatBarChange      ;cancel
     call GotoFilePos
@@ -1609,7 +1624,7 @@ KeyHelp:
 
     push dword (Screen.DefaultHeight-8)|((Screen.DefaultWidth-8)<<16)    ;height/width
     push dword 4|(4<<16)        ;top/left
-    call DrawBorder
+    call DrawBorderConcave
     add esp,byte 8
     jmp short .RedrawHelpText   ; skip DrawBox since already filled by ClearScreen.
 
@@ -1724,15 +1739,17 @@ RedrawViewingWindowPage:
     mov eax,GuiColorBackDword
     call ClearScreen
 
+    ; Drawing viewing area
     push dword ViewWindow.Height|(ViewWindow.Width<<16)
     push dword 4|(4<<16)
-    call DrawBorder
-    ;add esp,byte 8
+    call DrawBorderConcave
+    ;add esp,byte 2*4
 
+    ; Draw status bar
     push dword 9|((Screen.DefaultWidth-8)<<16)
     push dword (Screen.DefaultHeight-13)|(4<<16)
-    call DrawBorder
-    ;add esp,byte 8
+    call DrawBorderConcave
+    ;add esp,byte 2*4
     add esp,byte 8+8
     ret
 
@@ -1745,7 +1762,7 @@ RedrawViewingWindow:
     cmp bl,WindowRedraw.SizeChange
     jb .ViewWindow
 
-    debugwrite "RedrawViewingWindow/DrawBorder"
+    debugwrite "RedrawViewingWindow/DrawBorderConcave"
     call BlitTiles.Resize
     call BlitTiles.DrawBorder
 
@@ -1904,22 +1921,21 @@ CopyNullTerminatedString:
 ;----------------------------------------
 ;(esi=prompt text, ebx=extended description) (esi=string, ecx=string length, zf=escape or empty string)
 ViewingWindowPrompt:
-%if 0 ; Not ready yet.
 .PromptText equ 0
 .Title equ 4
-.ParamBytes equ 8
+.ParameterByteCount equ 8
 
-.DialogWidth equ 200
-.DialogHeight equ 100
+.DialogWidth equ 300+4+4
+.DialogHeight equ 30
 .DialogTop equ (Screen.DefaultHeight - .DialogHeight) / 2
 .DialogLeft equ (Screen.DefaultWidth - .DialogWidth) / 2
-.PromptWidth equ 120
+.PromptWidth equ 300
 .PromptHeight equ GuiFont.GlyphPixelHeight + 2*2
-.PromptTop equ .DialogTop + GuiFont.GlyphPixelHeight + 2*2
-.PromptLeft equ (.DialogWidth - .PromptWidth) / 2
-.DialogCharHeight equ .DialogHeight / GuiFont.GlyphPixelHeight
-.DialogCharWidth equ .DialogWidth / GuiFont.GlyphPixelWidth
-;!!!
+.PromptTop equ .DialogTop + 2*2 + GuiFont.GlyphPixelHeight + 2
+.PromptLeft equ .DialogLeft + (.DialogWidth - .PromptWidth) / 2
+.DialogCellHeight equ .DialogHeight / GuiFont.GlyphPixelHeight
+.DialogCellWidth equ .DialogWidth / GuiFont.GlyphPixelWidth
+
     pushparams32_rtl esi,ebx
 
     cld
@@ -1935,55 +1951,26 @@ ViewingWindowPrompt:
     ;add esp,byte 4
 
     pushcall DrawBox, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth), GuiColorBack
-    pushcall DrawBorder, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth)
+    pushcall DrawBorderConvex, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth)
+    pushcall DrawBorderConcave, makeyxparam(.PromptTop, .PromptLeft), makeyxparam(.PromptHeight, .PromptWidth)
 
-    ;mov esi,[esp+.Title]
-    ;pushcall PrintControlString, esi, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogCharHeight, .DialogCharWidth) 
+    mov esi,[esp+.Title]
+    pushcall PrintControlString, esi, makeyxparam(.DialogTop+2, .DialogLeft+2), makeyxparam(.DialogCellHeight, .DialogCellWidth) 
 
     ; Get typed string. Pass maxlength and zero default length.
-    ;;call Mouse.Hide
-    ;pushcall GetUserString, CharStrBuffer, makeyxparam(.PromptTop, .PromptLeft), CharStrBuffer_Len<<8
-
-    push word CharStrBuffer_Len<<8 ;maxlength and zero default length
-    push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
-    push dword CharStrBuffer
-    call GetUserString
-    lea esp,[esp+10]
+    call Mouse.Hide
+    pushcall GetUserString, CharStrBuffer, makeyxparam((.PromptTop+1), (.PromptLeft+1)), 0|(CharStrBuffer_Len<<8)
 
     push eax                    ;save string length
-    ;;call Mouse.Show
+    call Mouse.Show
     pop ecx                     ;get string length
 
-    mov byte [ViewWindow.Change],WindowRedraw.StatusBar
+    mov byte [ViewWindow.Change],WindowRedraw.Complete
 
-    add esp,byte .ParamBytes
+    add esp,byte .ParameterByteCount
     mov esi,CharStrBuffer       ;return pointer to text
     test ecx,ecx                ;set zf
     ret
-
-%else
-
-    cld
-    mov edi,CharStrBuffer
-    mov ecx,CharStrBuffer_Len
-    call CopyNullTerminatedString
-
-    call RedrawViewingWindow.StatusBarClearBackground
-
-    push dword CharStrBuffer_Len<<8 ;maxlength and zero default length
-    push dword StatusBar.PixelY|(StatusBar.PixelX<<16) ;row/col
-    push dword CharStrBuffer
-    call Mouse.Hide
-    call GetUserString
-    pushf                       ;save cf for Escape and zf for null string
-    call Mouse.Show
-    mov byte [ViewWindow.Change],WindowRedraw.StatusBar
-    mov esi,CharStrBuffer       ;return pointer to text
-    mov ecx,CharStrBuffer_Len
-    popf
-    lea esp,[esp+12]
-    ret
-%endif
 
 ;----------------------------------------
 ;(esi=ptr to title) (esi=string, ecx=string length, cf=escape)
@@ -3784,6 +3771,7 @@ ConvertPaletteSnesToPc:
     mov ecx,256         ;the SNES has a 256-color palette
     cld                 ;as always, go forward
 .NextColor:
+    ;TODO: Keep in range 0 to 255, not VGA 0 to 63.
     lodsw               ;get BGR color tuple (the SNES color is reversed from normal)
     shl eax,3           ;isolate red
     shr al,2            ;divide by factor
@@ -4159,18 +4147,17 @@ GetUserString:
 .NotBackspace:
     cmp al,13
     jne .NotEnter
+    movzx eax,byte [esp+.CurLength] ;make text length into pointer
     test byte [esp+.CurLength],255  ;set or clear zf
     ;clc                            ;already cleared by test
-    ;jmp short .End
-.End:
-    movzx ebx,byte [esp+.CurLength] ;make text length into pointer
-    mov byte [edi+ebx],0            ;put null on end
     ret
 .NotEnter:
     cmp al,27
     jne .NextChar
+    xor eax,eax
+    mov byte [edi],0                ;set empty string
     stc
-    jmp short .End
+    ret
 
 ;------------------------------
 ; (al=key, ah=scan code, upper ax=modifiers ctrl/alt/shift, esi=keylist struct) (cf=error keypress not found, ecx=keynumber)
@@ -4529,19 +4516,20 @@ section data
 
 DefaultTileFont:
 .Chars:             incbin "Default8x8_1bit.fnt" ;1bpp pixels
-.GlyphPixelWidth    equ 8
-.GlyphPixelHeight   equ 8
-.GlyphPixelCount    equ .GlyphPixelHeight * .GlyphPixelWidth
+; Declared above.
+;.GlyphPixelWidth   equ 8
+;.GlyphPixelHeight  equ 8
+;.GlyphPixelCount   equ .GlyphPixelHeight * .GlyphPixelWidth
 
 GuiFont:
 .Chars:             equ $-128       ;adjust base pointer since font only includes characters 32-127
-.GlyphPixelHeight   equ 7
-.GlyphPixelWidth    equ 5
                     incbin "Gui5x7_1bit.fnt"
+;.GlyphPixelHeight  equ 7
+;.GlyphPixelWidth   equ 5
 SmallHexFont:
 .Chars:             incbin "SmallHex5x5_1bit.fnt"
-.GlyphPixelWidth    equ 5
-.GlyphPixelHeight   equ 5
+;.GlyphPixelWidth   equ 5
+;.GlyphPixelHeight  equ 5
 
 ; Experimental numeric glyphs:
 ;   0     1     2       3       4       5       6       7       8       9       ?
@@ -4550,6 +4538,7 @@ SmallHexFont:
 ;   o     o       o     o       o       o     o   o   o   o   o   o   o   o     o o
 ;         o       o     o o     o     o o o   o   o   o o o   o o     o o o   o o
 
+;TODO: Keep in range 0 to 255, not VGA 0 to 63.
 RainbowPalette:     incbin "rainbow.pal"
 
 Mouse.DefaultPointerImage:
@@ -4638,6 +4627,7 @@ Text:
         db "email:    FDwR@hotmail.com",13,10
         db "homepage: http://pikensoft.com/",13,10
         db "          http://members.tripod.com/FDwR/snes.htm",13,10
+.EmptyString:
         db 0,"$"
 .FileOpenError:         db "Could not open the file. Check that it was spelled right.",0,"$"
 ;.FileShareError:       db "Could not open the file for editing. Attempting read-only mode.",0,"$"
@@ -4647,9 +4637,9 @@ Text:
 .ZSNESSavestateID:      db "ZSNES Save State File" ; File signature to compare against.
 .ZSNESSavestateID_Len:  equ $-.ZSNESSavestateID
 .PromptColorValue:      db "Write new color value to file: #",0
-.PromptGotoPosition:    db "Goto position: # (0-filelastbyte)",0
-.PromptWrapWidth:       db "Wrap width: # (1-2048)",0
-.PromptUnitBitSize:     db "Unit bit size: # (1-32)",0
+.PromptGotoPosition:    db "Goto position (0-filelastbyte)",0
+.PromptWrapWidth:       db "Wrap width (1-2048)",0
+.PromptUnitBitSize:     db "Unit bit size (1-32)",0
 .PromptOpenFilename:    db "Open filename",0
 %ifdef debug
 .ForwardPartial:        db 'forward partial  ",0,"$'
