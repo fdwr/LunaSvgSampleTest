@@ -1926,15 +1926,19 @@ ViewingWindowPrompt:
 .ParameterByteCount equ 8
 
 .DialogWidth equ 300+4+4
-.DialogHeight equ 30
+.DialogHeight equ 40
 .DialogTop equ (Screen.DefaultHeight - .DialogHeight) / 2
 .DialogLeft equ (Screen.DefaultWidth - .DialogWidth) / 2
+.TitleTop equ .DialogTop + 2
+.TitleLeft equ .DialogLeft + 2
 .PromptWidth equ 300
 .PromptHeight equ GuiFont.GlyphPixelHeight + 2*2
 .PromptTop equ .DialogTop + 2*2 + GuiFont.GlyphPixelHeight + 2
 .PromptLeft equ .DialogLeft + (.DialogWidth - .PromptWidth) / 2
 .DialogCellHeight equ .DialogHeight / GuiFont.GlyphPixelHeight
 .DialogCellWidth equ .DialogWidth / GuiFont.GlyphPixelWidth
+.InformationTop equ .DialogTop + .DialogHeight - GuiFont.GlyphPixelHeight - 2
+.InformationLeft equ .DialogLeft + 2
 
     pushparams32_rtl esi,ebx
 
@@ -1943,19 +1947,16 @@ ViewingWindowPrompt:
     mov ecx,CharStrBuffer_Len
     call CopyNullTerminatedString ;(esi=source, edi=dest, ecx=length)
 
-    ;push dword       ;color
-    ;push dword (Screen.DefaultHeight-6-6)|((Screen.DefaultWidth-8)<<16) ;height/width
-    ;push dword 6|(4<<16)       ;row/col
-    ;pushcall DrawBox, 6|(4<<16), ((Screen.DefaultHeight-6-6)|((Screen.DefaultWidth-8)<<16)), GuiColorBack
-    ;pushcall DrawBox, 6|(4<<16)
-    ;add esp,byte 4
-
     pushcall DrawBox, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth), GuiColorBack
     pushcall DrawBorderConvex, makeyxparam(.DialogTop, .DialogLeft), makeyxparam(.DialogHeight, .DialogWidth)
     pushcall DrawBorderConcave, makeyxparam(.PromptTop, .PromptLeft), makeyxparam(.PromptHeight, .PromptWidth)
 
-    mov esi,[esp+.Title]
-    pushcall PrintControlString, esi, makeyxparam(.DialogTop+2, .DialogLeft+2), makeyxparam(.DialogCellHeight, .DialogCellWidth) 
+    pushcall PrintControlString, [esp+.Title+8], makeyxparam(.TitleTop, .TitleLeft), makeyxparam(.DialogCellHeight, .DialogCellWidth)
+
+    section data
+    .InformationMessage: db SccCyan,"Enter",SccWhite,"=accept value / ",SccCyan,"Esc",SccWhite,"=cancel",0
+    section code
+    pushcall PrintControlString, .InformationMessage, makeyxparam(.InformationTop, .InformationLeft), makeyxparam(.DialogCellHeight, .DialogCellWidth)
 
     ; Get typed string. Pass maxlength and zero default length.
     call Mouse.Hide
