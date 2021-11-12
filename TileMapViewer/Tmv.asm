@@ -29,7 +29,7 @@
 ;%define debug
 
 %include "Version.asm"
-%define WinDos.programNameDefine "Tilemap Viewer ", ProgramVersionStr
+%define WinDos.programNameDefine "Tilemap Viewer ", ProgramVersionStr, " (press F1 for help, Esc to quit)"
 %define WinDos.windowClassNameDefine "TilemapViewer"
 [section code code]
 [section data data]
@@ -1635,10 +1635,9 @@ KeyHelp:
     call DrawBox
     add esp,byte 12
 .RedrawHelpText:
-    push dword ((Screen.DefaultHeight-6-6) / (GuiFont.GlyphPixelHeight+1)) | (((Screen.DefaultWidth-4-4) / (GuiFont.GlyphPixelWidth+1))<<16) ;height/width in chars
-    ;push dword 19|(6<<16)      ;row/col
-    push dword 6|(6<<16)        ;row/col
-    push dword [.HelpTextPtr];Text.KeyHelp
+    push dword makeyxparam((Screen.DefaultHeight-6-6) / (GuiFont.GlyphPixelHeight+1), (Screen.DefaultWidth-4-4) / (GuiFont.GlyphPixelWidth+1)) ;height/width in chars
+    push dword makeyxparam(6, 6) ;row/col
+    push dword [.HelpTextPtr] ;Relative to Text.KeyHelp
     call PrintControlString
     mov byte [.Change],0
     add esp,byte 12
@@ -4548,19 +4547,22 @@ Mouse.DefaultPointerImage:
 ;          (0.........1.........2.........3.........4.........5.........6.........7.........)
 Text:
 .KeyHelp:
-        db SccWhite,"Tilemap Viewer ",SccWhite,ProgramVersionStr," 2021 - File pattern viewer",SccCr
-        db SccBlack,"(:",SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccBlack,":)",SccCr
+        db SccWhite,"Tilemap Viewer ",SccWhite,ProgramVersionStr, SccCr
+        db SccWhite,"File pattern viewer",SccCr
+        db SccBlack,SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccWhite," 2021",SccCr
+        db SccCr
+        db SccWhite,"(Press down ",SccCyan,25,SccWhite," or ",SccCyan,"PgDn",SccWhite," for more, ",SccCyan,"Esc",SccWhite," to exit help)",SccCr
         db SccCr
         ;db SccRed,"                ","T",SccYellow,"i",SccGreen,"l",SccCyan,"e",SccBlue,"m",SccPurple,"a",SccRed,"p ",SccYellow,"V",SccGreen,"i",SccCyan,"e",SccBlue,"w",SccPurple,"e",SccRed,"r ",SccWhite,ProgramVersionStr,SccCr,SccCr
         db SccGreen,"Moving around:",SccCr
-        db SccCyan,"  ",24,32,25,32,27,32,26,SccWhite,"           Step row/column",SccCr
+        db SccCyan,"  ",24," ",25," ",27," ",26,SccWhite,"           Step row/column",SccCr
         db SccCyan,"  PgUp PgDn         ",SccWhite,"Step 16 rows",SccCr
         db SccCyan,"  Home End          ",SccWhite,"Step 16 columns",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,27,32,26,SccWhite,")        Step single byte",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+",SccCyan,"Shift",SccWhite,"+(",SccCyan,27,32,26,SccWhite,")  Step single bit",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"PgUp PgDn",SccWhite,")  Jump 32k (one low ROM bank)",SccCr
         db SccCyan,"  Ctrl",SccWhite,"+(",SccCyan,"Home End",SccWhite,")   Jump to beginning or end",SccCr
-        db SccCyan,"  g      ",SccWhite,"           Goto file position or bg#)",SccCr
+        db SccCyan,"  g      ",SccWhite,"           Goto file offset or bg# if zst",SccCr
         db SccCr
         db SccGreen,"Changing window wrap:",SccCr
         db SccCyan,"  [ ]    ",SccWhite,"Decrease/Increase width by one",SccCr
@@ -4639,8 +4641,8 @@ Text:
 .ZSNESSavestateID_Len:  equ $-.ZSNESSavestateID
 .PromptColorValue:      db "Write new color value to file: #",0
 .PromptGotoPosition:    db "Goto position (0-filelastbyte)",0
-.PromptWrapWidth:       db "Wrap width (1-2048)",0
-.PromptUnitBitSize:     db "Unit bit size (1-32)",0
+.PromptWrapWidth:       db "Wrap width (1-2048) e.g. 16,32,128,320,640...",0
+.PromptUnitBitSize:     db "Unit bit size (1-32) e.g. 1,3,4-,4+,12,24,32",0
 .PromptOpenFilename:    db "Open filename",0
 %ifdef debug
 .ForwardPartial:        db 'forward partial  ",0,"$'

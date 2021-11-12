@@ -117,21 +117,26 @@ PrintCharStringStd:
 ;------------------------------
 ; (ptr32 Source, uint16 TopRow, uint16 LeftCol, uint16 height, uint16 width)
 PrintControlString:
-    mov esi,[esp+4]         ;get text ptr
-    movzx ecx,word [esp+8]  ;get row
-    movzx edx,word [esp+10] ;get column
+.Text equ 4
+.Row equ 8
+.Column equ 10
+.Height equ 12
+.Width equ 14
+.RowDestinationPointer equ 8 ;replace row and column
+    mov esi,[esp+.Text]
+    movzx ecx,word [esp+.Row]
+    movzx edx,word [esp+.Column]
     mov ebx,[Display.Width]
     mov edi,ecx
     imul edi,ebx
     add edi,edx             ;add left column to destination
     add edi,[Display.BasePtr]
     xor ecx,ecx             ;zero column counter
-    mov [esp+8],edi         ;replace row/col with destination
+    mov [esp+.RowDestinationPointer],edi ;replace row/col with destination pixel pointer
     jmp short .FirstChar
 
 .NextChar:
     inc esi                 ;next character
-    inc ecx                 ;next column count
 .FirstChar:
     movzx eax,byte [esi]
     cmp al,32
@@ -139,10 +144,12 @@ PrintControlString:
     test al,al
     js .ControlCode
 
+    inc ecx                 ;next column count
+
 ; (esi=source, eax=character, ecx=column) (esi, ecx)
 .BlitCharacter:
-    cmp cl,[esp+14]         ;verify column within constrained width
-    jae .NextChar
+    cmp cl,[esp+.Width]     ;verify column within constrained width
+    ja .NextChar
     push ecx
     push esi
     push edi
@@ -170,17 +177,17 @@ PrintControlString:
     jne .IsNewLine
     inc esi                 ;skip the LF to avoid a doubled line later
 .IsNewLine:
-    dec byte [esp+12]       ;one less row
+    dec byte [esp+.Height]  ;one less row
     jz .End
     mov eax,ebx             ;get wrap width
-    mov edi,[esp+8]
+    mov edi,[esp+.RowDestinationPointer]
     imul eax,GuiFont.GlyphPixelHeight+1
     add edi,eax             ;next row
     xor ecx,ecx             ;zero column counter
-    mov [esp+8],edi         ;retupdaterieve destination for the current row.
+    mov [esp+.RowDestinationPointer],edi ;update destination for the current row.
     jmp short .NextChar
 
-; (esi=source, eax=character)
+; (esi=source, eax=character, ecx=column) (ecx)
 .ControlCode:
     sub al,128
     mov [PrintCharString.Color],al
