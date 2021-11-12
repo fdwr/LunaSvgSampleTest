@@ -1095,7 +1095,7 @@ WinDosInt21h: ; DOS
     or ecx,GENERIC_WRITE
 .OpenExistingFileNoWrite:
 
-    api CreateFileA, edx, ecx,FILE_SHARE_READ, eax, OPEN_EXISTING, eax,eax
+    api CreateFileA, edx, ecx,FILE_SHARE_READ|FILE_SHARE_READ|FILE_SHARE_DELETE, eax, OPEN_EXISTING, eax,eax
     cmp eax,INVALID_HANDLE_VALUE
     mov [esp+WinDosStackReg.eax],eax
     je .ReturnFailureFromLastError
