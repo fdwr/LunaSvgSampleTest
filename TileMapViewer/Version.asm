@@ -1,2 +1,2 @@
-%define ProgramVersion 192
-%define ProgramVersionStr ".192"
+%define ProgramVersion 193
+%define ProgramVersionStr ".193"
