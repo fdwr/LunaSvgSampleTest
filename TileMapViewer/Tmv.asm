@@ -2946,7 +2946,7 @@ BlitTile:
     ;Add the R G B channels together to gauge lightness (ignoring lower bits)
     mov ecx,eax
     and ecx,255                         ;clamp to palette entry size
-    lea ebx,[ecx*2+ecx]
+    lea ebx,[ecx*2+ecx]                 ;*3
     add ebx,[Display.PalettePtr]
     mov ecx,[ebx]                       ;read BGRA value
     and ecx,00FCFCFCh
