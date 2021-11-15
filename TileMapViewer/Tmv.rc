@@ -1,8 +1,8 @@
 #include "Version.h"
 
 1 VERSIONINFO
-FILEVERSION ProgramVersion,0,0,0
-PRODUCTVERSION ProgramVersion,0,0,0
+FILEVERSION ProgramVersion,0
+PRODUCTVERSION ProgramVersion,0
 FILEFLAGSMASK 0x0000003FL
 FILEFLAGS 0
 FILEOS 40004h //VOS_NT_WINDOWS32
@@ -28,7 +28,4 @@ BEGIN
     ;    VALUE "Translation", 0x0409,1252
     ;END
 END
-#ifndef ConVer
 1 ICON TMV.ICO
-#endif
-;2 ICON SPCSMALL.ICO
