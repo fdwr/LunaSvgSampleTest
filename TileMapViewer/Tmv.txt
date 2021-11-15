@@ -1,5 +1,5 @@
 ========
-Tilemap Viewer 1.9.2 (c)1998-2021 PikenSoft
+Tilemap Viewer 1.9.3 (c)1998-2021 PikenSoft
 File pattern viewer (speedy and tiny)
 By Dwayne Robinson, using Yasm/Nasm/WDOSX/Alink
 http://pikensoft.com/ (old http://fdwr.tripod.com/snes.htm)
@@ -251,6 +251,7 @@ Past:
             Removed 'Del' key from modifying top/left element in file as it was dangerous (write occurs immediately without a save step) and was incomplete anyway (only worked correctly for uint8/uint16).
             Added 1:1 pixels mode with '2' key.
 2021-11-11  Add minidialogs for goto, wrap, and unit size, adding some examples to type. Minor polish in help screen.
+2021-11-14  Fix Gameboy tile conversion when passing "-m gb" and loading from VRAM (was treated as 4bpp rather than 2bpp).
 
 Future: (hopes, no promises)
 - Unify this with SpriteView and BgMapper to avoid duplicate functionality
