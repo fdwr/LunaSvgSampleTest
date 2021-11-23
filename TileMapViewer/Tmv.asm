@@ -1,4 +1,9 @@
-;Things To Fix:
+;Todo:
+;  Improve visibility of numbers with dark outline
+;  Add palette (hue rainbow, gray, inverse gray, 216 websafe)
+;  Copy/paste text in edit prompt (e.g. goto offset)
+;  Palette menu
+;  Orientation menu
 ;  Rewrite in C++! (tired of this asm)
 ;  Give it a real GUI!
 ;  Numbered format tables *what did I mean by this?
