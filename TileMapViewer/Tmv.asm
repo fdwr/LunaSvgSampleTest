@@ -3183,7 +3183,7 @@ BlitTile:
 .FcNotGray:
     mov edx,[BlitTiles.DestWrap]
     lea esi,[DefaultTileFont.Chars + eax * (64/8)] ; Should be DefaultTileFont.GlyphPixelCount, not 64 literally, but compiler complains??
-    lea edi,[edi+edx+1]     ;start one row down and column over
+    lea edi,[edi+edx]       ;start one row down and column over
     sub edx,DefaultTileFont.GlyphPixelWidth ;subtract width of character from DestWrap
     jmp FontMonochromeChar
 
@@ -3397,7 +3397,7 @@ SetTileFormat:
     ret
 
 .FontChar:
-    mov word [edi+BlitTileStruct.Size],(DefaultTileFont.GlyphPixelHeight+1) | ( (DefaultTileFont.GlyphPixelWidth+1)<<8)  ;set both height and width
+    mov word [edi+BlitTileStruct.Size],(DefaultTileFont.GlyphPixelHeight) | ( (DefaultTileFont.GlyphPixelWidth)<<8)  ;set both height and width
     ret
 
 ; this is really a pseudomode. all it does is jump back to the top to set the
