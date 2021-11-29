@@ -1,8 +1,8 @@
 #include "Version.h"
-
+            
 1 VERSIONINFO
-FILEVERSION ProgramVersion,0,0,0
-PRODUCTVERSION ProgramVersion,0,0,0
+FILEVERSION ProgramVersionUsingCommas
+PRODUCTVERSION ProgramVersionUsingCommas
 FILEFLAGSMASK 0x0000003FL
 FILEFLAGS 0
 FILEOS 40004h //VOS_NT_WINDOWS32
@@ -14,7 +14,9 @@ BEGIN
         BLOCK "040904E4"
         BEGIN
             VALUE "FileVersion", ProgramVersionStr
-            VALUE "FileDescription","TileMapViewer"
+            VALUE "ProductVersion", ProgramVersionStr
+            VALUE "FileDescription","Views tilemaps and other arrays inside files."
+            VALUE "ProductName","TileMapViewer"
             VALUE "Purpose","Views tile map patterns inside files."
             VALUE "LegalCopyright","Copyright\251 2002-2021 Dwayne Robinson"
             VALUE "CompanyName", "PikenSoft"
@@ -23,12 +25,9 @@ BEGIN
             VALUE "Origin", "Earth->UnitedStates.Washington(\042Redmond\042)"
         END
     END
-    ;BLOCK "VarFileInfo"
-    ;BEGIN
-    ;    VALUE "Translation", 0x0409,1252
-    ;END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409,1252
+    END
 END
-#ifndef ConVer
 1 ICON TMV.ICO
-#endif
-;2 ICON SPCSMALL.ICO

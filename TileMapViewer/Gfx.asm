@@ -28,13 +28,13 @@ ClearScreen:
     ret
 
 ;------------------------------
-; (esi, edi, ebx, edx)
+; (esi=glyph 1bpp bitmap, edi=destination 8bpp bitmap, ebx=character rows/cols/color, edx=dest wrap width-char width)
 ; Blits a single colored, transparent character to any 8bit destination.
 ;
 ; Initial regs:
 ; esi=font character bitmask
 ; edi=destination on screen or buffer
-; edx=destination width minus character width
+; edx=destination width minus character width todo: Change this to be straight wrap.
 ;  bl=character rows
 ;  bh=character columns
 ; ebl=pixel color (0-255)

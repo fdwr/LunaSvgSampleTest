@@ -1,2 +1,2 @@
-#define ProgramVersion 192
-#define ProgramVersionStr ".192"
+#define ProgramVersionUsingCommas 1,9,3,0
+#define ProgramVersionStr "1.9.3.20211115"

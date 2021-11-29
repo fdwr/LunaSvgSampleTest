@@ -1,4 +1,9 @@
-;Things To Fix:
+;Todo:
+;  Improve visibility of numbers with dark outline
+;  Add palette (hue rainbow, gray, inverse gray, 216 websafe)
+;  Copy/paste text in edit prompt (e.g. goto offset)
+;  Palette menu
+;  Orientation menu
 ;  Rewrite in C++! (tired of this asm)
 ;  Give it a real GUI!
 ;  Numbered format tables *what did I mean by this?
@@ -90,6 +95,7 @@ TileFormat:
 ;.BrrSample     equ 6
 .WaveSample     equ 6
 .TotalUserAccessible equ 7
+.FirstTileMode  equ 7
 .FirstBplMode   equ 7
 .Snes2          equ 7
 .Snes4          equ 8
@@ -98,6 +104,7 @@ TileFormat:
 .Nes            equ 11
 .LastBplMode    equ 11
 .SnesMode7      equ 12
+.LastTileMode   equ 12
 .Total          equ 13
 
 BlitTileStruct:
@@ -3338,12 +3345,13 @@ align 4
     db 5, 6, 7, 6, 5, 4,11,12
     db 6, 7, 8, 9,10,11,12,13
     db 7, 8, 9,10,11,12,13,14
-.BplTbl1:
-.BplTblSnes2:   db 0,1,1,1,1,1,1,1,  1,1,1,1,1,1,1,1
-.BplTblNes2:    db 0,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,1,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8
-.BplTblSnes3:   db 0,1,15,-14,1,14,-13,1,13,-12,1,12,-11,1,11,-10,1,10,-9,1,9,-8,1,8
-.BplTblSnes4:   db 0,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1
-.BplTblSnes8:   db 0,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1
+.BitplaneTableSnes1:
+.BitplaneTableGameboy2bpp:
+.BitplaneTableSnes2:   db 0,1,1,1,1,1,1,1,  1,1,1,1,1,1,1,1
+.BitplaneTableNes2:    db 0,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,1,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8,-7,8
+.BitplaneTableSnes3:   db 0,1,15,-14,1,14,-13,1,13,-12,1,12,-11,1,11,-10,1,10,-9,1,9,-8,1,8
+.BitplaneTableSnes4:   db 0,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1,-15,1,15,1
+.BitplaneTableSnes8:   db 0,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1,-47,1,15,1,15,1,15,1
 section code
 
 ;----------
@@ -3411,15 +3419,18 @@ SetTileFormat:
 .VramBpl:
     mov [Vram.TileFormat],al
     sub eax,byte TileFormat.FirstBplMode
-    mov ecx,[.VramBplTbls+eax*4]
+    mov ecx,[.VramBitplaneTables+eax*4]
+    mov dl,[.VramBitplaneBitDepths+eax]
     mov dword [Vram.Converter],BitplaneToLinear
-    mov [Vram.BplTbl],ecx
+    mov [Vram.Bitdepth],dl
+    mov [Vram.BitplaneTable],ecx
     mov word [edi+BlitTileStruct.Size],8|(8<<8)  ;set both height and width
     ret
 
 ;(eax=TileFormat mode)
 .Mode7Tile:
     mov [Vram.TileFormat],al
+    mov [Vram.Bitdepth],byte 8
     mov dword [Vram.Converter],Mode7ToLinear
     mov word [edi+BlitTileStruct.Size],8|(8<<8)  ;set both height and width
     ret
@@ -3517,21 +3528,29 @@ align 4
 ;%if .ModeJtblCount != TileFormat.Total
 ;  %error "Update .ModeJtbl to match TileFormat.Total"
 ;%endif
-.VramBplTbls:
-    dd BlitTile.BplTblSnes2 ;TileFormat.Snes2
-    dd BlitTile.BplTblSnes4 ;TileFormat.Snes4
-    dd BlitTile.BplTblSnes8 ;TileFormat.Snes8
-    dd BlitTile.BplTblSnes2 ;TileFormat.Gb
-    dd BlitTile.BplTblNes2  ;TileFormat.Nes
-.VramBplTblsCount equ ($ -.VramBplTbls) / 4 ; Should  = TileFormat.LastBplMode - TileFormat.FirstBplMode + 1
+.VramBitplaneTables:
+    dd BlitTile.BitplaneTableSnes2 ;TileFormat.Snes2
+    dd BlitTile.BitplaneTableSnes4 ;TileFormat.Snes4
+    dd BlitTile.BitplaneTableSnes8 ;TileFormat.Snes8
+    dd BlitTile.BitplaneTableGameboy2bpp ;TileFormat.Gb
+    dd BlitTile.BitplaneTableNes2  ;TileFormat.Nes
     ; SNES Mode 7 is not included in the list as it is not a bitplane mode.
+.VramBitplaneTablesCount equ ($ -.VramBitplaneTables) / 4 ; Should  = TileFormat.LastBplMode - TileFormat.FirstBplMode + 1
+.VramBitplaneBitDepths:
+    db 2 ;TileFormat.Snes2
+    db 4 ;TileFormat.Snes4
+    db 8 ;TileFormat.Snes8
+    db 2 ;TileFormat.Gb
+    db 2 ;TileFormat.Nes
+    db 8 ;TileFormat.SnesMode7
+.VramBitplaneBitDepthsCount equ $ -.VramBitplaneBitDepths ; Should  = TileFormat.LastTileMode - TileFormat.FirstTileMode + 1
 section code
 
 ;------------------------------
 ; Set several variables for the viewing mode, including the tile format,
 ; wrap width, unit size, orientation...
 ;
-; (esi=format info base ptr, eax=index) ()
+; (esi=format info base ptr, eax=mode index) ()
 SetViewingMode:
     lea esi,[esi+eax*8]
     mov eax,[esi]
@@ -3689,7 +3708,7 @@ BitplaneToLinear:
     ;edx=bitmap or screen width
     ;ebp is destroyed
 
-    mov ebx,[Vram.BplTbl]
+    mov ebx,[Vram.BitplaneTable]
     mov ch,8        ;set row counter to 8 rows
 
 .NextRow:
@@ -4489,7 +4508,7 @@ align 4
 .Base:              dd 16384
 .Bitdepth:          dd 4
 .Converter:         dd BitplaneToLinear
-.BplTbl:            dd BlitTile.BplTblSnes4
+.BitplaneTable:     dd BlitTile.BitplaneTableSnes4
 .TileFormat:        db TileFormat.Snes4
 ;note that SNES bit modes 1, 2, and GameBoy all use the same table
 
