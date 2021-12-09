@@ -1,4 +1,4 @@
-See [BgMapper.txt](doc/BgMapper.txt) and [doc/Building.txt](Building.txt).
+See [BgMapper.txt](doc/BgMapper.txt) and [Building.txt](doc/Building.txt).
 
 This is an ancient DOS project in x86 asm, not actively updated anymore, but here's the source for those who asked. Should I clean it up more? Yes. Will I? Nope.
 
