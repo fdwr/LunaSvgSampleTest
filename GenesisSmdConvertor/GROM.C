@@ -285,35 +285,35 @@ int show_info(char* file_name)
     string[11] = '\0';
     strncpy_s(string, sizeof(string), &rom_info.header[0x183], 11);
     printf("Product code and version: %s\n", string);
-    printf("                Checksum: %02X%02X\n", rom_info.header[0x18e], rom_info.header[0x18f]);
+    printf("                Checksum: %02X%02X\n", rom_info.header[0x18E], rom_info.header[0x18F]);
     string[16] = '\0';
     strncpy_s(string, sizeof(string), &rom_info.header[0x190], 16);
     printf("             I/O support: %s\n", string);
     /* the meaning of these fields may have been misinterpreted */
     printf(
         "       ROM start address: %02X%02X%02X%02X\n",
-        rom_info.header[0x1a0],
-        rom_info.header[0x1a1],
-        rom_info.header[0x1a2],
-        rom_info.header[0x1a3]
+        rom_info.header[0x1A0],
+        rom_info.header[0x1A1],
+        rom_info.header[0x1A2],
+        rom_info.header[0x1A3]
     );
     printf(
         "         ROM end address: %02X%02X%02X%02X\n",
-        rom_info.header[0x1a4],
-        rom_info.header[0x1a5],
-        rom_info.header[0x1a6],
-        rom_info.header[0x1a7]
+        rom_info.header[0x1A4],
+        rom_info.header[0x1A5],
+        rom_info.header[0x1A6],
+        rom_info.header[0x1A7]
     );
     /* is the modem data field really 20 bytes? XnaK's document
         seems to indicate it is only 10... */
     string[20] = '\0';
-    strncpy_s(string, sizeof(string), &rom_info.header[0x1bc], 20);
+    strncpy_s(string, sizeof(string), &rom_info.header[0X1BC], 20);
     printf("              Modem data: %s\n", string);
     string[40] = '\0';
-    strncpy_s(string, sizeof(string), &rom_info.header[0x1c8], 40);
+    strncpy_s(string, sizeof(string), &rom_info.header[0X1C8], 40);
     printf("                    Memo: %s\n", string);
     string[3] = '\0';
-    strncpy_s(string, sizeof(string), &rom_info.header[0x1f0], 3);
+    strncpy_s(string, sizeof(string), &rom_info.header[0X1F0], 3);
     printf("               Countries: %s\n", string);
 
     printf("       Interleaving mode: %s\n", mode_strings[rom_info.interleaving_mode]);
@@ -385,20 +385,20 @@ int get_rom_info(FILE* fp, char* file_name, /*out*/ ROM_INFO* rom_info)
     // Depending on the interleaving, it may be split in the first bank or second bank with even/odd bytes.
     // It might also be shifted one space over " SEGA GENESIS".
     INTERLEAVING_MODE interleaving_mode = INTERLEAVING_MODE_UNKNOWN;
-    if (strncmp(raw_data + 256, "SEGA", 4) == 0)
+    if (memcmp(&raw_data[256], "SEGA", 4) == 0)
     {
         interleaving_mode = INTERLEAVING_MODE_NONE;
     }
-    else if (strncmp(raw_data + (256/2), "EA", 2) == 0 && strncmp(raw_data + 0x2080, "SG", 2) == 0)
+    else if (memcmp(&raw_data[256/2], "EA", 2) == 0 && memcmp(&raw_data[0x2080], "SG", 2) == 0)
     {
         interleaving_mode = INTERLEAVING_MODE_ODD_EVEN;
     }
-    else if (strncmp(raw_data + (256/2), "SG", 2) == 0 && strncmp(raw_data + 0x2080, " E", 2) == 0)
+    else if (memcmp(&raw_data[256/2], "SG", 2) == 0 && memcmp(&raw_data[0x2080], " E", 2) == 0)
     {
         // Leading space shifts " SEGA GENESIS" over.
         interleaving_mode = INTERLEAVING_MODE_ODD_EVEN;
     }
-    else if (strncmp(raw_data + (256/2), "SG", 2) == 0 && strncmp(raw_data + 0x2080, "EA", 2) == 0)
+    else if (memcmp(&raw_data[256/2], "SG", 2) == 0 && memcmp(&raw_data[0x2080], "EA", 2) == 0)
     {
         interleaving_mode = INTERLEAVING_MODE_EVEN_ODD;
     }
