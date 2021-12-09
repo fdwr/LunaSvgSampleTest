@@ -1,6 +1,6 @@
 Last updated 2008-12-09. These goals have been moved to a different project.
 
-What it is:
+What I want it to be:
 - A flexible tilemap archival utility, for making maps like you saw in Nintendo Power years ago.
 - Raw data viewer, able to view uncompressed byte arrays and graphics.
 - Structured data viewer, given a pattern definition.
@@ -43,11 +43,12 @@ Later:
 - State/switches (like after a fire or earthquake or switch changes the water level)
 
 Maybe:
-- Isometric/Hex (shift per odd x,y)
+- Isometric/Hex tilemap view (shift per odd x,y)
 - Z layer per pixel
+- Color key besides 0
 - Offset per tile (Starfox uses it, investigate Strike Gunner and Puzzle Bobble)
 
-Types:
+Object Types:
 Scene - contains multiple layers
 Tilemap - contains multiple tiles, uses tileset, palette, optional tileset table
 Tilemap instance - placement of a tilemap in scene

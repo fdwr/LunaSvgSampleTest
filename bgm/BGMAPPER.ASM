@@ -1,5 +1,5 @@
 ; BgMapper - Savestate viewer and graphics exporter
-; PikenSoŸt (c)2003
+; PikenSoft (c)2003
 ;
 ; By Dwayne Robinson (FDwR@hotmail.com)
 ; http://members.tripod.com/FDwR/snes.htm
@@ -42,7 +42,7 @@ Debug                   equ 0
 ;  ExportScene
 ;------------------------------
 
-BITS 32             ;flat addressing is great!
+BITS 32                     ;flat addressing is great!
 GLOBAL Main                 ;great (free!) extender
 GLOBAL _WdosxStart
 
@@ -196,12 +196,6 @@ StartOptionsCheck:
   .ZstInfoOnly:
     or byte [StartOptions],StartOptions.ZstInfoOnly
     jmp .NextParameter
-;  .Transparency:
-;   or byte [StartOptions],StartOptions.TransparencySet|StartOptions.TransparencyOn
-;   jmp .NextParameter
-;  .NoTransparency:
-;   or byte [StartOptions],StartOptions.TransparencySet   ;flag that transparency was set
-;   jmp .NextParameter
   .FullStatusDisplay:
     or byte [StartOptions],StartOptions.StatusDisplay
     jmp .NextParameter
@@ -223,10 +217,6 @@ StartOptionsCheck:
     ;first byte is length of string (null included)
     ;then follows the null terminated
     ;since the length is one byte, an option can actually be fairly long
-;   db 2,'t',0      ;transparency
-;   db 3,'tn',0     ;transparency not on
-;   db 4,'mmx',0    ;mmx copying
-;   db 3,'fw',0     ;Windows 95 long filenames
     db 3,'fv',0     ;force SNES video mode
     db 2,'v',0      ;video mode
     db 2,'?',0      ;help
@@ -270,12 +260,6 @@ Initialize:
     ret
 
 .EverythingElse:
-;--get video modes supported--
-    ;call ExtendedVideoInit
-    ;if failed don't say anything and use mode 13h
-    ;if user wanted to switch to it and failed, then report a message
-    ;mov esi,Messages.VideoSupported
-    ;call PrintStatus
 
 ;--mouse--
     call MouseInitialize        ;check for a mouse and set up pointer variables
@@ -333,11 +317,6 @@ Initialize:
 ;   jnz .FilenameGiven
 ;   mov byte [SavestateFilename],0          ;set filename to null
 ;  .FilenameGiven:
-;test byte [StartOptions],StartOptions.VideoModeGiven
-;if a video mode is given then set it to that one
-;if it is not 32768 colors then ignore transparency for now
-;otherwise just use video mode 13h
-;test byte [StartOptions],StartOptions.TransparencyOn
 
 ;------------------------------
 ; PrintStatus (esi=message ptr) ()
@@ -394,12 +373,11 @@ MainLoop:
 .1:
     call SaveStateLoad
     call RestoreFullPalette.Set
-        ;call CacheReset
     jmp short .Start
 .2:
     call PageViewVRAM
     jmp short .Start
-.3:
+;.3:
     ;call DumbTileSpeedTest
     ;jmp short .Start
 .4:
@@ -407,92 +385,10 @@ MainLoop:
     jmp short .Start
 .5: call PageViewScene
     jmp short .Start
-.6:
+;.6:
     ;call PageViewTilemaps
     ;jmp short .Start
 
-%ifdef useoldcode
-.RestoreBackground:
-    call RestoreFullPalette.FlagOff
-    call Pointer.Hide
-    mov ecx,768/4           ;number of entries divided by 4
-    mov esi,BackgroundPalette
-    mov edi,ScreenPalette
-    rep movsd
-    call PaletteSet
-
-    mov esi,BackgroundImage     ;show background
-    mov edi,0A0000h
-    mov ecx,64000/4
-    rep movsd
-
-    call Pointer.Show
-    ret
-%endif
-
-%if 0
-Future main loop:
-startloop
-   ùredraw entire GUI bypassing redraw messages to each of the main windows
-    which needs redrawing, cascading down to all of the individual objects.
-       ùhide cursor
-       ùhide any top layer objects (maybe sprites?)
-       ùstarting from the back layer, going forward, send Redraw messages
-        to any main windows needing redrawing.
-           ùscan through object list finding objects that have been affected.
-           ùsend Redraw's to all objects needing redrawing.
-           ùreturn extents actually redrawn
-       ùredraw top layer objects
-       ùshow cursor
-   ùcopy newly drawn portion of GUI to screen.
-   ùall keyboard and mouse input must pass down through a heirarchy, they can
-    not go directly to objects without passing by the parents.
-   ùget keyboard input
-   ùpass down to main windows
-       ùlet window decide what to do (depending on what type of window and
-        where it was clicked).
-       ùcall code associated with window to inform of key input, where the
-        procedure can either dole out the input based on which group is
-        selected or return to allow the window code to pass input to the
-        active object. If the procedure took care of it, it should return
-        true.
-       ùif the previous keypress was Tab or Shift+Tab, an activeobjectindex
-        message is received here.
-   ùloop while more key input
-   ùget mouse input
-   ùpass down to main windows
-       ùlet window decide what to do (depending on what type of window and
-        where it was clicked)
-       ùcall code associated with window to inform of mouse input.
-       ùpass click/move/enter/exit to objects, which can passed directly or
-        broken down into enter/exit combinations. Movement indicates that no
-        clicks (presses or releases) occurred, just a change in mouse
-        position. Clicks, however, can combine movement with button presses
-        or releases. Enters should also be considered movement and can also
-        have clicks. Exits may never have clicks.
-        Some objects such as buttons only need to worry about Clicks and
-        Exits, Clicks to know when to depress the button and Exits to know if
-        the user moved off so that the depress can be canceled. Enters are
-        also paid attention to for setting cursor focus, but that is handled
-        by default code. Scroll bars need to pay attention to Clicks, Moves,
-        and Exits, clicks for the up/down arrows and scroll bar grab, Moves
-        for scroll bar drags (after being grabbed), and Exits for canceling a
-        drag.
-       ùdepending on the nature of the object, an activeobjectindex message
-        may be received here if the mouse was moved over a different object
-        or if one was clicked on.
-   ùpass timer events to objects (which may be main windows or bypass
-    directly to objects). Timer events can be from seconds to minutes, or
-    even zero time, meaning that it will be done every time through the loop.
-    I would do anything like file loadin or sprite animation here, rather
-    than in its own loop, so multiple processes can go simultaneously and
-    most importantly so that the user can stop them.
-endloop
-
-call all necessary program exit routines (screen mode reset, heap free...)
-end program
-
-%endif
 align 4
 Pages:
 .Redraw:    dd 0
@@ -1064,7 +960,7 @@ align 4
     dd .KeyResetCenter,.KeyHelp
 
 .MsgPtr:  dd .MsgText
-.MsgText: db "ùúúúúúúúúúùúúúúúúúúúùúúúúúúúúú",0
+.MsgText: db "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",0
 .MsgPlanesReset:     db "Bgs reset to normal ",0
 .MsgMainScreensOn:   db "Screens merged      ",0
 .MsgPaletteInverted: db "Palette inverted",0
@@ -1433,8 +1329,6 @@ PageSceneHelp:
     call PaletteDim
     call PaletteSetGuiColors
     call PaletteSet
-    ;mov [FontStylePtr],dword FontShadow        ;set current font color set
-    ;mov [FontColorsPtr],dword FontColors1      ;set current font color set
     FontBlitPar Messages.KeyHelp,(200-(15*9))/2,8
     call UserWait           ;wait long enough for user to see info
     ;call RestoreFullPalette.Set
@@ -1776,7 +1670,7 @@ SECTION .text
 ;
 ; PageViewTilemaps ()
 ;
-%ifdef useoldcode
+%if 0 ; todo...
 PageViewTilemaps:
     call Pointer.Hide
     mov al,ColorLrGray
@@ -1871,35 +1765,11 @@ PageViewTilemaps:
     mov bx,[.TileBase]
     mov [BgScene.TileBase],bx
     push word [.CurPlane]
-;   mov ecx,1048576*20
-;.NextDelayCount:
-;   dec ecx
-;   jnz .NextDelayCount
 
     call _RenderBgDumb
     add esp,byte 2
     mov byte [Pages.Redraw],0
     jmp .InputLoop
-
-.RedrawTileWindow2:
-    ;based on scroll change, calculate height and width
-    ;then wether the change happened on top/bottom and left/right
-    ;redraw entire window if scroll is 0 or greater than window size
-    ;else scroll old portion of window
-    ;setting width and height, call .UpdateNewWindowPortions for horizontal strip
-    ;setting width and height, call .UpdateNewWindowPortions for vertical strip
-    ;ret
-
-.UpdateNewWindowPortions:
-    ;push horizontal count and enough space for procedure variables
-    ;set length and starting byte
-    ;push dword source
-    ;push length
-    ;call BuildTileRow
-    ;blit buffer onto screen at correct location
-    ;move onto next source row unit
-    ;loop until no rows remain
-    ;restore stack and return
 
 alignb 4
 .TileBase:      dw 0
@@ -1982,16 +1852,12 @@ align 4
 GuiColorsData:
     db 0,0,0, 18,18,24, 28,28,40, 48,48,63, 63,63,63
 
-GuiGammaAdjust:
-    incbin "gamma.dat"
-
 ;------------------------------
 ; Fonts - my two little character sets
 ;------------------------------
 FontOutline equ $-(32*16)
     incbin "font1.fnt"
-FontShadow equ $-(32*16)
-;   incbin "font2.fnt"
+    ;incbin "font2.fnt" // For a font with shadow behind it instead.
 
 ;I've always wondered where all these people get the fonts for their graphics programs.
 ;The first one, which some may recognize, was taken from DKC1 (using another little SNES
@@ -2031,28 +1897,6 @@ MenuColors:
     dw 0,ColorLrWhite,ColorLrLight,0  ;active choice
     dw 0,ColorLrDark,ColorLrBlack,0   ;inactive disabled
     dw 0,ColorLrWhite,ColorLrBlack,0  ;active disabled
-;1  dw 0,ColorLrLight,ColorLrGray,0   ;inactive choice
-;   dw 0,ColorLrLight,ColorLrWhite,0  ;active choice
-;   dw 0,ColorLrBlack,ColorLrGray,0   ;inactive disabled
-;   dw 0,ColorLrBlack,ColorLrWhite,0  ;active disabled
-;2  dw 0,ColorLight,ColorGray,0 ;inactive choice
-;   dw 0,ColorLight,ColorWhite,0    ;active choice
-;   dw 0,ColorBlack,ColorGray,0 ;inactive disabled
-;   dw 0,ColorGray,ColorBlack,0 ;active disabled
-;3  dw 0,ColorLight,ColorBlack,0    ;inactive choice
-;   dw 0,ColorLight,ColorWhite,0    ;active choice
-;   dw 0,ColorGray,ColorBlack,0 ;inactive disabled
-;   dw 0,ColorGray,ColorWhite,0 ;active disabled
-;4  dw 0,ColorLight,ColorBlack,0    ;inactive choice
-;   dw 0,ColorWhite,ColorBlack,0    ;active choice
-;   dw 0,ColorGray,ColorBlack,0 ;inactive disabled
-;   dw 0,ColorGray,ColorLight,0 ;active disabled
-
-;------------------------------
-; Default tile page background
-;------------------------------
-;BackgroundImage:    ;incbin "bgz4.pic"
-;BackgroundPalette:  ;incbin "bgz4.pal"
 
 ;------------------------------
 ; Various strings used throughout the program
@@ -2065,7 +1909,7 @@ StartOptionMessages:
     db '  FDwR@hotmail.com (or Juno)',13,10
     db '  http://members.tripod.com/FDwR/snes.htm',0
   .HelpText:
-    db 'BgMapper ',ProgVersion,' - Savestate Viewer, (c)2003 PikenSoŸt',13,10
+    db 'BgMapper ',ProgVersion,' - Savestate Viewer, (c)2003 PikenSoft',13,10
     db 'Supports the ZSNES emulator savestates (zst & zmv)',13,10
     db 10
     db 'Usage:',13,10
@@ -2076,19 +1920,9 @@ StartOptionMessages:
     db '  -sd    startup status display',13,10
     db '  -fv    force SNES video mode',0
     db '  -?     version/author information',0
-;   db '  -fa   show all filetypes in file menu',13,10
-;   db '  -fw   use Windows 95 long filenames',13,10
-;   db '  -t    transparency on',13,10
-;   db '  -mmx  use mmx screen copying',13,10
-;   db '  -tn   no transparency',13,10
-;   db '  -v #  video mode (all except 0 are VESA2)',13,10
-;   db '     0 - 320x200:256    1 - 320x240:256',13,10
-;   db '     2 - 640x480:256    3 - 320x240:32768',13,10
-;   db '     4 - 640x480:32768',13,10
     .InvalidParameter:  db 'Unknown parameter',0
     .InvalidScrnMode:   db 'Only mode 0 (320x200:256) is supported for now',0
     .InvalidZstVideo:   db 'Select an SNES video mode 0-7',0
-;   .NotSupportedYet:   db 'Parameter is not supported yet',0
 
 Messages:
     .NewLine:           db 13,10,'$'
@@ -2101,12 +1935,6 @@ Messages:
     .NoFileGiven:       db 'No file given to view.',0
     .ErrorLoadingFile:  db 'Could not load the viewing file.',0
     .FileWasLoaded:     db 'File loaded successfully.',0
-    ;.VideoNoVESA:      db 'No extended video support',0
-    ;.VideoNoMode:      db 'Could not find desired video mode',0
-    ;.VideoNoLinear:        db 'No linear framebuffer support',0
-    ;.VideoSupported:   db 'Video mode supported',0
-    ;.TransparencyOn:   db 'Transparency is on',0
-    ;.TransparencyOff:  db 'No transparency effects',0
   .KeyHelp:
     db 133,'            =',132,'=',131,'=',130,' Keys ',131,'=',132,'=',133,'=',129
     db 129
@@ -2200,13 +2028,6 @@ GfxExportMenuList:
     .1: db "1 RGB palette",0
     .2: db "2 Raw palette",0
 
-SceneInfoLabels:
-;   StringsASCIIZ 'File','Type','Video mode','','Brightness','Vertical line','Cycle count'
-;   StringsASCIIZ 'Mosaic size','Window 1','Window 2','','Bg Num','Colors','Enabled'
-;   StringsASCIIZ 'Subscreen','Mosaic','Map size','Tile size','Height','Width','Scroll X'
-;   StringsASCIIZ 'Scroll Y','Modulus X','Modulus Y','Map base','Tile base','Window 1'
-;   StringsASCIIZ 'Window 2','','Sprite sizes','Sprite base','','Transparency'
-
 ;------------------------------
 ; VARIABLE SPACE SECTION (initialized upon startup)
 ;------------------------------
@@ -2230,11 +2051,6 @@ alignb 4
     ScreenPixByte:  resb 1  ;0=byte per pixel  1=two bytes per pixel
     ScreenMode: resb 1  ;VESA mode used
     ScreenListMode: resb 1  ;mode used from list (0-4)
-    ;ScreenSetError: resb 1  ;if there was an error setting the mode
-    ;ScreenChange:   resw 1  ;a simple counter that is incremented when the video mode
-    ;changes so that graphics routines can know and change
-    ;their variables accordingly - the results of an 8bit blit
-    ;would not look good in a 15bit mode!
     ScreenPalette: resb 768 ;256 color palette
 
 ;used by the graphics routines

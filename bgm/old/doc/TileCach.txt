@@ -1,6 +1,8 @@
+1999-01-11
+
 Proposed method of tile cacheing:
 
-The most frequently used tiles could simply be translated once, and then use the translation from then on whenever that tile is referenced. This greatly reduces the amount of time spent redrawing the scene layers as it does not need to do (height * width * colordepth) bit checks. For a simple 16*16*4bit sprite, that would be a very slow 1024 tests, conditional jumps, and possible operations, even though there are only 256 pixels to blit. Simply rereferencing a pretranslated tile should speed things up by at least three times. The only extra cost if the tile is not already translated is a short index check.
+The most frequently used tiles could simply be converted once, and then use the translation from then on whenever that tile is referenced. This greatly reduces the amount of time spent redrawing the scene layers as it does not need to do (height * width * colordepth) bit checks. For a simple 16*16*4bit sprite, that would be a very slow 1024 tests, conditional jumps, and possible operations, even though there are only 256 pixels to blit. Simply rereferencing a pretranslated tile should speed things up by at least three times. The only extra cost if the tile is not already translated is a short index check.
 
 The graphics cache would be 64k. It would be a circular buffer consisting of several little units of various sizes. Eventually when the buffer becomes completely full, the newer tiles start overwriting older cached tiles.
 

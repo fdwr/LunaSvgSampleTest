@@ -1,7 +1,7 @@
-'Bitmap to font Exporter, by Dwayne Robinson on 9-7-98
+'Bitmap to font Exporter, by Dwayne Robinson on 1998-09-07.
 
-'Opens any 256 color pcx and exports it to a linear bitmap
-'Useful for Qbasic screen mode 13
+'Opens any 256 color .bmp and exports it to a linear bitmap.
+'Useful for Qbasic screen mode 13.
 
 DEFINT A-Z
 DECLARE SUB Prompt (Text$, Key$, Csr, Lim, Row, Col)
@@ -16,7 +16,7 @@ CLS
 WIDTH 80, 50
 VIEW PRINT 1 TO 50
 PRINT "Bitmap exporter 0.0"
-PRINT "By FDwR on 9-7-98"
+PRINT "By FDwR on 1998-09-07"
 PRINT
 
 GOSUB GetCommandLine

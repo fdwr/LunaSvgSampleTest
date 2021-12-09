@@ -1,7 +1,8 @@
-;ZSNES Savestate Format:
+;ZSNES Savestate Format (1999-04-12):
 ;  Thanks to ZsKnight for it!
 ;  Meant to be compiled with NASM.
-;  Obtained from http://members.tripod.com/FDwR/snes.htm
+;  Obtained from http://pikensoft.com/
+;                http://members.tripod.com/FDwR/snes.htm
 ;
 ;  This portion does not contain any part of the SPC
 ;  information, FX chip or SA-1 registers, or extra any

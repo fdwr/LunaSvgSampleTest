@@ -1,16 +1,21 @@
 %ifndef _MEMORY_MACROS
+
 %define _MEMORY_MACROS
+
 %include "System.mac"
+
 %macro HeapInit 1
 	push	dword %1
 	call	_myheap_init_2
 	lea	esp,[esp + 4]
 %define _MYHEAP_INIT_MACRO
 %endmacro
+
 %macro HeapExit 0
 	call	_myheap_exit_2
 %define _MYHEAP_EXIT_MACRO
 %endmacro
+
 %macro Malloc 2
 	push	dword %1
 	call	_myheap_alloc_2
@@ -25,6 +30,7 @@
 %endif
 %define _MYHEAP_ALLOC_MACRO
 %endmacro
+
 %macro Calloc 2
 	push	dword %1
 	call	_myheap_alloc_2
@@ -60,6 +66,7 @@
 %%Calloc_Error:
 %define _MYHEAP_ALLOC_MACRO
 %endmacro
+
 %macro Realloc 3
 	push	dword %1
 	push	dword %2
@@ -75,16 +82,19 @@
 %endif
 %define _MYHEAP_REALLOC_MACRO
 %endmacro
+
 %macro Free 1
 	push	dword %1
 	call	_myheap_free_2
 	lea	esp,[esp + 4]
 %define _MYHEAP_FREE_MACRO
 %endmacro
+
 %macro HeapReset 0
 	call	_myheap_reset_2
 %define _MYHEAP_RESET_MACRO
 %endmacro
+
 %macro HeapSize 1
 	call	_myheap_size_2
 %ifid %1
@@ -97,6 +107,7 @@
 %endif
 %define _MYHEAP_SIZE_MACRO
 %endmacro
+
 %macro HeapSpace 1
 	call	_myheap_space_2
 %ifid %1
@@ -109,6 +120,7 @@
 %endif
 %define _MYHEAP_SPACE_MACRO
 %endmacro
+
 %macro HeapBlockCheck 2
 	push	dword %1
 	call	_myheap_blockcheck_2
@@ -123,10 +135,12 @@
 %endif
 %define _MYHEAP_BLOCKCHECK_MACRO
 %endmacro
+
 %macro HeapBlockSpace 1
 	push	dword %1
 	call	_myheap_blockspace_2
 	lea	esp,[esp + 4]
 %define _MYHEAP_BLOCKSPACE_MACRO
 %endmacro
+
 %endif
