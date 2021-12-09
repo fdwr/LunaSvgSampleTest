@@ -1,12 +1,9 @@
 @ECHO OFF
 ECHO Compiling BgMapper with Nasm, ALink, and WDOSX Stubit...
 
-set COMPILER_BIN_PATH=\src\bin
+tools\nasmw.exe -f win32 bgmapper.asm -o bgmapper.cof -dDosVer
+tools\alink.exe -oPE bgmapper.cof -entry Main -subsys con
+tools\stubit.exe -nowfse bgmapper.exe
 
-%COMPILER_BIN_PATH%\nasmw.exe -f win32 bgmapper.asm -o bgmapper.cof -dDosVer
-%COMPILER_BIN_PATH%\alink.exe -oPE bgmapper.cof -entry Main -subsys con
-%COMPILER_BIN_PATH%\stubit.exe -nowfse bgmapper.exe
-
-goto End
-
-:End
+del BGMAPPER.BAK 2> nul
+del BGMAPPER.COF 2> nul
