@@ -1,7 +1,7 @@
 #include "precomp.h"
 
 
-bool DeleteDirectory(wchar_t const* sPath);
+bool DeleteDirectoryTree(/*inout*/ std::wstring& path);
 
 
 int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
@@ -10,37 +10,73 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     Wow64DisableWow64FsRedirection(OUT &previousRedirectionValue); // Want actual folder paths, not 32-bit virtualized ones.
 
     if (argc <= 1)
-        wprintf(L"Supply the path to delete.\n");
+    {
+        wprintf(L"Dwayne Robinson 2016-04-13..2021-12-08\n\nDeleteFiles usage:\n    DeleteFiles d:\\olddocuments\\largefolder\n\nThis utility will forcibly try to delete readonly files,\nbut currently open files cannot be deleted.");
+    }
     else if (argc > 2)
+    {
         wprintf(L"Too many parameters given.\n");
-    else if (!DeleteDirectory(argv[1]))
-        wprintf(L"Could not delete path: %s\n", argv[1]);
+    }
+    else
+    {
+        std::wstring s(argv[1]);
+        DeleteDirectoryTree(s);
+    }
 
     return 0;
 }
 
 
-uint32_t DeleteDirectory_count = 0;
+size_t GetFilenameOffset(std::wstring_view path)
+{
+    size_t filenameOffset = path.size();
+    for (size_t i = filenameOffset; i-- > 0; )
+    {
+        wchar_t ch = path[i];
+        if (ch == '/' || ch == '\\' || ch == ':')
+        {
+            filenameOffset = i + 1;
+            break;
+        }
+    }
+    return filenameOffset;
+}
 
-bool DeleteDirectory(wchar_t const* path)
+uint32_t DeleteDirectoryTree_count = 0;
+uint32_t DeleteDirectoryTree_errorCount = 0;
+
+bool DeleteDirectoryTree(/*inout*/std::wstring& path)
 {
     HANDLE findHandle;  // file handle
     WIN32_FIND_DATA findFileData;
 
-    wchar_t dirPath[32768]; // UNC max length, not limited to MAXPATH.
-    wchar_t fileName[32768];
+    size_t directoryLength = path.size();
+    bool isDirectory = true; // Assume true until known otherwise.
 
-    wcscpy_s(dirPath,path);
-    wcscat_s(dirPath,L"\\*");    // searching all files
-    wcscpy_s(fileName,path);
-    wcscat_s(fileName,L"\\");
-
-    // Attempt early deletion if empty directory or if only contains virtual files.
-    if (RemoveDirectory(path) != 0)
-        return true;
+    // Ensure the path has a trailing backslash if it's a directory,
+    // and not a file or file mask.
+    if (path.back() != '\\')
+    {
+        auto fileAttributes = GetFileAttributes(path.c_str());
+        if (fileAttributes != INVALID_FILE_ATTRIBUTES && (fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            path.append(L"\\*");
+            directoryLength++; // Count the "\" (but not the "*")
+        }
+        else // File or file mask.
+        {
+            isDirectory = false;
+            directoryLength = GetFilenameOffset(path);
+        }
+    }
+    else
+    {
+        path.push_back(L'*'); // Already has the trailing backslash.
+        // directoryLength is already correct.
+    }
 
     findHandle = FindFirstFileEx(
-                    dirPath,
+                    path.c_str(),
                     FindExInfoBasic, // No short name, meaning cAlternateFileName is not generated (slightly faster).
                     &findFileData,
                     FindExSearchNameMatch,
@@ -49,70 +85,88 @@ bool DeleteDirectory(wchar_t const* path)
                     );
 
     if (findHandle == INVALID_HANDLE_VALUE)
-        return false;
-
-    wcscpy_s(dirPath, fileName);
-
-    bool continueSearch = true;
-    while (continueSearch) // Until we find a directory entry.
     {
-        if (FindNextFile(findHandle, &findFileData))
-        {
-            // Skip any dots.
-            wchar_t ch;
-            if ((findFileData.cFileName[0] == '.') && (ch = findFileData.cFileName[1], ch == '\0' || ch == '.'))
-                continue;
+        wprintf_s(L"No matching files found for '%s'. FindFirstFileEx error=%d\r\n", path.c_str(), GetLastError());
+        return false;
+    }
 
-            wcscat_s(fileName, findFileData.cFileName);
-            if((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+    while (true) // Loop until we find a directory entry.
+    {
+        // Skip any dot entries like the current directory "." or parent directory "..",
+        // but not entries like ".vs" or "..foo".
+        bool isDotEntry = false;
+        if (findFileData.cFileName[0] == '.')
+        {
+            wchar_t ch = findFileData.cFileName[1];
+            isDotEntry = (ch == '\0' || (ch == '.' && findFileData.cFileName[2] == '\0'));
+        }
+        if (!isDotEntry)
+        {
+            path.resize(directoryLength);
+            path.append(findFileData.cFileName);
+            if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
-                // we have found a directory, recurse
-                auto result = DeleteDirectory(fileName);
-                wcscpy_s(fileName, dirPath);
+                // Attempt early deletion if empty directory or if only contains virtual files.
+                path.push_back('\\');
+                if (RemoveDirectory(path.c_str()) == 0)
+                {
+                    // Deletion failed. So recurse to delete all subfolders and files first.
+                    DeleteDirectoryTree(path);
+                }
             }
             else
             {
+                // Remove the read only attribute (if there is one).
                 if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
-                    SetFileAttributes(fileName, FILE_ATTRIBUTE_NORMAL); // change read-only file mode
+                {
+                    SetFileAttributes(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+                }
 
-                auto result = DeleteFile(fileName);
+                auto result = DeleteFile(path.c_str());
                 if (!result)
                 {
-                    wprintf_s(L"Failed to delete file '%s'. DeleteFile error=%d\r\n", fileName, GetLastError());
-
-                    //FindClose(findHandle); 
-                    //return false;
-                }                 
-                wcscpy_s(fileName, dirPath);
+                    ++DeleteDirectoryTree_errorCount;
+                    wprintf_s(L"Failed to delete file '%s'. DeleteFile error=%d\r\n", path.c_str(), GetLastError());
+                }
             }
 
-            if ((DeleteDirectory_count & 2047) == 0)
-                wprintf_s(L"%d items deleted. Deleting '%s'.\r\n", DeleteDirectory_count, path);
+            if ((DeleteDirectoryTree_count & 2047) == 0)
+            {
+                wprintf_s(L"%d items deleted. Deleting '%s'.\r\n", DeleteDirectoryTree_count, path.c_str());
+            }
 
-            ++DeleteDirectory_count;
+            ++DeleteDirectoryTree_count;
         }
-        else
+
+        if (!FindNextFile(findHandle, &findFileData))
         {
             auto result = GetLastError();
             if (result == ERROR_NO_MORE_FILES)
             {
-                // no more files there
-                continueSearch = false;
+                // No more files to read.
+                break;
             }
             else {
                 // some error occured, close the handle and return FALSE
-                wprintf_s(L"Failed to enumerate next file in '%s'. FindNextFile error=%d\r\n", path, GetLastError());
-                FindClose(findHandle); 
+                ++DeleteDirectoryTree_errorCount;
+                wprintf_s(L"Failed to enumerate next file in '%s'. FindNextFile error=%d\r\n", path.c_str(), result);
+                FindClose(findHandle);
                 return false;
             }
-
         }
     }
     FindClose(findHandle);  // closing file handle
 
-    auto result = RemoveDirectory(path);
-    if (result == 0)
-        wprintf_s(L"Failed to remove directory '%s'. RemoveDirectory error=%d\r\n", path, GetLastError());
+    // Now that all the children are deleted, try to delete the containing directory.
+    bool result = true;
+    if (isDirectory)
+    {
+        result = RemoveDirectory(path.c_str());
+        if (result == 0)
+        {
+            wprintf_s(L"Failed to delete directory '%s'. RemoveDirectory error=%d\r\n", path.c_str(), GetLastError());
+        }
+    }
 
     return !!result; // remove the empty directory
 }
