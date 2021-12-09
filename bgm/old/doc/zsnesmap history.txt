@@ -1,4 +1,4 @@
---Aug--
+1998-08 (Aug)
 5  Start writing viewer
    Figure out where certain registers of the SNES were stored in ZSNES savestates
 8  Write code for simple GUI parts
@@ -24,7 +24,8 @@
    of it along with Zelda.
 29 Lost copy I've been working on for a week and start from backup
 31 Added mode 7 tiles
---Sept--
+
+1998-09 (Sept)
 1  Map tiles are now flipped vertically and horizontally
 2  File loader is actually functional now
 3  Added mosaic, vertical scan line, and cycle count info

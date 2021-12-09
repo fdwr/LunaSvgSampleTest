@@ -1,3 +1,5 @@
+Last updated 2008-12-09. These goals have been moved to a different project.
+
 What it is:
 - A flexible tilemap archival utility, for making maps like you saw in Nintendo Power years ago.
 - Raw data viewer, able to view uncompressed byte arrays and graphics.
