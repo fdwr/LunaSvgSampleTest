@@ -1,0 +1,259 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=windows-1252">
+<TITLE>BgMapper Readme Doc</TITLE>
+</HEAD>
+<BODY LINK="#0000ff" VLINK="#800080" BGCOLOR="#808080">
+<DIR>
+
+<P ALIGN="CENTER"><FONT SIZE=6 COLOR="#c0c0c0"><B><I>BgMapper 0.12 (alpha)<BR></FONT>
+<FONT SIZE=5>Savestate Scene Viewer</FONT><BR>
+<FONT SIZE=2>By FDwR - Copyright &copy; 1998</FONT></B></I></FONT></P>
+<P>
+<FONT SIZE=2 COLOR="#00ffff"><P>BgMapper is a simple program able to recreate game scenes from Super Nintendo savestates, tell miscellaneous technical info about how the game is using the hardware and show hiddden scene graphics. It was really written for the purpose of making maps, for all those nostalgic games that we still got lost in (figuratively and literally). I've always wanted make maps of my favorite games, without having to resort to pen and paper or snapshot piecing (like Nintendo Power used to do). So the idea was that all those levels you see while playing a game have to be stored somewhere, and that if you could just find where, you could get the complete maps. Before I heard of emulation though, there was simply no way to get to them on the cartridge, but now it is as simple as opening a file. Unfortunately, it's difficult to find where games store their levels and exactly how (does anybody out there know?). They are often compressed, with each game having its own format and storing its levels whereever it wants. So for now the best way to get at the map data is grab it while the game is running and everything is in its expanded format - in other words the emulation state. Then you could simply save the complete state (sprites, video registers, RAM, and of course tilemaps) so you could piece together the scene pages to make complete levels.</P>
+<P>Currently, BgMapper is still being worked on so that it can regenerate the scene correctly and can not export any maps; but it should eventually. After all, that is why it is called Bg"Mapper". To do a good job of recreating those scenes from savestates, it needs to be fully functional in all video modes and settings; so BgMapper is sort of like just the graphics core of an emulator (not that the graphics code of any emulator is a small part!). I also wanted to know how games were using the SNES hardware (or actually the emulated 'hardware'), like what the registers were set to and what graphics were in memory. Most of the interesting registers were read only though, and ZSNES had no VRAM viewing function; so that's why a few other useful functions are in BgMapper. If you are the technically curious type, you might appreciate 'Scene Info'. You may know some emulators, like SneQr and Snemul, that have decent VRAM viewing and register dumping abilities, so mine were really just written for ZSNES savestates.
+<P>
+Only ZSNES savestates are understood for now, but Snes9x, Snemul, and other emulator formats might eventually be supported. If any emulator author out there just happens to read this and would like BgMapper to support their emu's savestates, feel free to send the format to </FONT><A HREF="mailto:FDwR@Hotmail.Com"><FONT SIZE=2>me</FONT></A><FONT SIZE=2 COLOR="#00ffff">. For now I don't see any pressing reason to support any other savestate formats though since ZSNES is a good standard. It happens to support many of my personal favs (MW2, MarioKart, StarFox...).</P></FONT>
+<P>
+<FONT SIZE=2>
+<A HREF="#disclaimer">Disclaimer</A><BR>
+<A HREF="#requires">Requirements</A><BR>
+<A HREF="#features">Features</A><BR>
+<A HREF="#plans">Future plans</A><BR>
+<A HREF="#leftout">Things intentionally left out</A><BR>
+<A HREF="#gui">Using the GUI</A><BR>
+<A HREF="#capturing">Capturing a savestate</A><BR>
+<A HREF="#viewing">Scene viewing</A><BR>
+<A HREF="#questions">Possible questions</A><BR>
+<A HREF="#about">About BgMapper</A><BR>
+<A HREF="#log">Log</A></P></DIR>
+</FONT>
+<P>
+<HR ALIGN="LEFT" WIDTH="50%">
+<P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><A NAME="disclaimer">Disclaimer:</B></I></FONT>
+<DIR>
+<FONT SIZE=2 COLOR="#00ffff">This program is provided free, and therefore does not get enough revenue to afford any kind of compensation for damages; so if something goes wrong from the use of this prog, I'm letting you know right now that you use it at your own risk. If you do not agree to that, then do not use it. I've made sure that it does not have any known problems before releasing it, but that does not except it from undiscovered errors; so if anybody out there does find a bug, please tell me! For anybody who redistributes BgMapper, it must include this readme you are reading now along with the program.
+<P>!! BgMapper is still in the alpha stage with parts incomplete and disabled, so do not expect to much from it right now. This readme also refers to several of those parts which a not complete, so just ignore them. Anything with '***' means it is yet to be added.
+</DIR></FONT>
+
+<P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<P><B><I><FONT SIZE=4 COLOR="#c0c0c0"><A NAME="requires"></A>Requirements:</FONT></I></B></P><DIR>
+<P><FONT SIZE=2 COLOR="#00ffff"><B>IBM PC 386+</B>
+ - if you have anything faster, then all the better<BR>
+<B>4Mb</B> - it probably won't even use one megabyte of that though<BR>
+<B>VGA</B> - SVGA is not supported yet, just mode 13h (320x200:256)<BR>
+<B>Keyboard</B> - always nice to have one of these things<BR>
+<B>Mouse</B> - possible to use without one but less fun</P>
+<P>I've tested this out on my 25Mhz 386 and a 300Mhz Pentium. It works fine on both and should work fine on anything in between. No problems have been encountered under simple MS-DOS, Win 3.1, and Win 95. No gaurantees for anything else. Actually, no gaurantees with even those!</P>
+<P>BgMapper really just needs enough memory to recreate the graphics scene and give a few technical details. Compared to a complete emulator, it requires far less memory; since it does not need to hold an entire ROM, all the code necessary for interpreting that ROM, plus other things like the audio data and SPC code.</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<P><FONT SIZE=4 COLOR="#c0c0c0"><B><I><A NAME="features"></A>Features:</B></I></FONT></P>
+<DIR>
+<FONT SIZE=2 COLOR="#00ffff"><B><P>***Scene Viewer<BR>
+VRAM Tile Viewer (plus WRAM &amp; ERAM viewing)<BR>
+Tilemap Viewer<BR>
+***Sprite List<BR>
+***Scene Information</P></B>
+<P>The Scene Viewer is the main part of BgMapper (or at least will be someday). It currently supports the 8x8 tilesize, 32x32 32x64 64x32 64x64 tilemaps, and all video modes 0-7 except the extra wide screens of 5&amp;6. Sprites are also lacking presence.</P>
+<P>The VRAM tile viewer is sort of interesting if you like to see how and where games pack their graphics. It can view 1,2,3,4 &amp; 8 bitplane modes plus mode 7 tiles. It also lets you see any graphics in WRAM or ERAM*. You can also see the 256 color palette and background color constant, with each color's RGB and hex values. ***The palette can then be exported for possible use in Naga or SMC-Ripper. Exporting a raw palette might be useful for any of you out there that want to code a little ROM and use the palette of an existing game rather than making your own.??</P>
+<P>The Tilemap Viewer shows where the BG's tilemaps are stored. Unless using mode 7, where the tilemap is an array 128x128, each tilemap made of 32x32 arrays that are pieced together with others to make the complete scene (this I found out through frustrating trial and error). This utility just shows the tiles in order without regard to how they relate to the whole picture or which colors in them are transparent. It will even show what the graphics would look represented as tile blocks.</P>
+<P>Sprite Info gives the full 128 sprite list, shows each sprite, displays its color palette, and tells where it goes on the screen - even for disabled sprites. Double clicking will bring up a menu that lets you jump to where that is in the scene viewer, or where its tiles are the VRAM viewer.</P>
+<P>Scene Info is nice for anybody curious about those technical details of how the game is using the SNES hardware, like the video mode, sprite sizes, how many colors, planes, subscreens,and more boringly meaningless jargon (I'm sure somebody else out there likes to know about that stuff though as much as me too though, right??).</P>
+<P>*Most games that I have seen store at least some of their graphics in normal memory (128k) and transfer their sprites to VRAM whenever they are needed. Why? For one reason, if the graphics are compressed, it is simply faster than reading them from ROM. Of course, it is faster reading from RAM than external ROM anyway. For another reason, if a game uses more character frames than will fit in 64k, you have another 128k which at least some of could be used to hold those extra graphics; which can simply be copied into VRAM when that character comes on the the screen. Other games, like 'StarFox', 'Yoshi's Island', 'Mario Kart' also store their graphics on extra memory included externally in the cartridge (not the same as SRAM). The cartridge's internal processor, whether DSP, FX, or whatever kind of chip, can then do whatever it needs to do with it before passing the data onto VRAM for video output. Because all of this is saved in savestates (WRAM, VRAM, and Cartridge memory) BgMapper can view all of them.</P></DIR>
+</FONT>
+<P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<P><B><I><FONT SIZE=4 COLOR="#c0c0c0"><A NAME="plans"></A>Future plans:</P></FONT></I></B>
+<DIR>
+<FONT SIZE=2 COLOR="#00ffff"><B><P>Map exporting (sort of the purpose for making this prog)<BR>
+Tile set and sprite exporting to image files<BR>
+Sprites in Scene Viewing<BR>
+A few more details added to Scene Info<BR>
+Those rare 8x16 tiles<BR>
+Transparency (color addition and subtraction)</P></B>
+<P>I think that I'll come up with my own little format for map files, and eventually a separate map editor. This little prog is supposed to only be for simply getting the map out of the savestate, nothing more. The map files will have to be able to hold multiple maps, tile sets, palettes, and have some sort of compression method for keeping the filesize down. It will also need to include multiple layering for those maps that use two overlayed planes such as 'Zelda' and 'SOM' ('Secret of Mana'). It could even have a way to link separate maps together and mark special areas of the map with text comments, but don't get your hopes up. Something like that that woold not come for quite a while, unless one of you out there wants to write it ;-)</P>
+<P>Have any of you ever wanted to have the little animation frames of your favorite video game characters? Currently, clicking on the scene doesn't do anything. By the next version, you should be able easily export any sprite(s) you like to a bitmap, to do whatever you want with.</P>
+<P>BgMapper does not yet show any sprites in the scene viewer. I simply need to add them, and make sure that all the layering priorities are correct.</P>
+<P>Some more scene information like what the windows are set to, what DMA channels are active, and the values in the mode 7 registers would be nice to know.</P>
+<P>16x8 tiles such as the ones in the main menu of 'SOM', although very rare, will be added. They are the double wide tiles used the for the 512 column video modes.</P>
+<P>Even though it will be quite a bit of work, I think transparency would be a nice thing to add. It really isn't necessary, but it makes thing look so much better. Don't expect it for quite a while though.</P>
+<P>If I didn't mention something above, then I don't plan to add it (but I guess if it is something good, you can ask anyway).</P></DIR></FONT>
+
+<P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P><A NAME="leftout"></A>Things intentionally left out:</P><DIR>
+
+</I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>Mode 7 scaling/rotation<BR>
+Pixelation (that scrambling, mosaic effect)<BR>
+Windowing<BR>
+HDMA effects<BR>
+<BR>
+</B>Certain effects, even though they might look awesome, aren't necessary for a little map exporter. If anything, these effects hinder being able to effectively grab maps. The mode 7 'Zelda' and 'SOM' world maps for example look really neat, but the perspective view totally distorts any possiblity of piecing the parts together. Without any perspective, everything is flat, just the way we want it. So don't even ask if I am going to add mode 7 effects.</P>
+<P>Pixelation - like when you enter a level in 'Mario World' - is just good for looks while you are playing. Otherwise, there is really nothing exciting about a lot of square blocks.</P>
+<P>Windowing is great when games want to focus on just a portion of the screen or do a nice closing scene, but we want to see everything and not be limited to just what the game wants us to see at that time.</P>
+<P>BgMapper does its best to generate a complete scene from a static savestate, but many games modify the scene during during gameplay, not just from frame to frame, but line to line, making it impossible to get the complete picture from just one instant in time. Without becoming a sort of mini-emulator, these changes are impossible to correctly anticipate*. That means ROMs using any type of background wave effect or palette gradient will not be shown in their true splendor. For example, the wavy demo that comes with Qwertie's emulator will show plain, flat text. Of course, for map making that is exactly what we want!</P>
+<P>*I just recently had a thought on HDMA effects though. It might be possible to recreate a scene that uses realtime effects, if you could predict what the HDMA channels were going to do each scanline. The tables used by each channel could be read and any port writes could be translated into visible changes..? Of course we don't want to get too advanced, lest this prog start looking more like an 'incomplete' emulator rather than a mapmaker.</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P><A NAME="capturing"></A>Capturing a savestate:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>If you have had any experience with ZSNES, then you know that saving the state is as simple as pressing F2. If not, download it and get used it (because otherwise this prog is currently useless ;-). Warning: If you are the technically squeamish type, everything is working fine, or excessive reading causes your eyes to become crossed, just skip the next section. On the other hand, if your're the type actually reads the instructions before playing a game or things just aren't looking right in BgMapper, it might help below.</P>
+<P>The most common problem most of you will have is with those realtime HDMA effects. Whenever you save a state while in emulation, ZSNES always saves it between frames (at scanline 0, just before that next frame starts). If the game has one complete scene without any drastic mid-frame changes, you should have no problems viewing it with BgMapper, but if it does do something like change the video mode in the middle of the screen, you could have a screen that looks only half right. Since the screen is rendered in lines from top to bottom as time goes, and you are only loading a single instant in time, there is no way to know that say half of the screen was using mode 7 and only this half is using mode 0 (as in the opening 'SOM' map). HMDA can change many other scene attributes too, like plane offsets, windowing, and palette colors, but they are all time dependant. So what you catch depends on when you catch it. To grab the scene you want at the right instant (at any scanline rather than always at line 0) you will have to use the debugger - by starting the ZSNES with the '-d' switch. You might want to read in the ZSNES readme for more on using it. Once there, you will see the current scanline number at the top left after the 'Y:'. Simply trace through enough instructions for it to reach the scanline where you think the change takes place, and save the state from within the debugger. For those that don't already know, the normal screen height is 224 pixels. So to capture the scene below midscreen, you would save anywhere around scaline 112 or greater. For less hit-and-miss, one possibility would be to save a snapshot of the scene in distress. Then using something like Paint (for Win95), open the snapshot picture and simply move the cursor over or a little below the line where the change happens. Looking at the coordinates in status bar, you have your exact scanline needed.</P>
+<P>Finding sprite frames is simple in 'Mario World' because it loads a whole chunk of graphics in video memory for that entire level or area. Other games like 'DK Country' are a bit more advanced and only load what they need, when they need it - sometimes down to the individual frame. If a sprite is not currently in memory, it quickly transfers it in; and when the sprite dies or is no longer on the screen, it can free that block of VRAM for other sprites to use later. That means that for you to get the desired sprite, you would have to save it while you can visibly see the sprite on screen. It might be in VRAM anyway, even if you can not see it, but it is gauranteed to be present in memory if you can. Since ZSNES has no pause key, the best trick I've found to step frame by frame is to press F3, then Esc, F3 again quickly. Do this until the sprite you want is visible behind the box, then save it. To bad it does not have a single frame step key - that would be handy. As I said above, another trick that many games use to allow more sprites in a level than will fit in 64k is to use normal memory (WRAM) for holding graphics. So if it isn't in VRAM, maybe it is in WRAM (for example, all the Mario animation frames).<BR>
+Bty, you can also use a tile viewer like SMC-Ripper or Naga and see graphics in savestates (as long as they are not compressed like Snes9x's).&nbsp;</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P><A NAME="gui"></A>Using the GUI utilities:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>It should be pretty straightforward and like any other graphical interface, but here are a few things you might want to know. Bty, this is my first GUI and it is written in assembly, so don't compare it to Snemul's or Qwertie's or any other. Note that several functions are not made yet so many buttons are useless.</P>
+<B><P>Lists in general:</B> Since scroll bars were too much work for me to bother making, you can just click on either the top or bottom of the list with the right mouse button to scroll the page. Like any other list though, the arrow keys, PgUp/PgDn, and Home/End all work.</P>
+<B><P>***File Selecting:</B> If the filename you are typing in is in the current list, you can type in just the first few letters and the choice should jump to it in the list (or the closest one to what you typed in). Normally it only shows ZSNES savestates (*.zs?) in the list, but if you want to view all files, you can type in your own filemask (like *.* for all files). This might be useful if you renamed you savestate to something else so you could have a backup of it..? There is also a startup option for showing all files. Since there is no way to select different drives from the list, just type in its letter and the colon, if the file you want is not in the directory you started BgMapper in. There is even support for long filenames, assuming you run it under Window 95. It if detects it, it will automatically use the longer filenames in opening and saving.</P>
+<B><P>***Scene Viewer: </B>While viewing the scene from a savestate, you can pan around and see the rest of it (including the parts the game scene it didn't mean for you to see). Use the arrow keys and PgUp, PgDn, Home, End, *, /, +, - to scroll. BkSpc returns you to the window's origin. Loading a file also restores the scene to the center. To turn individual planes on or off, you can use the same standard keys that most emulators use, 1-4 for each BG, 5 for sprites, and (like ZSNES) 6 to restore everything. Unlike in emulators, you are allowed to turn on planes that are disabled by the game, although you will likely only see junk in them (note that is not the same as viewing planes that simply do not exist, just the ones that have been turned off by the game).</P>
+<B><P>VRAM Viewer:</B> [not complete!] Pressing the arrow keys to scroll, 1-4 to jump to the graphics base and color depth of that BG, 5 for sprites, Shift+1-8 to change to a user specified bp mode (color depth), left and right to change the color palette, and + / - to change the graphics base. Generally you should not mess with the base address manually though since it rearranges the bitplanes, but if you do and things seems totally messed up, just press 'A' to align to the nearest tile Pressing 'A' again will align to the nearest row, and once more will align to the nearest tilemap segment.</P>
+<B><P>Tilemap Viewer: </B>[not complete!] The keys similar to the ones used in the VRAM viewer, except that pressing 1-5 jumps to that BG's tilemap base rather than graphics base. Press 9 to toggle between 8x8 and 16x16 tilesizes.</P>
+<B><P>***Sprite List:</B> If you know what sprite you want by number, you can jump directly to it by typing in it using the number keys and backspace. Otherwise just use the normal keys you would to move through a list.</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P>Starting options:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>As BgMapper has no options menu (of course, it does not really have options either), you have to set everything from the command line. You can start out with a certain savestate by including it behind the name (or actually anywhere in with the parameters).</P>
+<P>BgMapper [filename.zst] [-option1 -option2..]</P></DIR>
+</FONT>
+<TABLE CELLSPACING=0 BORDER=0 CELLPADDING=7 WIDTH=497>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<P><FONT SIZE=2 COLOR="#00ffff">***-v #</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>Currently there is only one video mode so it does not make any difference.</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="MIDDLE">
+<FONT SIZE=2 COLOR="#00ffff"><P>***-t</FONT></TD>
+<TD WIDTH="87%" VALIGN="MIDDLE">
+<FONT SIZE=2 COLOR="#00ffff"><P>To turn on transparency (which currently does not exist).</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>***-tn</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>If for some reason you did not want transparency.</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>***-fa</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>Show all files in the list.</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>***-fw</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>Show Windows 95 long filenames in list, if for some reason it did not detect it.</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>***-fwn</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>If for some reason you do not want to use long filenames.</FONT></TD>
+</TR>
+<TR><TD WIDTH="13%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>-sd</FONT></TD>
+<TD WIDTH="87%" VALIGN="TOP">
+<FONT SIZE=2 COLOR="#00ffff"><P>Startup display, displays status as it starts.</FONT></TD>
+</TR>
+</TABLE>
+
+<P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P><A NAME="questions"></A>Possible questions:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>These are some questions that some of you might wonder. If you have other questions not answered above or below, you can email me, and if enough people ask the same annoying question, I'll just include it in here. Please don't ask questions about when I plan to add something, since I am doing this in my spare time and for the fun of it. Asking a lot of redundant questions would sort of take the fun out of it, but any intelligent ones about how BgMapper or SNES work (or maybe why BgMapper does not work) are welcome.</P>
+<B><P>q:</B> What are all those garbage sprites doing at the bottom of the screen when I scroll down?<BR>
+<B>a:</B> Since there is no way to actually turn an SNES sprite on or off, most games put their unused sprites down there at the bottom. So if you see a sprite in the list that is set to 224 or 240, you can bet it is supposed to be disabled.</P>
+<B><P>q:</B> How come when I pan around the scene, everything outside the normal game window looks like junk?<BR>
+<B>a:</B> It's simply because it is junk! You are seeing parts of the scene that the game didn't bother to draw (basically binary static) and didn't think anyone would possibly ever look at. After all, why should it waste time drawing parts that aren't meant to be seen? Although, games sometimes draw more than just what you see. For example, in small areas, 'Zelda' simply draws the whole scene and then pans it around as you move. Only in larger areas (like Kakariko village for one) does it draw as you go. Another predrawn scene is the giant Lizard Kraid in 'Metroid 3'. He is actually an entire plane (BG) that is scrolled as he walks back and forth, so you can see his complete body (except the smaller moving parts which are sprites) before he has fully come up from the ground, by simply panning down. For those like me that like to know how things work, panning around, seeing parts of the scene not meant to be visisble, can turn up some interesting finds.</P>
+<B><P>q:</B> Why do I see all these sprites in VRAM not on the screen or possibly even on this level?<BR>
+<B>a:</B> Games like 'Zelda' load all the graphics it is going to need for a particular area or level at once just for simplicity, even if that includes characters that aren't in that immediate area. As a matter of fact, I've even seen some odd characters in VRAM that aren't anywhere in the game (or maybe it takes a secret code for them appear?). For example, look in a save of 'Mario World' while at the map, in VRAM at 49152. There are sprites of a pirahna plant, walking Koopa kid, some wingless beaked creature, and a big sign pointing to the right; none of which I have ever seen while playing the game. Maybe they are characters that were drawn but never got used..?</P>
+<B><P>q:</B> Why don't some of the buttons work?<BR>
+<B>a: </B>Almost none of them work yet, but it's not a bug. I simply have not written any code for them. It is difficult to make a lot of progress writing in pure asm. As soon as the most important parts are completed, then I can work on the rest. I'm not even going to think about map exporting until all the viewing is correct.&nbsp;</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P><A NAME="about"></A>About BgMapper:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>Orginally it was just going to be for myself, but it seemed nicer to share. It comes as is, without any gaurantee that it will get any better than this; but if you find any errors in it or think of some good idea that could enhance it, please tell me anyway. It was originally compiled with Qbasic 4.5, but then the compiler started complaining with out of memory messages when my source code reached about 70k. So now I am rewriting it all in pure assembly. It should be much nicer, as it will be a lot faster, have much more memory, and have more options (hopefully). Tedious work it is though; How did ZsKnight write an entire emulator in asm - especially without using any libraries!?. </P>
+<P>Why did I bother to write this prog? I'm the kid that would intentionally find bugs in games to find out they worked, and when my SNES wasn't working right, I actually wanted to keep it broken for a while longer just for a little more knowledge on how it worked. I'm also the kid who looked in countless libraries and bookstores for any tidbit of its inner working without success. Luckily, the internet (the biggest library yet :-) was discovered and then came the wonder called emulation. Since then, I've been reading and figuring out how all the graphics are stored, special effects are done, and how levels are built; all for absolutely no logical reason other than the insatiable desire to quench this curiosity. Now comes the project to map out the many great games that should be know as classics forever (or at least as long as I'm alive). This is what I've done to make the SNES live on... Please tell me there are other techies or gamers out there determined to also not let the system die? </FONT><FONT FACE="Wingdings" SIZE=2 COLOR="#00ffff">J</P></DIR>
+
+</FONT><B><I><FONT SIZE=4 COLOR="#c0c0c0"><P>Thanks To:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P>Yoshi for his informative docs that got me started,<BR>
+Vilewrath for writing the example BASIC code, demonstrating how to read SNES tiles,<BR>
+ZsKnight for sending me the ZSNES savestate format and info on bg screen addition and subtraction!<BR>
+Qwertie for organizing his conversations with various emulator authors and writing his own doc,<BR>
+All the places out there that keep info, like 'The Emulation Center', 'Zone99', 'Snes Programmer's Resource'...<BR>
+Michael Tippach for WdosX, 32bit DOS extender,<BR>
+Authors of NASM for a great compiler,<BR>
+Gaz for his helpful assembly library,</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<B><I><FONT SIZE=4 COLOR="#c0c0c0"><P>BgMapper log:</P><DIR>
+
+</B></I></FONT><FONT SIZE=2 COLOR="#00ffff"><P><A NAME="log"></A>(this probably contains nothing interesting for most of you)</P>
+<B><P>--Ver 0.0-- (loads things)<BR>
+--Aug--<BR>
+</B>5&#9;Start writing viewer in Qb. Figure out where certain registers of the SNES were stored in ZSNES savestates.<BR>
+8&#9;Write code for simple GUI parts (menus and lists).<BR>
+11&#9;Create main menu and fileload window.<BR>
+13&#9;Add mouse support (it was a must).<BR>
+14&#9;Able to load VRAM, OAM, and scroll registers but not able to display even a single tile yet.<BR>
+18&#9;Get the scene info page right after some trial and error. Tells the tile size, map size, and scroll registers.<BR>
+19&#9;Add palette viewing window.<BR>
+<B>--Ver 0.01-- (view scenes)<BR>
+</B>22&#9;Write a tile translator (SNES tile =&gt; linear bitmap).<BR>
+23&#9;Try to figure out how tilemaps are arranged with simple colored blocks. They are messed up! Instead of 64x64 tilemaps being normal, simple arrays they are four separate 32x32 tilemaps.<BR>
+24&#9;Replace the blocks with real tiles (at least for non-mode 7 8x8 tiles).<BR>
+&#9;Add palette colormapping.<BR>
+25&#9;Replace the tilemap debugger with the real one to draw scene layers.<BR>
+&#9;Add sprites list with details (they might not be right though).<BR>
+26&#9;Get the tilemaps to wrap correctly!<BR>
+27&#9;Add View scene scroll with arrow keys.<BR>
+28&#9;Beat Mario RPG and decide I want to make a map of it.<BR>
+<B>--Ver 0.02-- (lots of additions)<BR>
+</B>29&#9;Lost copy I've been working on for a week and start from backup.<BR>
+31&#9;Added mode 7 tiles (for all those RPGs that like to use it, Zelda, SOM, Mario RPG...). Give this prog a name, ZMapper. It's for one my classic favorites, 'Zelda' - the inspiration for it all. It was the first game that I drew a complete map of (on paper) from memory.<BR>
+<B>--Sept--<BR>
+</B>1&#9;Map tiles are now flipped vertically and horizontally.<BR>
+2&#9;File loader is actually functional now (before it simply showed a static list that I actually typed in)<BR>
+3&#9;Added mosaic, vertical scan line, and cycle count info. Verified that other games can be viewed with ZMapper in addition to Zelda.<BR>
+7&#9;Added different colorbases for each plane while using mode 0.<BR>
+8&#9;Start to add sprites (to the Sprites page at least, not the scene). Add checking that files to be loaded are indeed ZSNES savestates. That means it will not load a non-savestate file even if the name ends with the 'zst' extension, and that it will load savestate files that have simply been renamed - in case for some reason you want to have more than ten saves of a single game.<BR>
+9&#9;Get my previous copy back!<BR>
+11&#9;Pretty much done reintegrating old copy into current one. Added simple buttons.<BR>
+12&#9;Added SetWindowTitle and long filename support (for Win95). Download the source code for Snes9x and find out the compression library that its savestates use (I already knew they were compressed somehow), so someday little ZMapper may also support that format too.<BR>
+13&#9;Find some very noticeable bugs while viewing a Metroid 3 savestate. So it's still in the alpha stage, although some people might get some use out of as it is.<BR>
+14&#9;Made file selecting window a little more 'intelligent' and added reload option in main menu. The file selector now shows the difference between files and directories. Files can be jumped to more quickly by typing in the first few letters of the name. The reload option saves me from constantly reselecting names from the list.<BR>
+15&#9;Write the readme document for ZMapper, and go to bed at 5:09am.<BR>
+17&#9;A few minor bug fixes, backgroud is redrawn for when you close a window, file selector can now change drives.<BR>
+18&#9;Added background color, now the skies in 'Mario World' and 'AllStars' look as they should!<BR>
+19&#9;Metroid scenes now display correctly. I had the tilemap height/width bits reversed, so 32x32 and 64x64 tilemaps worked fine, but 32x64 and 64x32 were not wrapping right at the edges.<BR>
+20&#9;Fixed bug where tilemaps that point to tiles past VRAM wrap around to the front (for 'Yoshi's Island'). Found the first game yet to use 16x16 tiles (also Yoshi's Island) - now I can finally test them out...ok, they work. Add background color to palette viewer. My compiler just told me that ZMapper's source code was too big, so I guess it is time to convert it to something else. Oh boy, just joy.<BR>
+<B>-- Ver 0.1 -- (pure assembly, is it worth it?)<BR>
+</B>25&#9;Ever since the conversion to assembly started, this log hasn't been updated much. It now draws boxes (oh yeah) and has two types of neat fonts, but there isn't even a title page yet. How did ZsKnight do it all?<BR>
+27&#9;Mouse and keyboard routines written.<BR>
+28&#9;Worked some more on the fonts.<BR>
+29&#9;It now has a title page with a Zelda background (but nothing after it) and command line checking, although the code to do what the command line options set is not in there yet. You can pass it parameters to change the video mode, but that doesn't mean it will actually change the video mode.<BR>
+<B>--Oct--<BR>
+</B>15&#9;Start working on the menu routines.<BR>
+16&#9;The menu now works (or at least it is drawn right and reacts to key input), and rather nicely too for being written in tedious assembly </FONT><FONT FACE="Wingdings" SIZE=2 COLOR="#00ffff">J</FONT><FONT SIZE=2 COLOR="#00ffff">.<BR>
+20&#9;Draw the 'Zelda' style letters for the Zmapper title (draw, as in hand draw using Paint).<BR>
+21&#9;Do some major revising of the readme, maybe because I'm so tired of coding.<BR>
+22&#9;Get the mouse to work with the menus, both clicking on the choices and moving over it the them. Worked more on the command line options. Time tested several tile translators and think I've found the fastest one. It is not necessarily as fast as an emulator's tile translator(s) because it works for any bitplane mode (color depths 1,2,3,4,&amp; 8), rather than having individual ones for each different depth, but it isn't meant to beat emulators!<BR>
+25&#9;Decide to change the name of this prog to BgMapper in case people get it confused with ZSNES and think it was written by the same people. It was named after Zelda, but this program applies to much more than just one game, so this name should be more fitting. A month has gone by and this is all I've done?<BR>
+<B>-- Ver 0.11 --<BR>
+</B>26&#9;! It finally loads ZSNES savestates. A cheap test blit some VRAM tiles onto the screen.<BR>
+27&#9;Compared the tile blitting with Naga, and it's about twice as fast. That's good enough for me.<BR>
+<B>--Nov--<BR>
+-- Ver 0.12 --<BR>
+</B>19&#9;Add a simple palette window and VRAM viewer. Add -sd switch.<BR>
+25&#9;Merged palette window and VRAM viewer into one. Added dumb scene info output - not finished by any means.<BR>
+26&#9;! It finally renders the resemblance of a scene. Still need to add tile paletting, flipping, priority, and other tile sizes. No panning is supported yet either.<BR>
+<B>--Dec--<BR>
+</B>1&#9;Add raw tilemap viewer page.<BR>
+2&#9;Adapt tilemap viewer code to make simple multilayered scene viewer. It can accept 2,4,8bit modes. Still need to add flat mode 7.<BR>
+3&#9;! Scene viewer can scroll bgs, supporting 32x32, 32x64, 64x32, and 64x64. Need to simply fix wrapping problem and 16x8 and 16x16 tiles.</P></DIR>
+
+</FONT><P><HR ALIGN="LEFT" WIDTH="50%"></P>
+<FONT COLOR="#00ffff"><P>Oct 19,1998 (Dwayne Robinson) </FONT><A HREF="mailto:FDwR@Hotmail.Com"><B><I>FDwR</B></I></A></A></P></BODY>
+</HTML>
