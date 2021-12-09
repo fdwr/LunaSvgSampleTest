@@ -2,7 +2,7 @@
 ; PikenSoft (uncopyright)2003..2021
 ;
 ; By Dwayne Robinson (FDwR@hotmail.com)
-; http://members.tripod.com/FDwR/snes.htm
+; http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)
 ; Assembly compiled with NASM and WDOSX
 ; Started on Sept 23,1998
 ;
@@ -1906,8 +1906,8 @@ StartOptionMessages:
     db 'Built with the NASM compiler and WDOSX extender.',13,10
     db 'Written by Dwayne Robinson, to map out the classics.',13,10
     db 10
-    db '  FDwR@hotmail.com (or Juno)',13,10
-    db '  http://members.tripod.com/FDwR/snes.htm',0
+    db '  FDwR@hotmail.com',13,10
+    db '  http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)',0
   .HelpText:
     db 'BgMapper ',ProgVersion,' - Savestate Viewer, (uncopyright)2003..2021 PikenSoft',13,10
     db 'Supports the ZSNES emulator savestates (zst & zmv)',13,10
