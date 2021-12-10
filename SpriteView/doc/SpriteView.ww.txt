@@ -1,8 +1,8 @@
 {I2}========
-  SpriteView .166 (c)2003 PeekinSoüt
+  SpriteView .166 (uncopyright)2003..2021 PeekinSoft
   Little console tile graphics viewer
   By Dwayne Robinson, using Nasm/WDOSX/Alink
-  http://fdwr.tripod.com/snes.htm
+  http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)
   FDwR at hotmail.com
 
   1. Changes

@@ -1,3 +1,7 @@
+; Standard Library - system routines
+; by Gaz Jones
+; https://web.archive.org/web/20030211000714/http://www.phoenix.gb.net:80/x86/
+
 %ifndef _SYSTEM_MACROS
 %define _SYSTEM_MACROS
 %macro AtExit 1

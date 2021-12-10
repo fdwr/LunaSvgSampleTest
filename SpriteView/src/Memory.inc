@@ -1,5 +1,6 @@
 ; Memory management subsystem
-; by Gaz
+; by Gaz Jones
+; https://web.archive.org/web/20030211000714/http://www.phoenix.gb.net:80/x86/
 ;
 %ifndef _MYHEAP
 %define _MYHEAP
