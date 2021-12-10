@@ -47,9 +47,9 @@
 ;    or very short samples.
 ;
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Global DSP variables
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 section bss
 alignb 4
 
@@ -139,9 +139,9 @@ SamplesBufferSize   equ 232992  ;64k * (8/9) * 4
 SamplesBuffer:      resb SamplesBufferSize
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; DSP emulation constants
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 
 DspReg:
 ; DSP special registers, all are both read and write
@@ -189,7 +189,7 @@ DspReg:
 .EchoDelay              equ 7Dh ;       EDL bits 0-3 ??
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section code
 
 DspEmu:
@@ -218,7 +218,7 @@ DspEmu:
 ; shifting and ax for multiplying. For these, the registers may be saved
 ; (push) or temporarily swapped with another (xchg).
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (!none)
 .Init:
     mov dword [GlobalSample.Entries],1
@@ -248,7 +248,7 @@ DspEmu:
     bts dword [GlobalSample.Used],eax
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Call this after loading a new savestate or SPC.
 ; Must be called AFTER SpcEmu.Init
 ; Clears all local sample indexes to point to "Default"
@@ -280,7 +280,7 @@ DspEmu:
     ;ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 align 4
 .ReadRegJumpTable:
 ; (empty for now)
@@ -303,7 +303,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
 dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX
 dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (edx=register read/written, ch=value read/written)
 ; (edx=F3h; !ah)
 ;
@@ -366,7 +366,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     mov edx,0F3h                ;restore DSP data address
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .wReg4C:;key on
     test ch,ch                  ;a lot of games send pointless commands
     jz .wIgnore                 ;like turning on zero keys
@@ -393,7 +393,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     and [DspRam+DspReg.KeyOff],ch  ;clear corresponding keys off
     and [DspRam+DspReg.Endx],ch ;clear endx bits
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; Record pitch, volume, and brr source # in DSP buffer
     xor edx,edx                 ;start with volume register of first voice
     jmp .KonCheck
@@ -409,7 +409,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     inc edx
     call .RecordDspReg          ;source directory number
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; get srcdir entry offset
     ; if offset differs previous offset
     ;   if sample of matching offset found
@@ -445,7 +445,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     ; so that ROTJ doesn't allocate dummy samples
     bts [LocalSample.Valid],ebx     ;if used by the game, then it MUST be valid (even if it breaks one of the rules)
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
     ; first try to find a global sample of matching offset
     mov ecx,1                   ;start on second sample, skip default
 .KonOfsMatchNext:
@@ -471,7 +471,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
 
     pusha
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
     ; no match found, so get sample attributes
     ; (ebx=source directory entry #)
     push ebx                    ;pass source dir entry #
@@ -481,7 +481,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     mov edx,[LocalSample.LoopLen+ebx*4]
     mov edi,[LocalSample.Checksum+ebx*4]
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
     ; second try to find global sample of matching attributes
     ; (ebx=source directory entry #)
     xor ecx,ecx                 ;start on second sample, skip default
@@ -504,7 +504,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     jmp short .KonOffsetSet
 .KonAtrMatchNone:
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
     ; still no match, so third add a new sample
     ; (ebx=source directory entry #)
     push ebx
@@ -515,7 +515,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     popa
 .KonOffsetSame:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; if current sample low byte !=
     ;   record sample low byte in reg 0Ah
     ; endif
@@ -566,7 +566,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     lea edx,[edx+16]
     jnz .KonCheck               ;any more keys turned on?
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     pop esi
     pop ecx
     pop ebx
@@ -587,7 +587,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     ret
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .wReg5C:;key off
     mov ah,[DspRam+DspReg.KeyOn];compare channels currently on
     and ah,ch                   ;with channels to turn off
@@ -601,7 +601,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     mov dh,ah                   ;copy value sent to register
     ;jmp short .RecordDspAndRet (fall through)
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Records the value being written to a DSP register. Can either be called
 ; or jumped to. This routine does not record the previous value of the
 ; register, only the new one.
@@ -635,7 +635,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     mov [DspBufferEnd],edi      ;save position in dsp buffer
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Jumped to when buffer is full to insert an ending key off.
 ;
 ; (flags="cmp edi,DspBufferSize-4")
@@ -654,7 +654,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
 .BufferFull:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Records the tick count of write.
 ;
 ; ()
@@ -673,7 +673,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Records the value from a specified DSP register, other than the one
 ; currently being written to. Only new DSP values are recorded. If the
 ; register value between now and the last call are the same, nothing happens.
@@ -708,7 +708,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
 .RdrEnd:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .wRegXX:
     debugwrite "write reg xx"
     pusha
@@ -725,7 +725,7 @@ dd .wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wRegXX,.wReg
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Reads all samples pointed to by the directory, setting their attributes.
 ; Also tests for validity.
 ;
@@ -751,7 +751,7 @@ LocalSamplesInfo:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Gets attributes of a single sample from the source directory, contained
 ; locally in the loaded SPC state. Gets info for both main and loop portions.
 ;
@@ -837,7 +837,7 @@ section bss
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Returns info about a portion of BRR data including: byte length, sample
 ; length, its last block header, and the data's validity. Simply determines
 ; attributes, does not decompress. Returns the length of only the portion
@@ -933,7 +933,7 @@ GetAdpcmLength:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Buffers all 256 samples from source directory into sound wave buffer,
 ; checking that each one is valid before expanding.
 ;
@@ -956,7 +956,7 @@ DecompressLocalSamples:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Decompresses a whole sample, including both the main and loop portion of it.
 ;
 ; (dword sample number) (!)
@@ -1001,7 +1001,7 @@ DecompressSample:
 .Loop   equ LocalSampleInfo.Loop
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Decompresses a 4bit ADPCM sample into the buffer. Filters are implemented.
 ;
 ; This routine assumes the sample has already been checked for validity and
@@ -1168,7 +1168,7 @@ align 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; This function's purpose is for uniquely identifying a given sample,
 ; although it could actually checksum anything. The checksum that it returns
 ; is the dword sum of the raw sample, not the expanded sample. The final

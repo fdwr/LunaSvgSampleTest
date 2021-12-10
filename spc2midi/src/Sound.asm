@@ -100,7 +100,7 @@
 ;
 ;=============================================================================
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 section data
 align 4, db 0
 
@@ -148,7 +148,7 @@ MpuCmd:
 .RespAck        equ 0FEh
 %endif
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
 align 4,db 0
 Sound:
 
@@ -167,7 +167,7 @@ Sound:
 .DaInt:         dd 0Dh          ;interrupt number of given IRQ (wave audio)
 .Irq:           dd 5            ;IRQ to clear
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
 %elifdef WinVer
 ; driver specifics
 
@@ -223,7 +223,7 @@ section data
 
 %endif
 
-;ÄÄÄÄÄÄÄÄÄ
+;---------
 %ifdef DosVer
 .BufferSize     equ 16384       ;4k samples * 2 bytes per 16bit sample * 2 for wrap padding (must be EVEN exponentt of 2)
 .BufferPtr:     dd 0            ;address to base of sound buffer
@@ -324,7 +324,7 @@ align 4,db 0
 section code
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Reads variables from BLASTER string. Assumes all settings are correct, and
 ; that the address, IRQ, & DMA are valid. Don't tell the user an annoying
 ; message like "invalid blaster setting", because as many different
@@ -467,7 +467,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Enables different waveforms, disables rhythm mode to make use of all 9
 ; channels.
 ;
@@ -580,7 +580,7 @@ InitFmSound:
     jmp StatusMessage
     ;ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Release:
     btr dword [SoundFlags],SoundFlags.FmBit
     jnc .End
@@ -598,7 +598,7 @@ InitFmSound:
     jbe .NextVoiceOff
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Opens FM MIDI audio device (Windows)
 ;
 ; ()
@@ -641,7 +641,7 @@ InitFmSound:
 .End:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Closes FM MIDI audio device. This function assumes all audio
 ; threads have already been suspended or terminated.
 .Release:
@@ -671,7 +671,7 @@ section code
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ;
 ; Quote from "Programming the AdLib/Sound Blaster" by Jeffrey S. Lee (1992)
 ;
@@ -707,7 +707,7 @@ WriteFmReg:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Quote from "CPU Independant Timer"
 ;
 ; "the perfect anwser.  It seems that there is a timer connected to port 61h
@@ -733,7 +733,7 @@ TimedWait:
 
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Rather than just abruptly turn off all the notes, it first sets the release
 ; rates so that they fade out.
 SilenceFm:
@@ -756,7 +756,7 @@ SilenceFm:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (esi=patch info, al=voice)
 ; (; esi, edi)
 ; Voices are zero based.
@@ -780,7 +780,7 @@ SetFmPatch:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Resets/detects sound card, allocates sound buffer, and sets IRQ interrupt
 ; handler. If the sound card does not exist, is at the wrong address, will
 ; not reset (because some other program already has control of it), or the
@@ -955,7 +955,7 @@ InitDaSound:
 .End:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Release:
     btr dword [SoundFlags],SoundFlags.DaBit
     jnc .End
@@ -1001,7 +1001,7 @@ alignb 4
 .OldHandler:    resd 1
                 resw 1
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Opens wave audio device (Windows)
 ; If there is only one wave out device, it simply opens that one. If two or
 ; more, it uses the wave mapper to determine which.
@@ -1095,7 +1095,7 @@ InitDaSound:
     ;mov esi,Text.ErrorMsg
     jmp StatusMessage
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Closes wave audio device. This function assumes all audio threads
 ; have already been suspended or terminated. If not, ...!
 .Release:
@@ -1135,7 +1135,7 @@ section code
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Near pointless function whose sole function is to simply acknowledge the
 ; unused sound card generated interrupts and return. Not much, but it is very
 ; important for some computers. On mine, the sound simply stops playing,
@@ -1187,7 +1187,7 @@ SoundHandler:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Reads single byte from sound card. Many program's sound routines just have
 ; a tight loop here, so that if anything goes wrong, you're stuck in one of
 ; those great infinite loops. Personally, I can't stand the thought of such
@@ -1221,7 +1221,7 @@ ReadSbDsp:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Writes single byte to sound card. If timeout occurs, the routine ignores
 ; the fact that the card isn't ready and just writes it anyway.
 ;
@@ -1253,7 +1253,7 @@ WriteSbDsp:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Separate from InitDaSound so that it can be called multiple times. That way
 ; the sample rate, bits, and stereo options can be changed within the program
 ; without needing to exit and restart it. Supports 8bit, high speed 8bit, and
@@ -1442,7 +1442,7 @@ InitDmaTransfer:
     jmp WriteSbDsp              ;high byte next
     ;ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Stop:
     test byte [SoundFlags],SoundFlags.Da
     jz .IgnoreCall
@@ -1520,7 +1520,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simply clears the sound card buffer (not mixing buffer). Used whenever
 ; silence should be heard, like when the sound card is first initialized
 ; and no song is playing yet, or when everything is paused.
@@ -1556,7 +1556,7 @@ ClearWaveBuffer:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simply clears the 32bit mixing buffer (not sound card buffer). Used before
 ; mixing digital audio of voices and sample together
 ;
@@ -1573,7 +1573,7 @@ ClearMixBuffer:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Keeps sound card output and mixing synchronized. The DOS version uses
 ; progressive buffering, always staying at least one frame ahead of DMA. The
 ; Windows version stays enough blocks ahead that other program's actions do
@@ -1727,7 +1727,7 @@ SyncToWave:
 .AboveMin:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (edx=suggested buffer size in samples)
 %elifdef WinVer
 
@@ -1774,7 +1774,7 @@ SyncToWave:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Copies mixing buffer to sound card buffer in low memory, converting the
 ; 32bit samples to either 8bit or 16bit, and clipping out of range samples.
 ; How many samples it copies depends on whether it is ahead or behind (the
@@ -1857,7 +1857,7 @@ CopyMixBuffer:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Detects MPU, resets it, and enters UART mode.
 ; Be sure reset the MPU before quitting the program, or else you may
 ; experience strange side effects like Window's sound effects looping
@@ -1917,7 +1917,7 @@ InitMpu:
     jmp StatusMessage
     ;ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; !always call this before exiting the program!
 ; if the MPU has been initialized but is not reset before exiting, sound may
 ; not play at all in other programs. don't ask me why... :/
@@ -1931,7 +1931,7 @@ InitMpu:
     out dx,al                   ;reset MPU
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Opens MIDI port in Windows
 ;
 ; ()
@@ -1975,7 +1975,7 @@ InitMpu:
 .End:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Closes the MIDI port. This function assumes all audio
 ; threads have already been suspended or terminated.
 .Release:
@@ -2006,7 +2006,7 @@ section code
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; ()
 ; (cf=error, edx=mpu cmd port; esi,edi,ecx)
 ;
@@ -2034,7 +2034,7 @@ WaitMpu.Done: ;(cf=0)
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (al=value) (; ebx,esi,edi,al)
 WriteMpu:
     mov ecx,eax
@@ -2051,7 +2051,7 @@ WriteMpu:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (esi=data string ptr, ecx=number bytes) (; ebx,edi)
 WriteMpuString:
     cld
@@ -2071,7 +2071,7 @@ WriteMpuString:
 
 
 %ifdef WinVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Opens default MIDI device (Windows only)
 ;
 ; ()
@@ -2122,7 +2122,7 @@ InitGm:
 .End:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Closes the MIDI synthesizer. This function assumes all audio
 ; threads have already been suspended or terminated.
 .Release:
