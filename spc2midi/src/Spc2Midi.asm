@@ -1,11 +1,13 @@
 ; Spc2Midi - Main Routines
 ; SPC700 DSP to MIDI converter
-; PikenSoŸt (c)2004
+; PikenSoft (c)2004
 ;
 ; By Dwayne Robinson (Peekin)
 ; Born 1999-11-21
 ; Updated 2003-05-03
 ; Platform DOS/Win32 assembler
+; http://pikensoft.com/
+; http://github.com/fdwr/spc2midi
 ; http://fdwr.tripod.com/snes.htm
 ; FDwR@hotmail.com
 ;
@@ -186,7 +188,7 @@ CodeStart:
 %define GuiVer
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Global program constants/variables
 ;
 ; A few other Global variables found in other source files include:
@@ -291,7 +293,7 @@ Regs:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Play status variables
 ;
 section data
@@ -354,7 +356,7 @@ DefaultFreq:        dd DefaultSample.Freq
 DefaultVolume:      dd DefaultSample.Volume
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; GUI definitions
 ;
 %ifdef GuiVer
@@ -393,7 +395,7 @@ DefaultVolume:      dd DefaultSample.Volume
 
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Windows definitions/declarations
 ;
 %ifdef WinVer
@@ -532,7 +534,7 @@ Main:
     InitGui                     ;initialize user interface elements
     api ShowWindow, [hwnd],SW_SHOWDEFAULT
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; load file & initialize core
     test dword [PlayOptions],PlayOptions.FileGiven
     jz .NoFileLoaded
@@ -554,7 +556,7 @@ Main:
     call LocalSamplesInfo
     call MatchLocalSamples
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; initialize audio output
     call InitDaSound.IfEnabled  ;open digital audio (for wave samples)
     call InitFmSound.IfEnabled  ;open FM audio device
@@ -569,12 +571,12 @@ Main:
     ;api MessageBox, [hwnd], Text.PreviewOnly,Program.Title, MB_ICONEXCLAMATION
     and dword [PlayOptions],~PlayOptions.Suspend
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .MainLoop:
 .NoMsg:
     call .Redraw
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Emulate as needed
 .NextEmuRun:
     test dword [PlayOptions],PlayOptions.Emulate
@@ -602,7 +604,7 @@ Main:
     api WaitMessage
 .EmuDone:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Update miscellaneous
     btr dword [PlayOptions],PlayOptions.InterruptedBit
     jnc near .NoUpdate
@@ -649,7 +651,7 @@ Main:
 .NoUpdate:
     mov [PlayStall],dword 0
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 
 .NextMsg:
     xor eax,eax
@@ -681,7 +683,7 @@ Main:
     api DispatchMessage, msg
     jmp .NextMsg
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Quit:
     debugwrite "terminating program"
 
@@ -698,7 +700,7 @@ Main:
 .Terminate:
     api ExitProcess,[msg+MSG.wParam]
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 ; (dword main window, eax=message)
 .KeyMsg:
     call GetKeyboardMsg
@@ -741,7 +743,7 @@ Main:
     push dword .NextMsg
     jmp [.ControlKeyJtbl+ecx*4]
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 ; (dword main window, eax=message)
 .MouseMsg:
     call GetMouseMsg
@@ -765,12 +767,12 @@ Main:
     add esp,byte 12
     jmp .NextMsg
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .Timer:
     push dword .NextMsg
     jmp SendTimeMsgs
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .Redraw:
     test byte [Display.RedrawFlags],Display.RedrawItems|Display.RedrawCursor|Display.RedrawPalette|Display.CursorMoved
     jz .NoRedraw
@@ -798,7 +800,7 @@ Main:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 MsgProc:
     params 4, .hwnd, .message, .wParam, .lParam
 
@@ -1016,7 +1018,7 @@ Main:
     ; Console handler does not do any good!?
     ;api SetConsoleCtrlHandler, ConsoleHandler, TRUE
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; Check command line parameters
     call CheckStartParams
     jc .TerminateWithMsg
@@ -1037,7 +1039,7 @@ Main:
     call DspEmu.Init            ;clear brr sample table, flag all samples as unused
     call LoadMainSettings
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; initialize core
     call SpcEmu.Init            ;copy RAM, registers, set timers
     call DspEmu.Reinit          ;clear brr sample table, flag all samples as unused
@@ -1058,7 +1060,7 @@ Main:
     jmp [ExitProcess]
 .PlayNormal:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; initialize audio output
     call InitDaSound.IfEnabled  ;open digital audio (for wave samples)
     call InitFmSound.IfEnabled  ;open FM audio device
@@ -1067,12 +1069,12 @@ Main:
     call DspSim.Init            ;initialize DSP simulation structures and enable at least one type of sound output, expand 128 MIDI notes into 22k pitch table
     call OutputMidiFile.StartIfEnabled
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     call PlayThread.Init
     call MainConLoop
     call PlayThread.Release
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     call OutputMidiFile.Stop
     call InitGm.Release
     call InitMpu.Release
@@ -1084,7 +1086,7 @@ Main:
     jmp [ExitProcess]
     ;ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ;ConsoleHandler:
 ;    debugpause "terminating consoloe"
 ;    api ExitProcess;, 0
@@ -1122,7 +1124,7 @@ Main:
     mov edx,Text.FullTitle
     call WriteString
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; check command line parameters
     call CheckStartParams
     jc .TerminateWithMsg
@@ -1151,7 +1153,7 @@ Main:
     call DspEmu.Init            ;clear brr sample table, flag all samples as unused
     call LoadMainSettings
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; initialize core
     call SpcEmu.Init            ;copy RAM, registers, set timers
     call DspEmu.Reinit          ;clear brr sample table, flag all samples as unused, expand 128 MIDI notes into 22k pitch table
@@ -1172,7 +1174,7 @@ Main:
     jmp .Terminate
 .PlayNormal:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     ; initialize audio outputs, then init DSP simulation
     call GetBlasterVars
     call InitDaSound.IfEnabled  ;initialize digital audio (for wave samples)
@@ -1190,13 +1192,13 @@ Main:
     test dword [PlayOptions],PlayOptions.ConOnly
     jnz near MainConLoop
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
     push dword MainWindow       ;window data structure
     InitGfx
     InitGui
     and dword [PlayOptions],~PlayOptions.Suspend
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .NextMsg:
 .GetKey:
     call GetKeyboardMsg
@@ -1234,7 +1236,7 @@ Main:
 
 .NoKeyMsg:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .GetMouse:
     call GetMouseMsg            ;press/release/move
     jc .NoMouseChange
@@ -1246,7 +1248,7 @@ Main:
     add esp,byte 12
 .NoMouseChange:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Emulate as needed
 .NextEmuRun:
     ;test dword [PlayOptions],PlayOptions.Emulate
@@ -1271,7 +1273,7 @@ Main:
     hlt
 .EmuDone:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Update miscellaneous
     btr dword [PlayOptions],PlayOptions.InterruptedBit
     jnc .NoUpdate
@@ -1305,10 +1307,10 @@ Main:
 .NoUpdate:
     mov [PlayStall],dword 0
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
     call SendTimeMsgs
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 ; tell any items that need to redraw themselves to do it now
 
 .Redraw:
@@ -1337,7 +1339,7 @@ Main:
     test dword [GuiFlags],GuiFlags.Active
     jnz near .NextMsg
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .Quit:
     push dword MainWindow       ;window data structure (redundant push)
     DeinitGui
@@ -1346,7 +1348,7 @@ Main:
     call WriteString
 
 %endif
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .StopPlay:
     call TimerHandler.Release
 
@@ -1364,7 +1366,7 @@ Main:
 
     ; save configuration file...
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Terminate:
     mov ah,1                   ;set cursor type
     mov ecx,0708h              ;turn on cursor
@@ -1424,7 +1426,7 @@ MainConLoop:
 .NoShowKeys:
     and dword [PlayOptions],~PlayOptions.Suspend
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Emulate as needed
 .NextEmuRun:
     test dword [PlayOptions],PlayOptions.Emulate
@@ -1466,7 +1468,7 @@ MainConLoop:
   %endif
 .MoreEmu:
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Update miscellaneous
     btr dword [PlayOptions],PlayOptions.InterruptedBit
     jnc .NoUpdate
@@ -1500,7 +1502,7 @@ MainConLoop:
 .NoUpdate:
     mov [PlayStall],dword 0
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Check keyspresses
     ; the key processing code below is presently an innefficient nightmare
 
@@ -1627,7 +1629,7 @@ MainConLoop:
 .NotEscape:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 .DecPos:
     neg ecx
 .IncPos:
@@ -1859,7 +1861,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Checks the command line parameters and sets options accordingly.
 ; Can return text with error.
 ; Does not directly end the program, but returns carry to tell the caller to
@@ -1917,7 +1919,7 @@ CheckStartParams:
     pop ebp
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Verifies the next parameter is separated properly by either a space, slash,
 ; null, or some other valid character.
 ; If all is okay, it will skip any separating space and return the new ptr.
@@ -1942,7 +1944,7 @@ CheckStartParams:
     ;jae .End                    ;cf=0
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Searches through a string list for given text and returns matching index.
 ; Mainly used to match switch parameters, but can actually be used for any.
 ; (esi=search text, ebx=string list) (cf=error no match, eax=index)
@@ -1969,7 +1971,7 @@ CheckStartParams:
 .MwMatch:                       ;match from above (cf=0)
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Determines length of word, up to next space, or within quotes.
 ; Mainly used to get filename, but can also be used for words following
 ; parameters.
@@ -2003,7 +2005,7 @@ CheckStartParams:
 .GwlNoLastQuote:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Returns a number from the current parameter, adjusted char ptr to the
 ; character immediately after the last number.
 ; If the number is missing, this routine will NOT return, but instead abort
@@ -2030,7 +2032,7 @@ CheckStartParams:
     jz near .Err                ;no number so end
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .NonSwitchParam:
     ;cld
     bts dword [PlayOptions],PlayOptions.FileGivenBit
@@ -2206,7 +2208,7 @@ CheckStartParams:
     or dword [PlayOptions],PlayOptions.SlowPlay
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 section data
 align 4, db 0
 .EndPtr:    dd 0
@@ -2215,10 +2217,10 @@ align 4, db 0
     dd 11111111111111110111111111111110b  ;?>=<;:9876543210/.-,+*)('&%$#"! 
     dd 11101111111111111111111111111111b  ;_^]\[ZYXWVUTSRQPONMLKJIHGFEDCBA@
     dd 11111111111111111111111111111111b  ;~}|{zyxwvutsrqponmlkjihgfedcba`
-    dd 11111111111111111111111111111111b  ;Ÿžœ›š™˜—–•”“’‘ŽŒ‹Š‰ˆ‡†…„ƒ‚€
-    dd 11111111111111111111111111111111b  ;¿¾½¼»º¹¸·¶µ´³²±°¯®­¬«ª©¨§¦¥¤£¢¡ 
-    dd 11111111111111111111111111111111b  ;ßÞÝÜÛÚÙØ×ÖÕÔÓÒÑÐÏÎÍÌËÊÉÈÇÆÅÄÃÂÁÀ
-    dd 11111111111111111111111111111111b  ;ÿþýüûúùø÷öõôóòñðïîíìëêéèçæåäãâáà
+    dd 11111111111111111111111111111111b  ;--------------------------------
+    dd 11111111111111111111111111111111b  ;--------------------------------
+    dd 11111111111111111111111111111111b  ;--------------------------------
+    dd 11111111111111111111111111111111b  ;--------------------------------
 
 .Jtbl:      ;jump table for parameters
     dd .Help
@@ -2294,7 +2296,7 @@ section code
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; This is called upon interrupt 8 from the pc timer (30fps). If play time in
 ; the main loop lags too far behind, it's given a chance to catch up.
 ;
@@ -2396,7 +2398,7 @@ TimerHandler:
     pop ds
     iret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Saves the old timer interrupt handler and set my new one.
 .Init:
     ;save existing interrupt handler
@@ -2421,7 +2423,7 @@ TimerHandler:
     int 31h
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Release:
     ;restore old interrupt handler
     mov bl,8                    ;timer interrupt
@@ -2460,7 +2462,7 @@ section code
 
 
 %ifdef WinVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; This high priority thread is responsible for incrementing timers and
 ; calling the function to play sounds. If the main loop lags too far behind,
 ; this thread bows down, giving its parent a chance to catch up.
@@ -2539,7 +2541,7 @@ PlayThread:
     jz .CalcSleep
     api ExitThread; ,0
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Creates the thread for playing
 .Init:
     mov esi,.StartingPlay
@@ -2561,7 +2563,7 @@ PlayThread:
     ;api 
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Does not destory the thread directly, rather flags it to destroy itself.
 ; Then waits on thread to die. If it does NOT die (perhaps an infinite loop
 ; somehow), the thread will be killed.
@@ -2594,7 +2596,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (esi=source)
 ; (ecx=length, zf=zero length; esi,edx)
 GetStringLength:
@@ -2612,7 +2614,7 @@ GetStringLength:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (esi=source of text)
 StatusMessage:
 %if 0;def GuiVer
@@ -2636,7 +2638,7 @@ StatusMessage:
     jmp WriteString
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Turns a 32bit number into a decimal (or other) string, writing it to edi.
 ; By default, it converts a number to a decimal string, maximum of ten
 ; characters, stored in NumToString.Buffer. To change where the string is
@@ -2702,7 +2704,7 @@ section bss
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; String to Number
 ; (esi=text source, ?ebx=radix, ?ecx=length of string)
 ; (eax=value, esi=character immediately after, zf=no number)
@@ -2752,7 +2754,7 @@ StringToNum:
 
 .DefMaxLen  equ 10          ;default maximum since the largest 32bit is 4gb
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (eax=midi patch number)
 ; (esi=ptr to name, ecx=char length)
 GetMidiPatchName:
@@ -2769,7 +2771,7 @@ GetMidiPatchName:
 
 
 %ifdef DosVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; search through environment for specific variable
 ; (esi=variable string) (cf=not found, esi=ptr just after name if found)
 GetEnvVar:
@@ -2808,7 +2810,7 @@ GetEnvVar:
 %endif
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 %include "spcemu.asm"           ; Emulation
 %include "dspemu.asm"
 %include "dspsim.asm"
@@ -2867,7 +2869,7 @@ section code
 %include "debug.asm"
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section text
 Text:
 .FullTitle:         db Program.NameDef," ",Program.VersionDef," - (incomplete) DSP to MIDI converter",13,10
@@ -2884,7 +2886,7 @@ Text:
                 %else
                     db "GUI"
                 %endif
-                    db " version (c)2002 PeekinSoŸt",13,10
+                    db " version (c)2002 PeekinSo-t",13,10
                     db 10,0
 .About:             db "Usage:  Spc2Midi [-/options] filename.ext",13,10                    
                     db 10
@@ -3137,7 +3139,7 @@ SoundDumpHeader:    db "RIFF"
                     db "data"
                     dd SamplesBufferSize
 SoundDumpHeader.Size equ $-SoundDumpHeader
-SoundDumpFileName:  db "BRROUT.WAV",0
+SoundDumpFileName:  db "BrrOut.wav",0
 
 [section text]
 TextEnd:

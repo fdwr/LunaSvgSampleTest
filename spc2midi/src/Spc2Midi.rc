@@ -15,7 +15,7 @@ BEGIN
             VALUE "ProductVersion", PROGVERSTR
             VALUE "FileDescription","Spc2Midi - SPC700 DSP player and MIDI convertor. Plays SNES game music from SPC captures / ZSNES savestates and exports it to MIDI files. Also just an experiment to see what I was capable of :)"
             VALUE "ProductName","Spc2Midi"
-            VALUE "LegalCopyright","Copyright\251 2002 Dwayne Robinson"
+            VALUE "LegalCopyright","Copyright\251 2002..2021 Dwayne Robinson"
             VALUE "CompanyName", "PikenSoft"
             VALUE "Mail", "FDwR@hotmail.com"
             VALUE "Website", "http://pikensoft.com/\r\nhttp://fdwr.tripod.com/snes.htm"

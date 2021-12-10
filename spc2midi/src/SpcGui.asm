@@ -1,6 +1,6 @@
 ; Spc2Midi - GUI responses
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 
 dd $+4
 MenuOwner:
@@ -65,7 +65,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 MainCommand:
 .Restart:
     mov dword [PlaySpeed],TicksPerFrame
@@ -191,7 +191,7 @@ MainCommand:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (dword item ptr, ebx=item ptr)
 SongDisplayCode:
 ;vwSongDisplay
@@ -296,7 +296,7 @@ section code
 
     UseMsgJtbl
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .Draw:
     ;push dword 6
     ;push dword SongView.Height|(SongView.Width<<16)
@@ -313,7 +313,7 @@ section code
     ;clc
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .KeyPress:
     mov esi,.Keys
     call ScanForKey
@@ -458,7 +458,7 @@ section code
     add esp,byte 24
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .Focus:
     test dword [ebx+GuiObj.Flags],GuiObj.NotFullFocus
     jnz .NotFullFocus
@@ -467,7 +467,7 @@ section code
 .NotFullFocus:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .MousePrsRls:
     ; do the action appropriate for the current visualization
     ; forex: clicking on a note in the rolling note sheet should select that
@@ -488,7 +488,7 @@ section code
 .MouseIgnore:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .MouseIn:
     mov eax,Msg.SetItemFocus|FocusMsgFlags.Specified|FocusMsgFlags.SetItem|FocusMsgFlags.SetGroup|FocusMsgFlags.ByMouse
     call SendContainerMsg
@@ -498,7 +498,7 @@ section code
     ;ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 dd $+4
 atrlSampleOwner:
 
@@ -548,7 +548,7 @@ section code
     stc
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 .SetValue:
     mov esi,edx
     imul esi,AtrListObj.Items_size
@@ -720,7 +720,7 @@ section code
     bts [LocalSample.Valid],ecx
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;--------------------
 ; (eax=msg, ecx=value)
 .GetValue:
     mov eax,ecx
@@ -831,7 +831,7 @@ section code
 .GetValidYes:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 dd $+4
 atrlSongOwner:
     cmp al,AtrListMsg.Change

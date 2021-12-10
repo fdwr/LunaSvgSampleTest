@@ -5,7 +5,7 @@
 ; SpcView.NoteSheetHorz
 ; SpcView.VolumeBars
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 
 SongView:
 
@@ -40,7 +40,7 @@ align 4,db 0
 .Handler:       dd .NoteSheetHorz
 
 section code
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;----------------------------------------
 .Init:
     mov edi,.Buffer
     mov ecx,.Vars_size/4
@@ -54,7 +54,7 @@ section code
 .DoNada:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; No visual.
 ; () (none)
 ; prefill roll sheet with future notes
@@ -64,7 +64,7 @@ section code
 .None:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Horizontal Note Sheet rolls Left to right.
 ; () (none)
 ; prefill roll sheet with future notes
@@ -214,7 +214,7 @@ section code
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (none)
 .InitVolumeBars:
     mov dword [.Handler],.VolumeBars
@@ -334,7 +334,7 @@ section code
     jns .VbNextCol
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; horizontal sweep, one wave point per column
 ; () (none)
 .InitDaWaveClear:
@@ -379,7 +379,7 @@ section code
     mov [.Col],ebx
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; horizontal sweep, top/bottom colors meet in ocean
 ; () (none)
 .InitDaWaveOcean:
@@ -450,7 +450,7 @@ section code
     mov [.Col],ebx
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; horizontal sweep, one wave point per column, multiple fading
 ; () (none)
 .InitDaWaveFaded:
@@ -505,7 +505,7 @@ section code
     mov [.Col],ebx
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; show correlation between wave and itself at different strides
 ; () (none)
 .InitSignalCorrelationMap:
@@ -574,7 +574,7 @@ section code
 	
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; show correlation between wave and itself at different strides
 ; () (none)
 .InitSignalCorrelationBars:
@@ -643,7 +643,7 @@ section code
 
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; show correlation between wave and itself at different strides
 ; () (none)
 .InitSignalCorrelationHistogram:
@@ -729,7 +729,7 @@ section code
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (none)
 
 section data
@@ -767,7 +767,7 @@ section code
     mov dword [Display.Width],.Width
     mov byte [NumToString.FillChar],' '
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     push dword MainSongPos.DspRegs  ;starting DSP register voice 0
 .ViNext:
     push ecx                        ;save current voice
@@ -786,7 +786,7 @@ section code
     add edx,0507h
     mov [Font.Colors],edx
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 %if 0
     ; clear background behind numbers
     shl ecx,FontDefHshift+.WidthShl
@@ -802,7 +802,7 @@ section code
     jg .ViClearNext
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; form numeric string
     mov esi,[esp+4]
     mov edi,.ViString+0
@@ -900,7 +900,7 @@ section code
     mov ecx,edx
     rep stosb                   ;blank remaining trailer with space
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; draw string into offscreen buffer
     mov ecx,[esp]
     push dword .ViStrLen        ;string length
@@ -917,12 +917,12 @@ section code
     jb near .ViNext
     pop eax                     ;discard DSP reg ptr
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     call RestoreDisplayVars
     ret
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Vertical Note Sheet
 ;
 ; Top to bottom.
@@ -959,7 +959,7 @@ section code
 
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .SampleSheet:
     mov edx,[PlayTime]
     mov edi,MainSongPos
@@ -1014,7 +1014,7 @@ section code
 
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Temporary function until the GUI is completed.
 SongViewCopy:
 .Complete:
@@ -1079,7 +1079,7 @@ SongViewCopy:
 %endif
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Temporary function until the GUI is completed.
 ; This does not belong in here.
 

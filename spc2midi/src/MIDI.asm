@@ -12,9 +12,9 @@
 ;
 ; Note all the actual conversion from DSP buffer to MIDI events is done in
 ; DSPSIM.ASM, not here.
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 section data
 Midi:
 .HeaderLen      equ 22  ;MIDI header (14) + Track header (8)
@@ -36,7 +36,7 @@ Midi:
 align 4,db 0
 .DeltaDivisor:      dd 128  ;64000 ticks per second / 128 = 500 MIDI ticks ps
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 section bss
 .FileBufferSize     equ 2048
 .Instruments:       resb 16 ;holds the last used instrument for that channel
@@ -48,7 +48,7 @@ section bss
 .FileBuffer:        resb Midi.FileBufferSize+256 ;(+256 for potential overflow)
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section code
 
 .NoteOff        equ 080h
@@ -61,7 +61,7 @@ section code
 .MetaEvent      equ 0F0h
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Creates a MIDI file and writes the initial header.
 ; Also resets all variables in the Midi section.
 ; Note that this function will overwrite any existing file of the given name.
@@ -159,7 +159,7 @@ CreateMidiFile:
     stc    
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Writes any unwritten MIDI events to file, turns off any notes still on,
 ; writes the end of MIDI track event, sets the size in the header, and
 ; closes the file.
@@ -208,7 +208,7 @@ CloseMidiFile:
   %endif
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Can be called to write an individual event, such as the track title, author
 ; name, or end of MIDI. The delta-time must be included with the event.
 ; This is mainly called by outside routines. Small MIDI events can be handled
@@ -240,7 +240,7 @@ WriteMidiEvent:
     mov [Midi.FileBufferPtr],edi
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Writes any events still in buffer to file and adjusts the midi filesize.
 ;
 ; () (edi=front of buffer; esi)

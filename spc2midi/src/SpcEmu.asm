@@ -105,12 +105,13 @@ FileSpcRegs:        resb 48 ;this does not need a copy
   %define SpcEmuDebugResponse
 %endif
 
-; remapped SPC flags while in emulation
-; neither completely SPC or completely PC but a combination of both
+; Remapped SPC flags during emulation.
+; They are neither completely SPC or completely PC but a combination of both
+; for efficiency, so x86 flags and PC flags can be trivially mapped between.
 SpcFlag:        ;                                      <SPC>   <PC>
 .C      equ 1   ; Carry                                 1       1
 .V      equ 2   ; Overflow                              64      2048
-.I      equ 4   ; Indirect master enable flag ??        4       --
+.I      equ 4   ; Interrupt enable flag                 4       --
 .B      equ 8   ; Break, indicates interrupt occurred   16      --
 .H      equ 16  ; Half-carry                            8       16
 .P      equ 32  ; Direct page                           32      --
@@ -151,9 +152,9 @@ PcFlag:
 TrueSpcFlag:
 .C      equ 1   ; Carry
 .Z      equ 2   ; Zero
-.I      equ 4   ; Indirect master enable flag ??
+.I      equ 4   ; Interrupt master enable flag ??
 .H      equ 8   ; Half-carry
-.B      equ 16  ; Break ??
+.B      equ 16  ; Break, indicates interrupt occurred
 .P      equ 32  ; Direct page
 .V      equ 64  ; Overflow
 .N      equ 128 ; Negative (sign)
@@ -163,7 +164,7 @@ SpcReg:
 ;Unused 1               equ 0F0h  ???
 .Control                equ 0F1h; w     timer start/stop, port clear
   .Control_St0          equ 1   ;       timers are active when 1
-  .Control_St1          equ 2   ;       paused when 0
+  .Control_St1          equ 2   ;       and paused when 0
   .Control_St2          equ 4
   .Control_Pc01         equ 16  ;       clear ports 0 & 1
   .Control_Pc23         equ 32  ;       clear ports 2 & 3
@@ -206,15 +207,15 @@ SpcEmu:
 ;
 ; What each register holds during emulation:
 ;
-; al  = emulated flags
-; ah  = temp flags, otherwise free
+; al  = emulated flags (hybrid of PC and SPC flags, remapped for efficiency)
+; ah  = temp flags, otherwise free for use by ops
 ; bl  = A
 ; bh  = Y
-; bxh = instruction counter    (upper 16 bits)
-; ecx = free for opcodes
+; bxh = count of instructions executed in upper 16 bits of ebx (not program counter, which is si)
+; ecx = free for opcodes to use
 ; ch  = used byte read/write to return and set bytes
-; dx  = free for opcode pointer use   (upper 16 bits must remain zero!)
-; si  = current opcode pointer (upper 16 bits must remain zero!)
+; dx  = free for opcode pointer use (upper 16 bits must remain zero!)
+; si  = current opcode instruction counter / program counter (upper 16 bits must remain zero!)
 ; edi = free for opcodes and register functions
 ; ebp = keeps current time as cycle counter
 ;
@@ -543,7 +544,7 @@ section code
 ;
 ; Other registers contain A and Y along with the current cycle count and
 ; number of instructions executed so far.
-; May only use ah,ch,edi. All others must be saved and restored.
+; Only touches ah,ch,edi. All others are saved/restored.
 ;
 .ReadByte:
     cmp edx,0F0h                ;less than registers?
@@ -557,14 +558,17 @@ section code
     mov ch,[SpcRam+edx]
     ret
 
-; This is the simplest, truest version. Also slowest.
+; This is the simplest, truest version, but it's also the slowest because it
+; executes cycles (no speed up hack).
   .ReadTimer:                   ;FD-FFh r  4bit counter
     mov ch,[edx+SpcRam]
   .ResetTimer:
-    mov [edx+SpcRam],dh         ;zero counter with dh (will always be zero)
+    mov [edx+SpcRam],dh         ;zero counter with dh (will always be zero because edx is FD to FF)
     ret
 
-; read timer count hack (saves a lot of time)
+; read timer count with hack (saves a lot of time emulating).
+; The trick is that if the game is waiting for the timer, then that means it's
+; appropriate to skip ahead (which reduces wasted cycles emulating).
   .ReadTimerHack:               ;FD-FFh r  4bit counter
     mov ch,[edx+SpcRam]
     test ch,ch
@@ -577,7 +581,7 @@ section code
     ; check if next instruction points back to current one...
     ;SpcOpcInfo
 
-    ;Find which timer will tick soonest
+    ; Find which timer will tick soonest
     mov al,[.Timer01]           ;timers 0&1 tick every eighth tick of timer 2
     test byte [SpcRam+SpcReg.Control],SpcReg.Control_St0
     jz .SkipTimer0
@@ -934,6 +938,7 @@ section code
     call .ReadByte
 %endmacro
 
+; (esi=instruction offset) (edx=address, cl=bit offset, ch=value read)
 ; Returns with address in dx and cl holding shift value
 ; Low 13 bits are for 8k address, upper 3 are for selected bit
 %macro .ReadMemBit 0
@@ -1300,10 +1305,12 @@ section code
     add esi,byte 3
     add ebp,byte 6
     jmp .NextOp
-.Op0F:;!!!
+.Op0F:
 ;BRK                0F    1     8   software interrupt       ...1.0..
     SpcEmuDebugResponse
-    and al,~SpcFlag.I           ;clear indirect master enable??
+    ; todo: I seem to be missing a lot of behavior:
+    ;       Compare with: https://github.com/uyjulian/spc2it/blob/master/spc700.c#L2481
+    and al,~SpcFlag.I           ;clear interrupt enable?
     or  al,SpcFlag.B            ;set break flag
     inc esi
     add ebp,byte 8
@@ -1498,8 +1505,8 @@ section code
     .ReadMemBit
     shr ch,cl
     and ch,1
-    xor ch,1
-    or al,ch
+    xor ch,1                ;invert mem bit
+    or al,ch                ;set carry flag (SpcFlag.C == 1)
     add esi,byte 3
     add ebp,byte 5
     jmp .NextOp
@@ -1735,8 +1742,8 @@ section code
     SpcEmuDebugResponse
     .ReadMemBit
     shr ch,cl
-    or ch,~1
-    and al,ch
+    or ch,~1                ;set all other bits besides lowest bit
+    and al,ch               ;set carry flag (SpcFlag.C == 1)
     add esi,byte 3
     add ebp,byte 4
     jmp .NextOp
@@ -1976,9 +1983,9 @@ section code
     SpcEmuDebugResponse
     .ReadMemBit
     shr ch,cl
-    or ch,~1
-    xor ch,1
-    and al,ch
+    or ch,~1                ;set all other bits besides lowest
+    xor ch,1                ;invert
+    and al,ch               ;set carry flag (SpcFlag.C == 1)
     add esi,byte 3
     add ebp,byte 4
     jmp .NextOp
@@ -2514,8 +2521,8 @@ section code
 ;commented, regardless of how carry is set. However, DOOM freezes if wrong.
     .ReadMemBit
     shr ch,cl
-    and al,~SpcFlag.C       ;clear carry flag
-    and ch,1
+    and al,~SpcFlag.C       ;clear existing carry flag
+    and ch,1                ;get bottom bit for new carry flag
     or al,ch
     add esi,byte 3
     add ebp,byte 4
@@ -2675,7 +2682,9 @@ section code
     inc esi
     add ebp,byte 2
     jmp .NextOp
-.OpBE:  ;!! flags do not seem set right, what about the half-carry?
+.OpBE:
+    ;!! flags do not seem set right, what about the half-carry?
+    ; Check with https://github.com/uyjulian/spc2it/blob/master/spc700.c#L3231
 ;DAS       A        BE    1     3    decimal adjust for sub  N......ZC
     SpcEmuDebugResponse
     mov ah,al
@@ -2761,10 +2770,6 @@ section code
 ;commenting out the opcode does not affect emulation.
     SpcEmuDebugResponse
     .ReadMemBit
-    ;;inc cl
-    ;;ror ch,cl
-    ;;bt eax,C
-    ;;rcl ch,cl
     ror ch,cl               ;bring desired bit into lowest position 0
     and ch,~1               ;clear lowest bit
     bt eax,0                ;set carry for next operation
@@ -2907,7 +2912,9 @@ section code
     .ReadDpOX
     cmp bl,ch
     .RelativeLogicJump jne,3,6,8
-.OpDF:  ;!! flags do not seem set right, what about the half-carry?
+.OpDF:
+    ;!! flags do not seem set right, what about the half-carry?
+    ;https://github.com/uyjulian/spc2it/blob/master/spc700.c#L3449
 ;DAA       A        DF    1     3    decimal adjust for add  N......ZC
     SpcEmuDebugResponse
     mov ah,al       ;copy PF into ah
@@ -2989,12 +2996,9 @@ section code
 .OpEA:
 ;NOT1   mem.bit     EA    3     5  complement (mem.bit)      .........
     .ReadMemBit
-    mov ah,1
-    shl ah,cl
-    xor ch,ah
-    ;ror ch,cl
-    ;xor ch,1
-    ;rol ch,cl
+    ror ch,cl           ;move pertinent bit to bottom
+    xor ch,1            ;complement bit
+    rol ch,cl           ;realign bits
     .WriteAdr
     add esi,byte 3
     add ebp,byte 5
@@ -3028,7 +3032,7 @@ section code
     .PopReg bh
 .OpEF:
 ;SLEEP              EF    1     3    standby SLEEP mode      .........
-;       (see FF)
+    ;no increment to esi
     add ebp,byte 3
     jmp .NextOp
 
@@ -3134,6 +3138,7 @@ section code
     .RelativeLogicJump jnz,2,4,6
 .OpFF:
 ;STOP               FF    1     3    standby STOP mode       .........
+    ;no increment to esi
     add ebp,byte 3
     jmp .NextOp
 
@@ -3142,13 +3147,13 @@ section code
 .UnverifiedOpcode:
     add dword [.OpcodeJumpTable+edx*4],byte 5
     pusha
-	mov [SpcEmu.AY],bx
-	mov [SpcEmu.Pc],si
-	mov [SpcEmu.Flags],al
+    mov [SpcEmu.AY],bx
+    mov [SpcEmu.Pc],si
+    mov [SpcEmu.Flags],al
     mov edi,MakeOperandString.Buffer
-	call MakeOperandString
+    call MakeOperandString
     mov edx,MakeOperandString.Buffer
-	call WriteString
+    call WriteString
     mov edi,Text.UnverifiedOpcode
     call .PrintBreak
     popa

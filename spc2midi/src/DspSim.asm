@@ -53,9 +53,9 @@
 ;    only use right volume will not be silent (terra.sp3 voice 5)
 ;
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Global structures
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 
 section data
 align 2, db 0
@@ -139,10 +139,10 @@ DspCriticalSection: resb CRITICAL_SECTION_size
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Initializes DSP simulation structures and flags.
 ; Does NOT initialize sound output. Call this after the sound initialization
 ; functions. It won't crash if called before, but you might hear silence.
@@ -257,7 +257,7 @@ DspSim:
 
     ; (fall through)
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Called when completely restarting a song or loading new SPC state
 ; () (none)
 .Reinit:
@@ -284,7 +284,7 @@ DspSim:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; This can actually be called directly by the main program; however it is
 ; intended to be called from within a dedicated thread or timer handler, and
 ; thus expects more precise timing and takes more precautions than it would
@@ -390,7 +390,7 @@ PlaySounds:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Stops all playing sounds. Note it does NOT release any audio devices or
 ; disable an output mode - it simply silences them. They will resume playing
 ; as soon as PlaySounds is called again.
@@ -423,7 +423,7 @@ SilenceSounds:
   %endif
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Seeks to any point in the buffer, given a tick time count, updating the
 ; DSP registers and returning which voices were turned on or off. Used to
 ; seek small increments (inidividual frames) or large increments fast forward
@@ -435,7 +435,7 @@ SilenceSounds:
 ; To fit more in the dsp buffer, only the time information of
 ; important dsp writes is stored. The simple packing method uses the top
 ; byte to flag whether the dword is a timer value or register/value write.
-; Since no song should ever exceed 18« hours, a value of 0FFh can safely
+; Since no song should ever exceed 18- hours, a value of 0FFh can safely
 ; indicate it is a write. Anything less than that should be considered
 ; time information.
 ;
@@ -461,7 +461,7 @@ SeekSongPos:
     jle .Init
     jmp .Reverse
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Initializes a song position structure
 ; Called after an SPC is first loaded or when the song position is reset back
 ; to the beginning.
@@ -499,7 +499,7 @@ SeekSongPos:
     ;mov [edi+SongPos.Muted],al
     jmp short .SetVoices
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (edi=seek structure, esi=buffer offset, edx=time, ebx&ecx=0)
     ; start from previous position
     ; loop until buffer pos >= buffer end or note time >= specified time
@@ -546,7 +546,7 @@ SeekSongPos:
     jb .Next
     ;jmp short .EndLoop (fall through)
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .EndLoop:
     mov [edi+SongPos.Pos],esi   ;store buffer position
 
@@ -575,7 +575,7 @@ SeekSongPos:
     mov [edi+SongPos.Ton],ax
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Called immediately after seeking, it calculates the pitch and volume for
 ; each voice. This only needs to be called by routines that need such
 ; conversion, like the note display, FM, and MIDI. The wave routines do not
@@ -650,7 +650,7 @@ SeekSongPos:
     pop ebp
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (edi=seek structure, esi=buffer offset, edx=time, ebx&ecx=0)
 .Reverse:
     push esi
@@ -694,7 +694,7 @@ SeekSongPos:
     and bl,ah                   ;keys on &= !new keys off
     jmp short .RevNext
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Copies one song pos structure to another
 ; (esi=src song pos struct, edi=dest song pos struct)
 ; (; esi)
@@ -706,7 +706,7 @@ SeekSongPos:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; This greatly simplified voice sample mixer simply exists so you can hear
 ; the audio samples for comparison. It does not even attempt to sound like
 ; the real thing, or even other SPC players.
@@ -784,7 +784,7 @@ VoiceEmu:
     mov esi,[WaveSongPos.Pos]   ;get ptr
     jmp short .ReadBuffer
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Read next DSP register value stored in write buffer
 ; (esi=buffer ptr offset, edi=mix buffer ptr)
 .NextBufferReg:
@@ -822,7 +822,7 @@ VoiceEmu:
     mov [.TimeNextReg],eax
     mov [WaveSongPos.Pos],esi   ;save pffset
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Emulate <=8 sampled voices
 ; (edi=mix buffer ptr)
 .AdvancesVoices:
@@ -911,7 +911,7 @@ VoiceEmu:
 .Exit:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (ah=new keys on) (; esi, edi)
 .KeyOn:
     push esi
@@ -1007,7 +1007,7 @@ VoiceEmu:
     pop eax
     jmp .NextKon
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (ah=keys off) (; esi,edi)
 .KeyOff:
     ; set decay mode to key off...
@@ -1018,7 +1018,7 @@ VoiceEmu:
     ret
 
 %if SupportPitchSlide
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (al=register, ah=value, ecx=also register) (; esi,edi)
 .ChangePitch:
     test dword [DspFlags],DspFlags.PitchSlide
@@ -1070,7 +1070,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Sends MIDI commands through MPU or MIDI device.
 ;
 ; (SongPos structure, device output handle) (none)
@@ -1261,7 +1261,7 @@ section code
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simulates DSP output with FM synthesis rather than digital audio samples.
 ;
 ; () (none)
@@ -1473,14 +1473,14 @@ alignb 4
 .VarsSize       equ $-.Vars
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 %elifdef WinVer
     MidiEmu FmSongPos, hfmo, Fm
 
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Sends equivalent MIDI commands through MPU.
 ;
 ; () (none)
@@ -1489,7 +1489,7 @@ MpuEmu:
 
 
 %ifdef WinVer
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Sends equivalent MIDI commands through MPU.
 ;
 ; () (none)
@@ -1498,7 +1498,7 @@ GmEmu:
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simulates DSP output with sine waves rather than digital audio samples.
 ; The code is almost EXACTLY the same as VoiceEmu.
 ;
@@ -1555,7 +1555,7 @@ SineEmu:
     mov esi,[SineSongPos.Pos]   ;get ptr
     jmp short .ReadBuffer
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Read next DSP register value stored in write buffer
 ; (esi=buffer ptr offset, edi=mix buffer ptr)
 .NextBufferReg:
@@ -1592,7 +1592,7 @@ SineEmu:
     mov [.TimeNextReg],eax
     mov [SineSongPos.Pos],esi   ;save offset
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Emulate <=8 sampled voices
 ; (edi=mix buffer ptr)
 .AdvancesVoices:
@@ -1673,7 +1673,7 @@ SineEmu:
 .Exit:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (ah=new keys on) (; esi, edi)
 .KeyOn:
     push esi
@@ -1772,7 +1772,7 @@ SineEmu:
     pop eax
     jmp .NextKon
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (ah=keys off) (; esi,edi)
 .KeyOff:
     ; set decay mode to key off...
@@ -1783,7 +1783,7 @@ SineEmu:
     ret
 
 %if SupportPitchSlide
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (al=register, ah=value, ecx=also register) (; esi,edi)
 .ChangePitch:
     test dword [DspFlags],DspFlags.PitchSlide
@@ -1862,7 +1862,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simulates DSP output with DLS instruments rather than the default audio
 ; samples contained with the SPC.
 ;
@@ -1891,7 +1891,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; To hear a single sample.
 SampleEmu:
     mov ecx,[Sound.MixSamples]
@@ -1935,7 +1935,7 @@ SampleEmu:
     mov [.End],eax              ;end = loop base + loop length
     jmp short .NotEnd
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (none)
 .Stop:
     ; end of sample
@@ -1946,7 +1946,7 @@ SampleEmu:
 ;(originally I was using a division here to constrain the sample ptr within
 ; its length; but there doesn't seem to be the need.
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; (esi=sample number)
 .Start:
     cmp esi,GlobalSample.Max
@@ -1979,7 +1979,7 @@ SampleEmu:
     mov [.Loop],eax
 
     mov dword [.Acm],0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; () (none)
 .ChangeRate:
     ; calculate wave sample increment and modulus
@@ -2014,7 +2014,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simply generates a square wave of a given tone.
 ; Useful for tuning.
 ;
@@ -2071,7 +2071,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Simply generates a sine wave of a given tone.
 ; Useful for tuning.
 ;
@@ -2132,7 +2132,7 @@ alignb 4
 section code
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Reads the note buffer for new notes, converts them each into delta times and
 ; MIDI events, and records them to the file buffer.
 ; Since emulation is usually ahead of actual time, or since it might
@@ -2154,7 +2154,7 @@ OutputMidiFile:
     ;debugwrite "at esi=%X",esi
     jmp short .ReadBuffer
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Read next DSP register value stored in write buffer
 ; (esi=DSP buffer offset, edi=MIDI buffer ptr)
 .NextFlushCheck:
@@ -2196,7 +2196,7 @@ OutputMidiFile:
     ;mov [MidiSongPos.Time],eax
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; if note on
 ;   mark channel as on
 ;   get sample number
@@ -2299,7 +2299,7 @@ OutputMidiFile:
 
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; elif note off
 ;   mark channel as off
 ;   get status byte, note number
@@ -2333,7 +2333,7 @@ OutputMidiFile:
 .NoKofs:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .WriteDeltaTime:
 ; (edi=MIDI buffer ptr) (edi=new ptr; esi,ebx,ecx)
     mov eax,[MidiSongPos.Time]
@@ -2375,7 +2375,7 @@ OutputMidiFile:
     pop ebx
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .StartIfEnabled:
     btr dword [PlayOptions],PlayOptions.MidiLogBit
     jnc .IgnoreStart
@@ -2425,7 +2425,7 @@ OutputMidiFile:
 .IgnoreStart:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Stop:
     btr dword [PlayOptions],PlayOptions.MidiLogBit
     jnc .IgnoreStop

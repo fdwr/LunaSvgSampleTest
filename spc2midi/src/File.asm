@@ -1,5 +1,5 @@
 ; Spc2Midi - Anything File Related (load/saving/parsing filenames)
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 
 section data
 
@@ -50,7 +50,7 @@ dd FileDspRam ,266623,128       ;DSP memory (128 registers)
 dd 0
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Reads in a savestate or spc, registers, flags, memory...
 ; This routine ONLY loads the necessary data from the file, and does not
 ; initialize any of the emulation variables.
@@ -87,7 +87,7 @@ LoadSpcState:
 .FileNoError: ;(cf=0)
 	ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 .Zst:
     mov esi,Text.LoadingZstFile
     call StatusMessage
@@ -120,7 +120,7 @@ LoadSpcState:
     mov dl,[FileSpcRegs+ZstFile.Sp]
     jmp short .RemapRegs
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 .Spc:
     mov esi,Text.LoadingSpcFile
     call StatusMessage
@@ -139,7 +139,7 @@ LoadSpcState:
     mov dl,[FileSpcRegs+SpcFile.Sp]
     ;jmp short .RemapRegs
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Either spc or zst, both share the same code below.
 ; (al=flags, bx=AY, cl=X, dl=Sp, si=Pc)
 .RemapRegs:
@@ -152,7 +152,7 @@ LoadSpcState:
     clc
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; () (cf=0; none)
 .LoadBios:
     mov esi,Text.LoadingBios
@@ -177,7 +177,7 @@ LoadSpcState:
     clc                         ;return no error
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Opens the file, reads in the main parts of spc or savestate, then closes it.
 ; (esi=part table)
 ; (cf=error reading part)
@@ -240,7 +240,7 @@ section bss
 .SpcSaved:  resb 1  ;flags whether or not savestate contains SPC info
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Saves only header information; registers, flags, and memory; or both.
 ; Can also be used for converting savestates to SPCs.
 ; Ends if:
@@ -398,7 +398,7 @@ CheckFileExtensionMatch:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Writes an ASCIIZ string to screen, not terminated by stupid "$"
 ;
 ; (edx=ptr to string)

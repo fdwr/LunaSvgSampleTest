@@ -1,7 +1,7 @@
 ; Spc2Midi - Loading and saving settings
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Notes on settings files
 
 ; Unlike the usual .ini file which is only divided into sections, these files
@@ -258,7 +258,7 @@ alignb 4
 .Counter:   resd 1              ;miscellaneous variable
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Constants
 ;
 SettingsFile:
@@ -270,7 +270,7 @@ SettingsFile:
 .FileBufferSize equ 200
 .MaxLineWidth   equ 82
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Variables
 ;
 section data
@@ -295,7 +295,7 @@ section code
 
 ;==============================
 ; Routines
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; (edx=filename ptr) (cf=error)
 .OpenRead:
     ; open file
@@ -323,7 +323,7 @@ section code
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 %if 0
 .OpenWrite:
 Upon open:
@@ -363,7 +363,7 @@ Upon close:
 
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Read Line from Settings File
 ; () (esi=text line, eax=type)
 ;
@@ -517,7 +517,7 @@ Upon close:
 ;.MsgComment: db "# Comment",13,10,"$"
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Read Keys
 ; (function table ptr, keyname list ptr) ()
 ;
@@ -798,7 +798,7 @@ Upon close:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Read Values
 ; (function table ptr, bit table ptr, dword total keys, dword items per line
 ;  ebp=optional function stack parameters)
@@ -991,7 +991,7 @@ Upon close:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Clear Numbered Keys
 ; (dummy function table ptr,
 ;  bit table ptr,
@@ -1016,7 +1016,7 @@ Upon close:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Copy String
 ; (esi=source, edi=destination, ecx=source length, edx=destination max)
 ; (eax=characters copied)
@@ -1042,7 +1042,7 @@ Upon close:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;------------------------------
 ; Copy Control String
 ; (esi=source, edi=destination, ecx=source length, edx=destination max)
 ; (eax=characters copied, esi=last source char, edi=last dest char; none)
@@ -1079,7 +1079,7 @@ Upon close:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 %if 0
     set all keys as unread and needs written status accordingly
     goto readnext
@@ -1159,7 +1159,7 @@ LoadSettings:
 ;if expected opening bracket, clear opening expected, read next line
 ;.SectionRoutine
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 SaveSettings:
 ;create temporary output file - return if error
 ;open settings file - if error, call close handler, jump down

@@ -11,7 +11,7 @@
 ; DumpSoundBuffer.Info
 ;
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section code
 
 ; Following are a set of functions to help with adding new samples.
@@ -67,7 +67,7 @@ NewSample:
 .NoneLeft:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Returns and allocates the next available sample index. Does not initialize
 ; the variables for that sample!
 ;
@@ -97,7 +97,7 @@ NewSample:
     ;clc
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; It's best to name samples according to the instrument they most sound like
 ; (of course there are plenty of sounds in video games that have absolutely
 ; no musical equivalent). What do you do though when there are multiple
@@ -164,7 +164,7 @@ NewSample:
     dec ecx
     jg .NextUpperCase
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; get name length
     movzx ecx,byte [.Name]
     test ecx,ecx
@@ -218,7 +218,7 @@ NewSample:
     sub edx,ecx
     mov [.NumLen],edx
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
     ; find all similar sample names and record their numbers in table
     mov edx,GlobalSample.Name
     xor ebx,ebx
@@ -294,7 +294,7 @@ NewSample:
 
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Search through all flags for a free numbered name. Returns and reserves
 ; that number.
 ; ()
@@ -316,7 +316,7 @@ NewSample:
 .NoNameFound:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Based on the name passed to NewSampleName, along with a given number, this
 ; will build the string name.
 ;
@@ -364,7 +364,7 @@ alignb 4
 .NameLcase:         resb GlobalSample.NameSize  ;last used name (blen string)
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Matches BRR samples in the local SPC source directory to any existing
 ; samples already defined in the global list. New BRR samples (no match found
 ; in the global list) are added to it with default attributes.
@@ -431,7 +431,7 @@ MatchLocalSamples:
     cmp [GlobalSample.LastEntry],esi
     jae near .NextSample
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Create names and default attributes for any new samples.
 ;
 ; Called after the key on of a new sample.
@@ -483,7 +483,7 @@ MatchLocalSamples:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Exports cached sample buffer to wave file.
 ;
 ; () ()
@@ -530,7 +530,7 @@ DumpBrrBuffer:
 .FileError:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Writes info about each sample to screen (can be redirected to file)
 ;
 ; () ()

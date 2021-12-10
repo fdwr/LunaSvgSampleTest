@@ -1,5 +1,5 @@
 'WaveFreq.bas by Peekin
-'2000-03-13/2000-09-05
+'2000-03-13/2002-08-01
 'http://FDwR.tripod.com/snes.htm
 'FDwR@hotmail.com
 '
