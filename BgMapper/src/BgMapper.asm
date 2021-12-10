@@ -1,8 +1,10 @@
 ; BgMapper - Savestate viewer and graphics exporter
-; PikenSoft (uncopyright)2003..2021
+; PikenSoft (uncopyright)1998..2021
 ;
 ; By Dwayne Robinson (FDwR@hotmail.com)
-; http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)
+; http://pikensoft.com/
+; http://fdwr.tripod.com/snes.htm
+; https://github.com/fdwr/BgMapper
 ; Assembly compiled with NASM and WDOSX
 ; Started on Sept 23,1998
 ;
@@ -1895,7 +1897,7 @@ ScreenPalettePtr:
 MenuColors:
     dw 0,ColorLrLight,ColorLrBlack,0  ;inactive choice
     dw 0,ColorLrWhite,ColorLrLight,0  ;active choice
-    dw 0,ColorLrDark,ColorLrBlack,0   ;inactive disabled
+    dw 0,ColorLrDark, ColorLrBlack,0  ;inactive disabled
     dw 0,ColorLrWhite,ColorLrBlack,0  ;active disabled
 
 ;------------------------------
@@ -1907,9 +1909,11 @@ StartOptionMessages:
     db 'Written by Dwayne Robinson, to map out the classics.',13,10
     db 10
     db '  FDwR@hotmail.com',13,10
-    db '  http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)',0
+    db '  http://pikensoft.com/',0
+    db '  http://fdwr.tripod.com/snes.htm',0
+    db '  https://github.com/fdwr/BgMapper',0
   .HelpText:
-    db 'BgMapper ',ProgVersion,' - Savestate Viewer, (uncopyright)2003..2021 PikenSoft',13,10
+    db 'BgMapper ',ProgVersion,' - Savestate Viewer, (uncopyright)1998..2021 PikenSoft',13,10
     db 'Supports the ZSNES emulator savestates (zst & zmv)',13,10
     db 10
     db 'Usage:',13,10
@@ -1952,7 +1956,7 @@ Messages:
     db 130,"0            ",131,"Export menu",129
     db 130,"Esc          ",131,"Return to the menu"
     db 129,129,129
-    db "(uncopyright)2003..2021 ",132,"(:",131,"Piken",132,":)",0
+    db "(uncopyright)1998..2021 ",132,"(:",131,"Piken",132,":)",0
 
 align 4
 MainMenuStruct:

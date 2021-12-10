@@ -2,7 +2,9 @@
   BgMapper .177 (uncopyright)2003..2021 PeekinSoft
   SNES Savestate viewer and mapper (speedy and tiny)
   By Dwayne Robinson, using Nasm/WDOSX/Alink
-  http://pikensoft.com/ (http://fdwr.tripod.com/snes.htm)
+  http://pikensoft.com/programs-bgmapper.html
+  http://fdwr.tripod.com/snes.htm
+  https://github.com/fdwr/BgMapper
   FDwR at hotmail.com
 
   1. Changes
@@ -21,23 +23,6 @@ Changes
 .177    2003-03-10
 - Recompiled to PE format rather than RDOFF
 - Added force SNES video mode command line option '-fv #'. Don't know what in the world Seiken Densetsu 3 is doing, but for some reason the map screens can never be captured during at a point which the video mode is 7 - no matter WHAT scanline it is saved on. Maybe ZSNES always saves the state on the nearest horizontal interrupt or something funky. So anyway, to force those screens visible, you would type (... -fv 7).
-
-.170+
-- Bg alignment. In games with 'blocky' levels, like Mario World and Metroid 3, the tiles are distinct and easy to align to. In games like DKC and Super Star Wars though, it is much more difficult to tell just where the seams are. Bg alignment automatically aligns the selected bg to the top left of the screen so that you will be on a whole tile, not half of one. It works especially well for small areas (like one or two screen rooms). Press '9' for the menu.
-- Large scene snapshots (512x512) and VERY large (1024x1024=1Mb). No more cutting and pasting of 15 separate 320x200 snapshots. This should really help with mode 7 and 64x64 tilemap scenes. 512x512 is just right for many areas in Zelda. 1024x1024 is perfect for Mario Kart. Press '0' for the export menu.
-- Some games turn off all the bgs at certain times during the frame, which makes it confusing when you start BgMapper and don't see anything, even though you know there should be something there. So if none of the bgs are turned on, it just turns them all on now.
-- Sides clipping, all four sides, all four tile directions, any size tile.
-- Simple mouse coloring in graphics viewer. Select the default color to view graphics in with a right click on the palette; left click on the color you want to "paint" with. Then all tiles painted over in the viewing window will retain their colors even when you change the current palette. You can also right click on a tile to grab its color. The autopalette does not always get the colors correct and also can not color every single tile because not every single tile is used in a scene simultaneously so this should help the graphics exports look better.
-- Autosequencing for all exports, whether scene, VRAM graphics, or palette. Files ("bgimg###.bmp", "bgvrm###.bmp", "bgimg###.pal) can now be numbered from from 0 to 999.
-- Intelligent VRAM formatting divides different sections into their various tile formats and attempts to colorize tiles, based on the video mode, sprites, bg graphics, and bg tilemaps. The formatting is not always correct though. It will get confused with scenes that use multiple types of graphic tiles close together in VRAM or switch graphics modes midframe. The paletting can misidentify parts of leftover tilemaps and is only able to colorize elements which are currently in the scene. If a sprite is not visible in the current scene (even if it graphics happen to be in VRAM), then its palette is unknown. Press '8' for formatting, '*' to clear all tile formatting, '9' to search for used palettes and colorize the tiles, '(' to clear all paletting.
-- Different tile formats selectable in graphics viewer by pressing 1-4 (2bpl,4bpl,8bpl,Mode 7).
-
-.160+
-- Added palette inversion for scenes using subtraction transparency, like "Torchlight Trouble" in "DKC"
-- Added raw palette exporting (exactly as is in CGRAM)
-- Info screen does not annoyingly switch to text mode
-- 16x16 tiles used in "Yoshi's Island" backgrounds and "Slayers"
-- Fixed a cache problem where scenes with too many tiles overflowed the buffer and eventually corrupted other tiles. A good example was the DKC2 main map screen. Mixing 8x8 and 16x16 tiles in the cache was also fixed.
 
 
 ====={I2}
@@ -336,6 +321,23 @@ History
 - Nicer looking scene viewing keyhelp
 - VRAM graphics exporting, all sprites and tilesets
   (by pressing 0 in graphics viewer or selecting from scene export menu)
+
+--===Ver .161===---
+- Added palette inversion for scenes using subtraction transparency, like "Torchlight Trouble" in "DKC"
+- Added raw palette exporting (exactly as is in CGRAM)
+- Info screen does not annoyingly switch to text mode
+- 16x16 tiles used in "Yoshi's Island" backgrounds and "Slayers"
+- Fixed a cache problem where scenes with too many tiles overflowed the buffer and eventually corrupted other tiles. A good example was the DKC2 main map screen. Mixing 8x8 and 16x16 tiles in the cache was also fixed.
+
+--===Ver .170===---
+- Bg alignment. In games with 'blocky' levels, like Mario World and Metroid 3, the tiles are distinct and easy to align to. In games like DKC and Super Star Wars though, it is much more difficult to tell just where the seams are. Bg alignment automatically aligns the selected bg to the top left of the screen so that you will be on a whole tile, not half of one. It works especially well for small areas (like one or two screen rooms). Press '9' for the menu.
+- Large scene snapshots (512x512) and VERY large (1024x1024=1Mb). No more cutting and pasting of 15 separate 320x200 snapshots. This should really help with mode 7 and 64x64 tilemap scenes. 512x512 is just right for many areas in Zelda. 1024x1024 is perfect for Mario Kart. Press '0' for the export menu.
+- Some games turn off all the bgs at certain times during the frame, which makes it confusing when you start BgMapper and don't see anything, even though you know there should be something there. So if none of the bgs are turned on, it just turns them all on now.
+- Sides clipping, all four sides, all four tile directions, any size tile.
+- Simple mouse coloring in graphics viewer. Select the default color to view graphics in with a right click on the palette; left click on the color you want to "paint" with. Then all tiles painted over in the viewing window will retain their colors even when you change the current palette. You can also right click on a tile to grab its color. The autopalette does not always get the colors correct and also can not color every single tile because not every single tile is used in a scene simultaneously so this should help the graphics exports look better.
+- Autosequencing for all exports, whether scene, VRAM graphics, or palette. Files ("bgimg###.bmp", "bgvrm###.bmp", "bgimg###.pal) can now be numbered from from 0 to 999.
+- Intelligent VRAM formatting divides different sections into their various tile formats and attempts to colorize tiles, based on the video mode, sprites, bg graphics, and bg tilemaps. The formatting is not always correct though. It will get confused with scenes that use multiple types of graphic tiles close together in VRAM or switch graphics modes midframe. The paletting can misidentify parts of leftover tilemaps and is only able to colorize elements which are currently in the scene. If a sprite is not visible in the current scene (even if it graphics happen to be in VRAM), then its palette is unknown. Press '8' for formatting, '*' to clear all tile formatting, '9' to search for used palettes and colorize the tiles, '(' to clear all paletting.
+- Different tile formats selectable in graphics viewer by pressing 1-4 (2bpl,4bpl,8bpl,Mode 7).
 
 
 (:Peekin:)  eof || ^Z
