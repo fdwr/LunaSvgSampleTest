@@ -3,8 +3,8 @@
   Little console tile graphics viewer
   By Dwayne Robinson, using Nasm/WDOSX/Alink
   http://pikensoft.com/
+  http://github.com/fdwr/BgMapper
   http://fdwr.tripod.com/snes.htm
-  https://github.com/fdwr/SpriteView
   FDwR at hotmail.com
 
   1. Changes

@@ -538,11 +538,11 @@ alignb 4
                 dd .InfoLineModeLen
                 dd .InfoLine+.InfoLinePalAt
                 dd .InfoLinePalLen
-.KeyJumpTable:  dd .8,.9, .18,.19, .DecTpRows,.IncTpRows, .DecTpCols,.IncTpCols, .WrapHalf,.WrapDouble, .11,.10, .14,.14,.14,.14,.14,.15,.22,.12,.16, .13, .17,  .4,.5, .6,.7, .2,.3, .0,.1, .20,.21, .24,.25, .Help
+.KeyJumpTable:  dd .8,.9, .18,.19, .IncTpRows,.DecTpRows, .IncTpCols,.DecTpCols, .WrapHalf,.WrapDouble, .11,.10, .14,.14,.14,.14,.14,.15,.22,.12,.16, .13, .17,  .4,.5, .6,.7, .2,.3, .0,.1, .20,.21, .24,.25, .Help
 .KeyCharTable:	dd .KeyChars
                 db 23
                 db 13
-.KeyChars:      db '[],./*-+{}pP123485679h',27,'HPIQKMst„vGO;'
+.KeyChars:      db "[],.*/+-{}pP123485679h",27,"HPIQKMst?vGO;"
 
 .InfoLine:              db '0000000 0000 $$$$$$$$$ $$$$$$$$$$$$ 9x9'
 .InfoLineLen            equ $-.InfoLine
@@ -1437,7 +1437,7 @@ Messages:
 
 .HelpText:
         db "SpriteView ",ProgVersion," - Savestate/ROM Graphics Viewer",13,10
-        db "(c)2003 PeekinSoŸt (-? for more info)",13,10
+        db "(uncopyright)2003 PeekinSoft (-? for more info)",13,10
 	db 10
         db "Usage: sv FileToView [-g HexOffset] [-p SavestatePalette]",13,10
         db 10
@@ -1527,11 +1527,11 @@ Messages:
 ;------------------------------
 section .bss
 	Filename: 		resb 256;full path and filename of file being viewed
-        PaletteFilename:        resb 256;filename of palette
+    PaletteFilename:        resb 256;filename of palette
 	alignb 4
 	LoadedFilePtr:		resd 1
 	LoadedFileLength:	resd 1
-        LoadedFileType:         resb 1
+    LoadedFileType:         resb 1
 
 ;Video mode info--
 	alignb 4
@@ -1557,5 +1557,5 @@ section .bss
 	ScreenClipLeft:	resw 1	;0
 	ScreenClipRite:	resw 1	;ScreenWidth-1
 
-        ScreenPalette:  resb 1024               ;points to 256 color palette
+    ScreenPalette:  resb 1024               ;points to 256 color palette
 	TileBuffer:	resb (8*16)*(8*24+15)	;holds translated tiles

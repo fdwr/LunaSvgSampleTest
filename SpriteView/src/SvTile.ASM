@@ -12,7 +12,7 @@
 
 UseTilePattern  equ 1   ;just in case tile pattern code fouls up
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TileWindowFill (*) - No regs preserved
 ;
 ; Refreshes the tile window on the screen
@@ -214,7 +214,7 @@ align 4
 TileRoutineDestWidth:	dd 320
 section .text
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; RemakeTilePattern ()
 ;
 ; Reconstructs the tile pattern based on the current size.
@@ -255,7 +255,7 @@ RemakeTilePattern:
 .End:
     ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransBplTile (see registers below) - No regs preserved, not even ebp
 ;
 ; This routine works for any SNES bitplane format including 1,2,3,4, & 8. It
@@ -360,7 +360,7 @@ BitplanePtrTable:
 
 ;note that SNES bit modes 1, 2, and GameBoy all use the same table
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransMode7Tile (esi,edi) - No regs preserved, not even ebp
 ;
 ; Converts SNES mode 7 tiles to a linear bitmap. It does not need to do
@@ -408,7 +408,7 @@ TransMode7Tile:
 
 .Mode7Spacing:  db 1
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransNibbleTile (esi,edi) - No regs preserved, not even ebp
 ;
 ; Seems to work with savestate graphics, but most of the gfx in ROMs are
@@ -470,7 +470,7 @@ TransNibbleTile2:
 	ret
 %endif
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransFxGfxTile (esi,edi) - No regs preserved
 ;
 ; Converts SNES fx chip graphics into a linear bitmap.
@@ -505,7 +505,7 @@ TransFxGfxTile:
 
 .Shift:	db 0
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransN64Gfx24bit (esi,edi) - No regs preserved
 ;
 ; Converts N64 true color graphics into a 216 color bitmap.
@@ -544,7 +544,7 @@ TransN64Gfx24bit:
 	jnz .NextRow
         ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransN64Gfx15bit (esi,edi) - No regs preserved
 ;
 ; Converts N64 high color graphics into a 216 color bitmap.
@@ -589,7 +589,7 @@ TransN64Gfx15bit:
 	jnz .NextRow
     ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransLinear2Bit (esi,edi) - No regs preserved
 ;
 ; Expands packed 2bit pixels into 8bit.
@@ -668,7 +668,7 @@ TransLinear2bit:
     ret
 %endif
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransLinear4Bit (esi,edi) - No regs preserved
 ;
 ; Expands packed 4bit pixels into 8bit.
@@ -706,7 +706,7 @@ TransLinear4bit:
 	jnz .NextRow
     ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransLinear8Bit (esi,edi) - No regs preserved
 ;
 ; Doesn't do much except a straight blit.
@@ -731,7 +731,7 @@ TransLinear8bit:
 	jnz .NextRow
     ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransLinear24Bit (esi,edi) - No regs preserved
 ;
 ; Converts N64 true color graphics into a 216 color bitmap.
@@ -771,7 +771,7 @@ TransLinear24Bit:
 	jnz .NextRow
     ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; TransVbTile (esi,edi) - No regs preserved
 ;
 ; Expands packed 2bit pixels into 8bit.
@@ -811,7 +811,7 @@ TransVbTile:
 	jnz near .NextRow
 	ret
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; BlankTile - No regs preserved, except ebp
 ;
 BlankTile:
@@ -831,7 +831,7 @@ BlankTile:
 ; Palette Conversion
 ;============================================================
 
-;컴컴컴컴컴컴컴컴컴컴컴컴컴컴컴
+;------------------------------
 ; PaletteConvertSnesCgram - (esi=source)
 ;
 ; Converts a 15bit (32 RGB shade) SNES savestate palette to a 24bit (64 RGB
