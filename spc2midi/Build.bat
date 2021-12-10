@@ -1,16 +1,22 @@
-@ECHO OFF
+@echo off
 :: Compile source into Win32
 :: Link object file and resources into PE
 
-SETLOCAL
-PATH %path%;\src\bin
+setlocal
+path %path%;\src\bin
 
-ECHO Compiling into Win32 COFF with Nasm... (with resources)
-NASMW.EXE -fwin32 SPC2MIDI.ASM -o %TEMP%\TEMP.OBJ -w+orphan-labels -dWinVer -d_NOMSLINK -dGuiVer -iWIN\ -iGUI\ %1 %2 %3 %4 %5 %6 %7 %8 %9
-IF ERRORLEVEL 1 GOTO End
+set ErrorBuilding=0
+echo Compiling into Win32 COFF with Nasm... (with resources)
+pushd src
+nasmw.exe -fwin32 Spc2Midi.asm -o temp.obj -w+orphan-labels -dWinVer -d_NOMSLINK -dGuiVer -iWIN\ -iGUI\ %1 %2 %3 %4 %5 %6 %7 %8 %9
+IF ERRORLEVEL 1 set ErrorBuilding=1
+popd
 
-SET RSPFILE=
-IF EXIST SPC2MIDI.RSP SET RSPFILE=@SPC2MIDI.RSP
+if ErrorBuilding goto End
 
-ALINK.EXE -oPE %TEMP%\TEMP.OBJ WIN\WINIMP.LIB SPC2MIDI.RES -o SPC2MIDI.EXE %RSPFILE% -entry Main
+set RSPFILE=
+if exist SPC2MIDI.RSP set RSPFILE=@SPC2MIDI.RSP
+
+ALink.exe -oPE src\temp.obj win\WinImp.lib Spc2Midi.res -o Spc2Midi.exe %RSPFILE% -entry Main
+del temp.obj 2> nul
 :End

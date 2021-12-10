@@ -48,8 +48,8 @@ IF ERRORLEVEL 1 GOTO End
 IF ERRORLEVEL 1 GOTO End
 IF EXIST SPC2MIDD.BAK DEL SPC2MIDD.BAK
 
-\src\wraptext.exe spc2midi
-pkzip.exe -3 -exx -f spc2midi.zip
-copy /y spc2midi.zip spc2midi_%1_pikensoft.zip
+rem \src\wraptext.exe spc2midi
+rem pkzip.exe -3 -exx -f spc2midi.zip
+rem copy /y spc2midi.zip spc2midi_%1_pikensoft.zip
 
 :End

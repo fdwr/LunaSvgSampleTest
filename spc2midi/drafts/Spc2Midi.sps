@@ -1,5 +1,4 @@
-;(note that some of the things I say in this file may not be true anymore
-; because of changing variables the executable without updating this text)
+; Experimental format for defining samples.
 
 SpcFileSettings
 {

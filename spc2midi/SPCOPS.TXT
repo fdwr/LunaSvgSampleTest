@@ -1,215 +1,215 @@
-  NOP                00    1     2    no operation            .........
+  NOP                00    1     2    no operation              .........
   OR     A,dp        04    2     3     A <- A OR (dp)           N......Z.
   OR     A,labs      05    3     4     A <- A OR (abs)          N......Z.
   OR     A,(X)       06    1     3     A <- A OR (X)            N......Z.
   OR     A,(dp+X)    07    2     6  A <- A OR ((dp+X+1)(dp+X))  N......Z.
   OR     A,#inm      08    2     2     A <- A OR inm            N......Z.
   OR     dp(d),dp(s) 09    3     6 (dp(d))<-(dp(d)) OR (dp(s))  N......Z.
-  OR1    C,mem.bit   0A    3     5  C <- C OR  (mem.bit)      ........C               
-  ASL      dp        0B    2     4      C << (dp)   <<0       N......ZC
-  ASL     labs       0C    3     5      C << (abs)  <<0       N......ZC
-  PUSH     PSW       0D    1     4    push PSW to stack       .........
-  TSET1    labs      0E    3     6 test and set bits with A   N......Z.
-  BRK                0F    1     8   software interrupt       ...1.0.. 
-  BPL     rel        10    2    2/4  branch on N=0                  ...
+  OR1    C,mem.bit   0A    3     5  C <- C OR  (mem.bit)        ........C
+  ASL      dp        0B    2     4      C << (dp)   <<0         N......ZC
+  ASL     labs       0C    3     5      C << (abs)  <<0         N......ZC
+  PUSH     PSW       0D    1     4    push PSW to stack         .........
+  TSET1    labs      0E    3     6 test and set bits with A     N......Z.
+  BRK                0F    1     8   software interrupt         ...1.0...
+  BPL     rel        10    2    2/4  branch on N=0                    ...
   OR     A,dp+X      14    2     4     A <- A OR (dp+X)         N......Z.
   OR     A,labs+X    15    3     5     A <- A OR (abs+X)        N......Z.
   OR     A,labs+Y    16    3     5     A <- A OR (abs+Y)        N......Z.
   OR     A,(dp)+Y    17    2     6   A <- A OR ((dp+1)(dp)+Y)   N......Z.
   OR     dp,#inm     18    3     5  (dp) <- (dp) OR inm         N......Z.
   OR     (X),(Y)     19    1     5   (X) <- (X) OR (Y)          N......Z.
-  DECW     dp        1A    2     6  Decrement dp memory pair  N......Z.
-  ASL     dp+X       1B    2     5      C << (dp+X) <<0       N......ZC
-  ASL      A         1C    1     2      C << A      <<0       N......ZC
-  DEC      X         1D    1     2      -- X                  N......Z.
-  CMP    X,labs      1E    3     4     X-(abs)                 N......ZC
-  JMP    (labs+X)    1F    3     6   PC <- (abs+X+1)(abs+X)         ...
-  CLRP               20    1     2   clear direct page flag    ..0..... 
+  DECW     dp        1A    2     6  Decrement dp memory pair    N......Z.
+  ASL     dp+X       1B    2     5      C << (dp+X) <<0         N......ZC
+  ASL      A         1C    1     2      C << A      <<0         N......ZC
+  DEC      X         1D    1     2      -- X                    N......Z.
+  CMP    X,labs      1E    3     4     X-(abs)                  N......ZC
+  JMP    (labs+X)    1F    3     6   PC <- (abs+X+1)(abs+X)           ...
+  CLRP               20    1     2   clear direct page flag     ..0......
   AND    A,dp        24    2     3     A <- A AND (dp)          N......Z.
   AND    A,labs      25    3     4     A <- A AND (abs)         N......Z.
   AND    A,(X)       26    1     3     A <- A AND (X)           N......Z.
   AND    A,(dp+X)    27    2     6  A <- A AND ((dp+X+1)(dp+X)) N......Z.
   AND    A,#inm      28    2     2     A <- A AND inm           N......Z.
   AND    dp(d),dp(s) 29    3     6 (dp(d))<-(dp(d)) AND (dp(s)) N......Z.
-  OR1    C,/mem.bit  2A    3     5  C <- C OR  !(mem.bit)     ........C                
-  ROL      dp        2B    2     4      C << (dp)   <<C       N......ZC
-  ROL     labs       2C    3     5      C << (abs)  <<C       N......ZC
-  PUSH      A        2D    1     4    push A to stack         .........
-  CBNE   dp,rel      2E    3    5/7  compare A with (dp) then BNE   ...
-  BRA     rel        2F    2     4   branch always                  ...
-  BMI     rel        30    2    2/4  branch on N=1                  ...
+  OR1    C,/mem.bit  2A    3     5  C <- C OR  !(mem.bit)       ........C
+  ROL      dp        2B    2     4      C << (dp)   <<C         N......ZC
+  ROL     labs       2C    3     5      C << (abs)  <<C         N......ZC
+  PUSH      A        2D    1     4    push A to stack           .........
+  CBNE   dp,rel      2E    3    5/7  compare A with (dp) then BNE     ...
+  BRA     rel        2F    2     4   branch always                    ...
+  BMI     rel        30    2    2/4  branch on N=1                    ...
   AND    A,dp+X      34    2     4     A <- A AND (dp+X)        N......Z.
   AND    A,labs+X    35    3     5     A <- A AND (abs+X)       N......Z.
   AND    A,labs+Y    36    3     5     A <- A AND (abs+Y)       N......Z.
   AND    A,(dp)+Y    37    2     6   A <- A AND ((dp+1)(dp)+Y)  N......Z.
   AND    dp,#inm     38    3     5  (dp) <- (dp) AND inm        N......Z.
   AND    (X),(Y)     39    1     5   (X) <- (X) AND (Y)         N......Z.
-  INCW     dp        3A    2     6  Increment dp memory pair  N......Z.
-  ROL     dp+X       3B    2     5      C << (dp+X) <<C       N......ZC
-  ROL      A         3C    1     2      C << A      <<C       N......ZC
-  INC      X         3D    1     2      ++ X                  N......Z.
-  CMP    X,dp        3E    2     3     X-(dp)                  N......ZC
-  CALL     labs      3F    3     8   subroutine call          ........ 
-  SETP               40    1     2   set dorect page flag      ..1..0..
+  INCW     dp        3A    2     6  Increment dp memory pair    N......Z.
+  ROL     dp+X       3B    2     5      C << (dp+X) <<C         N......ZC
+  ROL      A         3C    1     2      C << A      <<C         N......ZC
+  INC      X         3D    1     2      ++ X                    N......Z.
+  CMP    X,dp        3E    2     3     X-(dp)                   N......ZC
+  CALL     labs      3F    3     8   subroutine call            .........
+  SETP               40    1     2   set direct page flag       ..1..0...
   EOR    A,dp        44    2     3     A <- A EOR (dp)          N......Z.
   EOR    A,labs      45    3     4     A <- A EOR (abs)         N......Z.
   EOR    A,(X)       46    1     3     A <- A EOR (X)           N......Z.
   EOR    A,(dp+X)    47    2     6  A <- A EOR ((dp+X+1)(dp+X)) N......Z.
   EOR    A,#inm      48    2     2     A <- A EOR inm           N......Z.
   EOR    dp(d),dp(s) 49    3     6 (dp(d))<-(dp(d)) EOR (dp(s)) N......Z.
-  AND1   C,mem.bit   4A    3     4  C <- C AND (mem.bit)      ........C
-  LSR      dp        4B    2     4      0 >> (dp)   <<C       N......ZC
-  LSR     labs       4C    3     5      0 >> (abs)  <<C       N......ZC
-  PUSH      X        4D    1     4    push X to stack         .........
-  TCLR1    labs      4E    3     6 test and clear bits with A N......Z.
-  PCALL   upage      4F    2     6   upage call               ........ 
-  BVC     rel        50    2    2/4  branch on V=0                  ...
+  AND1   C,mem.bit   4A    3     4  C <- C AND (mem.bit)        ........C
+  LSR      dp        4B    2     4      0 >> (dp)   <<C         N......ZC
+  LSR     labs       4C    3     5      0 >> (abs)  <<C         N......ZC
+  PUSH      X        4D    1     4    push X to stack           .........
+  TCLR1    labs      4E    3     6 test and clear bits with A   N......Z.
+  PCALL   upage      4F    2     6   upage call                 .........
+  BVC     rel        50    2    2/4  branch on V=0                    ...
   EOR    A,dp+X      54    2     4     A <- A EOR (dp+X)        N......Z.
   EOR    A,labs+X    55    3     5     A <- A EOR (abs+X)       N......Z.
   EOR    A,labs+Y    56    3     5     A <- A EOR (abs+Y)       N......Z.
   EOR    A,(dp)+Y    57    2     6   A <- A EOR ((dp+1)(dp)+Y)  N......Z.
   EOR    dp,#inm     58    3     5  (dp) <- (dp) EOR inm        N......Z.
   EOR    (X),(Y)     59    1     5   (X) <- (X) EOR (Y)         N......Z.
-  CMPW    YA,dp      5A    2     4     YA - (dp+1)(dp)        N......Z.
-  LSR     dp+X       5B    2     5      0 >> (dp+X) <<C       N......ZC
-  LSR      A         5C    1     2      0 >> A      <<C       N......ZC
-  MOV    X, A        5D    1     2     X <- A                   N......Z
-  CMP    Y,labs      5E    3     4     Y-(abs)                 N......ZC
-  JMP     labs       5F    3     3   jump to new location           ...
-  CLRC               60    1     2   clear carry flag          .......0 
-  CMP    A,dp        64    2     3     A-(dp)                  N......ZC
-  CMP    A,labs      65    3     4     A-(abs)                 N......ZC
-  CMP    A,(X)       66    1     3     A-(X)                   N......ZC
-  CMP    A,(dp+X)    67    2     6     A-((dp+X+1)(dp+X))      N......ZC
-  CMP    A,#inm      68    2     2     A-inm                   N......ZC
-  CMP    dp(d),dp(s) 69    3     6     (dp(d))-(dp(s))         N......ZC
-  AND1   C,/mem.bit  6A    3     4  C <- C AND !(mem.bit)     ........C                 
-  ROR      dp        6B    2     4      C >> (dp)   <<C       N......ZC
-  ROR     labs       6C    3     5      C >> (abs)  <<C       N......ZC
-  PUSH      Y        6D    1     4    push Y to stack         .........
-  DBNZ   dp,rel      6E    3    5/7  decrement memory (dp) then JNZ ...
-  RET                6F    1     5   return from subroutine   ........ 
-  BVS     rel        70    2    2/4  branch on V=1                  ...
-  CMP    A,dp+X      74    2     4     A-(dp+X)                N......ZC
-  CMP    A,labs+X    75    3     5     A-(abs+X)               N......ZC
-  CMP    A,labs+Y    76    3     5     A-(abs+Y)               N......ZC
-  CMP    A,(dp)+Y    77    2     6     A-((dp+1)(dp)+Y)        N......ZC
-  CMP    dp,#inm     78    3     5     (dp)-inm                N......ZC
-  CMP    (X),(Y)     79    1     5     (X)-(Y)                 N......ZC
-  ADDW    YA,dp      7A    2     5   YA  <- YA + (dp+1)(dp)   NV..H..ZC
-  ROR     dp+X       7B    2     5      C >> (dp+X) <<C       N......ZC
-  ROR      A         7C    1     2      C >> A      <<C       N......ZC
+  CMPW    YA,dp      5A    2     4     YA - (dp+1)(dp)          N......Z.
+  LSR     dp+X       5B    2     5      0 >> (dp+X) <<C         N......ZC
+  LSR      A         5C    1     2      0 >> A      <<C         N......ZC
+  MOV    X, A        5D    1     2     X <- A                   N......Z.
+  CMP    Y,labs      5E    3     4     Y-(abs)                  N......ZC
+  JMP     labs       5F    3     3   jump to new location             ...
+  CLRC               60    1     2   clear carry flag           ........0
+  CMP    A,dp        64    2     3     A-(dp)                   N......ZC
+  CMP    A,labs      65    3     4     A-(abs)                  N......ZC
+  CMP    A,(X)       66    1     3     A-(X)                    N......ZC
+  CMP    A,(dp+X)    67    2     6     A-((dp+X+1)(dp+X))       N......ZC
+  CMP    A,#inm      68    2     2     A-inm                    N......ZC
+  CMP    dp(d),dp(s) 69    3     6     (dp(d))-(dp(s))          N......ZC
+  AND1   C,/mem.bit  6A    3     4  C <- C AND !(mem.bit)       ........C
+  ROR      dp        6B    2     4      C >> (dp)   <<C         N......ZC
+  ROR     labs       6C    3     5      C >> (abs)  <<C         N......ZC
+  PUSH      Y        6D    1     4    push Y to stack           .........
+  DBNZ   dp,rel      6E    3    5/7  decrement memory (dp) then JNZ   ...
+  RET                6F    1     5   return from subroutine     .........
+  BVS     rel        70    2    2/4  branch on V=1                    ...
+  CMP    A,labs+X    75    3     5     A-(abs+X)                N......ZC
+  CMP    A,dp+X      74    2     4     A-(dp+X)                 N......ZC
+  CMP    A,labs+Y    76    3     5     A-(abs+Y)                N......ZC
+  CMP    A,(dp)+Y    77    2     6     A-((dp+1)(dp)+Y)         N......ZC
+  CMP    dp,#inm     78    3     5     (dp)-inm                 N......ZC
+  CMP    (X),(Y)     79    1     5     (X)-(Y)                  N......ZC
+  ADDW    YA,dp      7A    2     5   YA  <- YA + (dp+1)(dp)     NV..H..ZC
+  ROR     dp+X       7B    2     5      C >> (dp+X) <<C         N......ZC
+  ROR      A         7C    1     2      C >> A      <<C         N......ZC
   MOV    A, X        7D    1     2     A <- X                   N......Z
-  CMP    Y,dp        7E    2     3     Y-(dp)                  N......ZC
-  RET1               7F    1     6   return from interrupt   (Restored)
-  SETC               80    1     2   set carry flag            .......1 
-  ADC    A,dp        84    2     3     A <- A+(dp)+C           NV..H..ZC
-  ADC    A,labs      85    3     4     A <- A+(abs)+C          NV..H..ZC
-  ADC    A,(X)       86    1     3     A <- A+(X)+C            NV..H..ZC
-  ADC    A,(dp+X)    87    2     6     A <- A+((dp+X+1)(dp+X)) NV..H..ZC
-  ADC    A,#inm      88    2     2     A <- A+inm+C            NV..H..ZC
-  ADC    dp(d),dp(s) 89    3     6 (dp(d))<-(dp(d))+(dp(s))+C  NV..H..ZC
-  EOR1   C,mem.bit   8A    3     5  C <- C EOR (mem.bit)      ........C               
-  DEC      dp        8B    2     4      -- (dp)               N......Z.
-  DEC     labs       8C    3     5      -- (abs)              N......Z.
-  MOV    Y, #inm    8D    2     2     Y <- inm                  N......Z
-  POP      PSW       8E    1     4    pop PSW from stack     (Restored)
-  MOV    dp,#inm     8F    3     5    (dp) <- inm               ........
-  BCC     rel        90    2    2/4  branch on C=0                  ...
-  ADC    A,dp+X      94    2     4     A <- A+(dp+X)+C         NV..H..ZC
-  ADC    A,labs+X    95    3     5     A <- A+(abs+X)+C        NV..H..ZC
-  ADC    A,labs+Y    96    3     5     A <- A+(abs+Y)+C        NV..H..ZC
-  ADC    A,(dp)+Y    97    2     6     A <- A+((dp+1)(dp)+Y)   NV..H..ZC
-  ADC    dp,#inm     98    3     5  (dp) <- (dp)+inm+C         NV..H..ZC
-  ADC    (X),(Y)     99    1     5   (X) <- (X)+(Y)+C          NV..H..ZC
-  SUBW    YA,dp      9A    2     5   YA  <- YA - (dp+1)(dp)   NV..H..ZC
-  DEC     dp+X       9B    2     5      -- (dp+X)             N......Z.
-  DEC      A         9C    1     2      -- A                  N......Z.
+  CMP    Y,dp        7E    2     3     Y-(dp)                   N......ZC
+  RET1               7F    1     6   return from interrupt      (Restored)
+  SETC               80    1     2   set carry flag             ........1
+  ADC    A,dp        84    2     3     A <- A+(dp)+C            NV..H..ZC
+  ADC    A,labs      85    3     4     A <- A+(abs)+C           NV..H..ZC
+  ADC    A,(X)       86    1     3     A <- A+(X)+C             NV..H..ZC
+  ADC    A,(dp+X)    87    2     6     A <- A+((dp+X+1)(dp+X))  NV..H..ZC
+  ADC    A,#inm      88    2     2     A <- A+inm+C             NV..H..ZC
+  ADC    dp(d),dp(s) 89    3     6 (dp(d))<-(dp(d))+(dp(s))+C   NV..H..ZC
+  EOR1   C,mem.bit   8A    3     5  C <- C EOR (mem.bit)        ........C
+  DEC      dp        8B    2     4      -- (dp)                 N......Z.
+  DEC     labs       8C    3     5      -- (abs)                N......Z.
+  MOV    Y, #inm     8D    2     2     Y <- inm                 N......Z
+  POP      PSW       8E    1     4    pop PSW from stack        (Restored)
+  MOV    dp,#inm     8F    3     5    (dp) <- inm               .........
+  BCC     rel        90    2    2/4  branch on C=0                   ...
+  ADC    A,dp+X      94    2     4     A <- A+(dp+X)+C          NV..H..ZC
+  ADC    A,labs+X    95    3     5     A <- A+(abs+X)+C         NV..H..ZC
+  ADC    A,labs+Y    96    3     5     A <- A+(abs+Y)+C         NV..H..ZC
+  ADC    A,(dp)+Y    97    2     6     A <- A+((dp+1)(dp)+Y)    NV..H..ZC
+  ADC    dp,#inm     98    3     5  (dp) <- (dp)+inm+C          NV..H..ZC
+  ADC    (X),(Y)     99    1     5   (X) <- (X)+(Y)+C           NV..H..ZC
+  SUBW    YA,dp      9A    2     5   YA  <- YA - (dp+1)(dp)     NV..H..ZC
+  DEC     dp+X       9B    2     5      -- (dp+X)               N......Z.
+  DEC      A         9C    1     2      -- A                    N......Z.
   MOV    X, SP       9D    1     2     X <- SP                  N......Z
-  DIV      YA,X      9E    1    12    Q:A B:Y <- YA / X       NV..H..Z.
-  XCN      A         9F    1     5      A(7-1) <-> A(3-0)     N......Z.
-  EI                 A0    1     3  set interrup enable flag   .....1.. 
-  SBC    A,dp        A4    2     3     A <- A-(dp)-!C          NV..H..ZC
-  SBC    A,labs      A5    3     4     A <- A-(abs)-!C         NV..H..ZC
-  SBC    A,(X)       A6    1     3     A <- A-(X)-!C           NV..H..ZC
-  SBC    A,(dp+X)    A7    2     6  A <- A-((dp+X+1)(dp+X))-!C NV..H..ZC
-  SBC    A,#inm      A8    2     2     A <- A-inm-!C           NV..H..ZC
-  SBC    dp(d),dp(s) A9    3     6 (dp(d))<-(dp(d))-(dp(s))-!C NV..H..ZC
-  MOV1   C,mem.bit   AA    3     4  C <- (mem.bit)            ........C          
-  INC      dp        AB    2     4      ++ (dp)               N......Z.
-  INC     labs       AC    3     5      ++ (abs)              N......Z.
-  CMP    Y,#inm      AD    2     2     Y-inm                   N......ZC
-  POP       A        AE    1     4    pop A from stack        .........
-  MOV    (X)+,A     AF    1     4     A -> (X) with auto inc    ........
-  BCS     rel        B0    2    2/4  branch on C=1                  ... 
-  SBC    A,dp+X      B4    2     4     A <- A-(dp+X)-!C        NV..H..ZC
-  SBC    A,labs+X    B5    3     5     A <- A-(abs+X)-!C       NV..H..ZC
-  SBC    A,labs+Y    B6    3     5     A <- A-(abs+Y)-!C       NV..H..ZC
-  SBC    A,(dp)+Y    B7    2     6  A <- A-((dp+1)(dp)+Y)-!C   NV..H..ZC
-  SBC    dp,#inm     B8    3     5  (dp) <- (dp)-inm-!C        NV..H..ZC
-  SBC    (X),(Y)     B9    1     5   (X) <- (X)-(Y)-!C         NV..H..ZC
-  MOVW     YA,dp     BA    2     5     YA  - (dp+1)(dp)       N......Z.
-  INC     dp+X       BB    2     5      ++ (dp+X)             N......Z.
-  INC      A         BC    1     2      ++ A                  N......Z.
-  MOV    SP, X       BD    1     2    SP <- X                   ........
-  DAS       A        BE    1     3    decimal adjust for sub  N......ZC
-  MOV    A, (X)+    BF    1     4     A <- (X) with auto inc    N......Z
-  DI                 C0    1     3  clear interrup enable flag .....0..
-  MOV    dp,A       C4    2     4     A -> (dp)                 ........
-  MOV    labs,A     C5    3     5     A -> (abs)                ........
-  MOV    (X),A      C6    1     4     A -> (X)                  ........
-  MOV    (dp+X),A   C7    2     7     A -> ((dp+X+1)(dp+X))     ........
-  CMP    X,#inm      C8    2     2     X-inm                   N......ZC
-  MOV    labs,X     C9    3     5     X -> (abs)                ........
-  MOV1   mem.bit,C   CA    3     6  C -> (mem.bit)            ......... 
-  MOV    dp,Y       CB    2     4     X -> (dp)                 ........
-  MOV    labs,Y     CC    3     5     X -> (abs)                ........
-  MOV    X, #inm    CD    2     2     X <- inm                  N......Z
-  POP       X        CE    1     4    pop X from stack        .........
-  MUL      YA        CF    1     9    YA(16 bits) <- Y * A    N......Z.
-  BNE     rel        D0    2    2/4  branch on Z=0                  ...
-  MOV    dp+X,A     D4    2     5     A -> (dp+X)               ........
-  MOV    labs+X,A   D5    3     6     A -> (abs+X)              ........
-  MOV    labs+Y,A   D6    3     6     A -> (abs+Y)              ........
-  MOV    (dp)+Y,A   D7    2     7     A -> ((dp+1)(dp)+Y)       ........
-  MOV    dp,X       D8    2     4     X -> (dp)                 ........
-  MOV    dp+Y,X     D9    2     5     X -> (dp+Y)               ........
-  MOVW     dp,YA     DA    2     4    (dp+1)(dp) - YA         .........
-  MOV    dp+X,Y     DB    2     5     X -> (dp+X)               ........
-  DEC      Y         DC    1     2      -- Y                  N......Z.
-  MOV    A, Y        DD    1     2     A <- Y                   N......Z
-  CBNE  dp+X,rel     DE    3    6/8  compare A with (dp+X) then BNE ...
-  DAA       A        DF    1     3    decimal adjust for add  N......ZC
-  CLRV               E0    1     2   clear V and H             .0..0... 
-  MOV    A, dp      E4    2     3     A <- (dp)                 N......Z
-  MOV    A, labs    E5    3     4     A <- (abs)                N......Z
-  MOV    A, (X)     E6    1     3     A <- (X)                  N......Z
-  MOV    A, (dp+X)  E7    2     6     A <- ((dp+X+1)(dp+X))     N......Z
-  MOV    A, #inm    E8    2     2     A <- inm                  N......Z
-  MOV    X, labs    E9    3     4     X <- (abs)                N......Z
-  NOT1   mem.bit     EA    3     5  complement (mem.bit)      .........                     
-  MOV    Y, dp      EB    2     3     Y <- (dp)                 N......Z
-  MOV    Y, labs    EC    3     4     Y <- (abs)                N......Z
-  NOTC               ED    1     3   complement carry flag     .......C 
-  POP       Y        EE    1     4    pop Y from stack        .........
-  SLEEP              EF    1     3    standby SLEEP mode      .........
-  BEQ     rel        F0    2    2/4  branch on Z=1                  ...
-  MOV    A, dp+X    F4    2     4     A <- (dp+X)               N......Z
-  MOV    A, labs+X  F5    3     5     A <- (abs+X)              N......Z
-  MOV    A, labs+Y  F6    3     5     A <- (abs+Y)              N......Z
-  MOV    A, (dp)+Y  F7    2     6     A <- ((dp+1)(dp)+Y)       N......Z
-  MOV    X, dp      F8    2     3     X <- (dp)                 N......Z
-  MOV    X, dp+Y    F9    2     4     X <- (dp+Y)               N......Z
-  MOV    dp(d),dp(s) FA    3     5    (dp(d)) <- (dp(s))        ........
-  MOV    Y, dp+X    FB    2     4     Y <- (dp+X)               N......Z
-  INC      Y         FC    1     2      ++ Y                  N......Z.
-  MOV    Y, A        FD    1     2     Y <- A                   N......Z
-  DBNZ    Y,rel      FE    2    4/6  decrement Y then JNZ           ...
-  STOP               FF    1     3    standby STOP mode       .........
+  DIV      YA,X      9E    1    12    Q:A B:Y <- YA / X         NV..H..Z.
+  XCN      A         9F    1     5      A(7-1) <-> A(3-0)       N......Z.
+  EI                 A0    1     3  set interrup enable flag    .....1.. 
+  SBC    A,dp        A4    2     3     A <- A-(dp)-!C           NV..H..ZC
+  SBC    A,labs      A5    3     4     A <- A-(abs)-!C          NV..H..ZC
+  SBC    A,(X)       A6    1     3     A <- A-(X)-!C            NV..H..ZC
+  SBC    A,(dp+X)    A7    2     6  A <- A-((dp+X+1)(dp+X))-!C  NV..H..ZC
+  SBC    A,#inm      A8    2     2     A <- A-inm-!C            NV..H..ZC
+  SBC    dp(d),dp(s) A9    3     6 (dp(d))<-(dp(d))-(dp(s))-!C  NV..H..ZC
+  MOV1   C,mem.bit   AA    3     4  C <- (mem.bit)              ........C
+  INC      dp        AB    2     4      ++ (dp)                 N......Z.
+  INC     labs       AC    3     5      ++ (abs)                N......Z.
+  CMP    Y,#inm      AD    2     2     Y-inm                    N......ZC
+  POP       A        AE    1     4    pop A from stack          .........
+  MOV    (X)+,A      AF    1     4     A -> (X) with auto inc   .........
+  BCS     rel        B0    2    2/4  branch on C=1                    ...
+  SBC    A,dp+X      B4    2     4     A <- A-(dp+X)-!C         NV..H..ZC
+  SBC    A,labs+X    B5    3     5     A <- A-(abs+X)-!C        NV..H..ZC
+  SBC    A,labs+Y    B6    3     5     A <- A-(abs+Y)-!C        NV..H..ZC
+  SBC    A,(dp)+Y    B7    2     6  A <- A-((dp+1)(dp)+Y)-!C    NV..H..ZC
+  SBC    dp,#inm     B8    3     5  (dp) <- (dp)-inm-!C         NV..H..ZC
+  SBC    (X),(Y)     B9    1     5   (X) <- (X)-(Y)-!C          NV..H..ZC
+  MOVW     YA,dp     BA    2     5     YA  - (dp+1)(dp)         N......Z.
+  INC     dp+X       BB    2     5      ++ (dp+X)               N......Z.
+  INC      A         BC    1     2      ++ A                    N......Z.
+  MOV    SP, X       BD    1     2    SP <- X                   .........
+  DAS       A        BE    1     3    decimal adjust for sub    N......ZC
+  MOV    A, (X)+     BF    1     4     A <- (X) with auto inc   N......Z.
+  DI                 C0    1     3  clear interrup enable flag  .....0..
+  MOV    dp,A        C4    2     4     A -> (dp)                .........
+  MOV    labs,A      C5    3     5     A -> (abs)               .........
+  MOV    (X),A       C6    1     4     A -> (X)                 .........
+  MOV    (dp+X),A    C7    2     7     A -> ((dp+X+1)(dp+X))    .........
+  CMP    X,#inm      C8    2     2     X-inm                    N......ZC
+  MOV    labs,X      C9    3     5     X -> (abs)               .........
+  MOV1   mem.bit,C   CA    3     6  C -> (mem.bit)              .........
+  MOV    dp,Y        CB    2     4     X -> (dp)                .........
+  MOV    labs,Y      CC    3     5     X -> (abs)               .........
+  MOV    X, #inm     CD    2     2     X <- inm                 N......Z.
+  POP       X        CE    1     4    pop X from stack          .........
+  MUL      YA        CF    1     9    YA(16 bits) <- Y * A      N......Z.
+  BNE     rel        D0    2    2/4  branch on Z=0                    ...
+  MOV    dp+X,A      D4    2     5     A -> (dp+X)              .........
+  MOV    labs+X,A    D5    3     6     A -> (abs+X)             .........
+  MOV    labs+Y,A    D6    3     6     A -> (abs+Y)             .........
+  MOV    (dp)+Y,A    D7    2     7     A -> ((dp+1)(dp)+Y)      .........
+  MOV    dp,X        D8    2     4     X -> (dp)                .........
+  MOV    dp+Y,X      D9    2     5     X -> (dp+Y)              .........
+  MOVW     dp,YA     DA    2     4    (dp+1)(dp) - YA           .........
+  MOV    dp+X,Y      DB    2     5     X -> (dp+X)              .........
+  DEC      Y         DC    1     2      -- Y                    N......Z.
+  MOV    A, Y        DD    1     2     A <- Y                   N......Z.
+  CBNE  dp+X,rel     DE    3    6/8  compare A with (dp+X) then BNE   ...
+  DAA       A        DF    1     3    decimal adjust for add    N......ZC
+  CLRV               E0    1     2   clear V and H              .0..0... 
+  MOV    A, dp       E4    2     3     A <- (dp)                N......Z.
+  MOV    A, labs     E5    3     4     A <- (abs)               N......Z.
+  MOV    A, (X)      E6    1     3     A <- (X)                 N......Z.
+  MOV    A, (dp+X)   E7    2     6     A <- ((dp+X+1)(dp+X))    N......Z.
+  MOV    A, #inm     E8    2     2     A <- inm                 N......Z.
+  MOV    X, labs     E9    3     4     X <- (abs)               N......Z.
+  NOT1   mem.bit     EA    3     5  complement (mem.bit)        .........
+  MOV    Y, dp       EB    2     3     Y <- (dp)                N......Z.
+  MOV    Y, labs     EC    3     4     Y <- (abs)               N......Z.
+  NOTC               ED    1     3   complement carry flag      ........C
+  POP       Y        EE    1     4    pop Y from stack          .........
+  SLEEP              EF    1     3    standby SLEEP mode        .........
+  BEQ     rel        F0    2    2/4  branch on Z=1                    ...
+  MOV    A, dp+X     F4    2     4     A <- (dp+X)              N......Z.
+  MOV    A, labs+X   F5    3     5     A <- (abs+X)             N......Z.
+  MOV    A, labs+Y   F6    3     5     A <- (abs+Y)             N......Z.
+  MOV    A, (dp)+Y   F7    2     6     A <- ((dp+1)(dp)+Y)      N......Z.
+  MOV    X, dp       F8    2     3     X <- (dp)                N......Z.
+  MOV    X, dp+Y     F9    2     4     X <- (dp+Y)              N......Z.
+  MOV    dp(d),dp(s) FA    3     5    (dp(d)) <- (dp(s))        .........
+  MOV    Y, dp+X     FB    2     4     Y <- (dp+X)              N......Z.
+  INC      Y         FC    1     2      ++ Y                    N......Z.
+  MOV    Y, A        FD    1     2     Y <- A                   N......Z.
+  DBNZ    Y,rel      FE    2    4/6  decrement Y then JNZ             ...
+  STOP               FF    1     3    standby STOP mode         .........
 
   <n = 0-F, x = 0-7, y = 8-F>
-  TCALL     n        n1    1     8   table call               ........
-  SET1    dip.bit    x2    2     4  set direct page bit       .........
-  CLR1    dip.bit    y2    2     4  clear direct page bit     .........
-  BBS   dp.bit,rel   x3    3    5/7  branch on dp.bit=1             ...
-  BBC   dp.bit,rel   y3    3    5/7  branch on dp.bit=0             ...
+  TCALL     n        n1    1     8   table call                 .........
+  SET1    dip.bit    x2    2     4  set direct page bit         .........
+  CLR1    dip.bit    y2    2     4  clear direct page bit       .........
+  BBS   dp.bit,rel   x3    3    5/7  branch on dp.bit=1               ...
+  BBC   dp.bit,rel   y3    3    5/7  branch on dp.bit=0               ...

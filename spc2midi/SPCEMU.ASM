@@ -73,9 +73,10 @@
 ;   does the RET command require the stack wrap between bytes
 ;
 ;
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
+;
 ; Global SPC memory variables
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 section bss
 alignb 4
 
@@ -94,9 +95,9 @@ DspRamCopy:         resb 128
 FileSpcRegs:        resb 48 ;this does not need a copy
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; SPC emulation constants
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 
 %ifdef debug
   %define SpcEmuDebugResponse     call .UnverifiedOpcode
@@ -196,9 +197,9 @@ SpcReg:
 ;.LoopAddress   equ 2   ; LSA(L-H) 16 bits
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Core emulation code
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 section code
 
 SpcEmu:
@@ -225,7 +226,7 @@ SpcEmu:
 ; shifting and ax for multiplying. For these, the registers may be saved
 ; or temporarily swapped with another (xchg).
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Important variables:
 ;
 section data
@@ -290,7 +291,7 @@ align 4,db 0                    ;use table to put in actual order
                                 ;dp(d),dp(s) and (X),(Y).
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Call this after loading an SPC state or to completely restart one.
 ; If called with no state loaded, it will 'reset' the CPU.
 ; Must be called BEFORE DspEmu.Init
@@ -346,7 +347,7 @@ section code
     ret
 
 %if 0 ;commented because unused
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Resets CPU as if first powered on, waiting for input from the game,
 ; (waits for CCh from port F4h)
 .Reset:
@@ -363,7 +364,7 @@ section code
     ret
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Pass in eax the minimum number of cycles to execute (0-65535) in a single
 ; call. It will 'round up' to the nearest instruction, possibly executing
 ; a few more cycles more than passed. It may also return with fewer completed
@@ -399,7 +400,7 @@ section code
     pop ebp
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Main Loop
 ;
 ; Emulation of opcodes is done in a tight loop until an event is expected.
@@ -502,7 +503,7 @@ section code
 .Exit:
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .DisAsm:
     push ebp
     and eax,65536-1             ;limit cycles to emulate to <65536
@@ -536,7 +537,7 @@ section code
     pop ebp
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Reads byte value anywhere from the 64k
 ; (edx=address to read, ch=value read)
 ;
@@ -692,7 +693,7 @@ section code
   %endif
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Writes byte value anywhere into the 64k
 ; (edx=address to write, ch=value read)
 ;
@@ -716,7 +717,7 @@ section code
 ;    mov [SpcEram+edx-0FFC0h],ch
     ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 ; Writes byte value into the current 256-byte page
 ; (edx=address to write, ch=value read)
 ;
@@ -779,9 +780,9 @@ section code
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Opcode Macros
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-------------------
 ; Macros use edx for the address and ch for the result read or value to write.
 ;
 ; dp(?+?) means ((?+?) & 0FFh) + direct_page
@@ -1187,7 +1188,7 @@ section code
 %endmacro
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Opcodes...
 ;------------------------------------------------------------------------
 ; Mnemonic  Operand  Code Bytes Cycles Operation                    Flag
@@ -1308,7 +1309,7 @@ section code
     add ebp,byte 8
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op10:
 ;BPL     rel        10    2    2/4  branch on N=0                  ...
     test al,SpcFlag.N
@@ -1427,7 +1428,7 @@ section code
     add ebp,byte 6
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op20:
 ;CLRP               20    1     2   clear direct page flag    ..0.....
     and al,~SpcFlag.P
@@ -1539,7 +1540,7 @@ section code
     add ebp,byte 4
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op30:
 ;BMI     rel        30    2    2/4  branch on N=1                  ...
     test al,SpcFlag.N
@@ -1664,7 +1665,7 @@ section code
     add ebp,byte 8
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op40:
 ;SETP               40    1     2   set direct page flag      ..1..0..
     and al,~SpcFlag.I       ;clear indirect master enable flag
@@ -1788,7 +1789,7 @@ section code
     add ebp,byte 6
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op50:
 ;BVC     rel        50    2    2/4  branch on V=0                  ...
     test al,SpcFlag.V
@@ -1902,7 +1903,7 @@ section code
     add ebp,byte 3
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op60:
 ;CLRC               60    1     2   clear carry flag          .......0
     and al,~SpcFlag.C
@@ -2026,7 +2027,7 @@ section code
     add ebp,byte 5
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op70:
 ;BVS     rel        70    2    2/4  branch on V=1                  ...
     test al,SpcFlag.V
@@ -2157,7 +2158,7 @@ section code
     add ebp,byte 6
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op80:
 ;SETC               80    1     2   set carry flag            .......1
     or al,SpcFlag.C
@@ -2283,7 +2284,7 @@ section code
     add ebp,byte 5
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .Op90:
 ;BCC     rel        90    2    2/4  branch on C=0                  ...
     test al,SpcFlag.C
@@ -2425,7 +2426,7 @@ section code
     add ebp,byte 5
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpA0:
 ;EI                 A0    1     3  set interrupt enable flag  .....1..
     SpcEmuDebugResponse
@@ -2556,7 +2557,7 @@ section code
     add ebp,byte 4
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpB0:
 ;BCS     rel        B0    2    2/4  branch on C=1                  ...
     test al,SpcFlag.C
@@ -2696,7 +2697,7 @@ section code
     add ebp,byte 4
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpC0:
 ;DI                 C0    1     3  clear interrupt enable flag .....0..
     SpcEmuDebugResponse
@@ -2816,7 +2817,7 @@ section code
     add ebp,byte 9
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpD0:
 ;BNE     rel        D0    2    2/4  branch on Z=0                  ...
     test al,SpcFlag.Z
@@ -2919,7 +2920,7 @@ section code
     add ebp,byte 3
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpE0:
 ;CLRV               E0    1     2   clear V and H             .0..0...
     and al,~(SpcFlag.V|SpcFlag.H)
@@ -3031,7 +3032,7 @@ section code
     add ebp,byte 3
     jmp .NextOp
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .OpF0:
 ;BEQ     rel        F0    2    2/4  branch on Z=1                  ...
     test al,SpcFlag.Z
@@ -3137,7 +3138,7 @@ section code
     jmp .NextOp
 
 %ifdef debug
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;---------------------------------------
 .UnverifiedOpcode:
     add dword [.OpcodeJumpTable+edx*4],byte 5
     pusha
@@ -3154,7 +3155,7 @@ section code
     ret
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Prints address, program counter, time, and value.
 ;
 ;(edi=buffer destination, all registers are expected to be saved on stack)
@@ -3183,7 +3184,7 @@ section code
     jmp WriteString
     ;ret
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section data
 
 align 4, db 0

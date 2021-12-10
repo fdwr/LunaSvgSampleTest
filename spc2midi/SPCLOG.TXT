@@ -1,3 +1,36 @@
+1999-05-26 -Start project
+1999-11-21 (first release)
+           - Added little "LEDS" to indicate which channels are active.
+           - Added slight color decay gradient at the beginning of each note to mark
+             where each note actually started when some notes started immediately after
+             the one before it ended.
+           - Redid palette colors to make each channel more easily distinguishable (I was
+             always getting channels that were close in color mixed up) and so that color
+             gradients would be possible.
+           - You can change the tempo with the "-" "+" keys.
+           - And for mere amusement, you can even play it backwards with BackSpace.
+           - Added song seeking, fast forward/backward one second
+           - Added voice emulation (in addition to FM)
+           - Improved valid sample detection
+           - Fixed various clicking sounds in sample output
+           - Remedied some silent sounds because they used right channel volume only
+           - Added MPU output (but disabled for now because of strange pc lockups)
+           - Increased compatibility with a few different/unusual configurations. Low
+             DMA channels can be used for DMA transfers.
+           - Stops notes at end of song (for songs like the FF6 snowy intro)
+           - Added pitch slide support to both wave and FM. FM actually sounds more off
+             key in most instances than before because the frequency is now variable
+             0-6211hz rather than being constrained to whole semitones of the GM scale
+             (0-127), but it was necessary for smooth pitch sliding.
+           - Added Sine wave synthesis.
+           - Added command line arguments to set audio output, sample rate, sample
+             size...
+           - Fixed GM output
+           - Started working on Windows version
+           - Changed default FM patch from Pizzicato String to Orchestral String, because
+             looped sounds were decaying too fast to hear pitch slides.
+           - Sine wave synthesis, as an alternative to FM.
+           - Command line parameters (read below)
 2001-08-06 -Changed note player and display routines to read directly from
             DSP buffer, instead of first translating a secondary note buffer.
         07 -Added forward/backward seeking by one second.
