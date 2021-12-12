@@ -6,7 +6,6 @@
 ;  Orientation menu
 ;  Rewrite in C++! (tired of this asm)
 ;  Give it a real GUI!
-;  Numbered format tables *what did I mean by this?
 ;  Complete separating FileTiles from BlitTiles to allow multiple views
 ;
 ; Add little menu on Escape key:
@@ -22,11 +21,12 @@
 ;   Quit (ctrl+Q)
 ;
 ; Tilemap Viewer - Savestate/Rom array viewer
-; PikenSoft (c)2001-2018
+; PikenSoft (c)2001-2021
 ;
 ; By Dwayne Robinson (FDwR@hotmail.com)
 ; http://pikensoft.com/
 ; http://fdwr.tripod.com/snes.htm
+; http://github.com/TileMapViewer
 ; Assembly compiled with NASM/YASM and WDOSX
 ;
 ;--------------------------------------------------
@@ -818,13 +818,16 @@ CloseAllFiles:
 ;4. determine file type and set position
 OpenFile:
     mov edx,[File.Name]                 ;get ptr to name
+    %if 0
+    ; Don't open any files for write.
     test byte [File.Attribs],File.Atr_ReadOnly
     jnz .TryReadOnly
     mov ax,3D00h|FileOpen.FullAccess|FileOpen.ReadWrite ;function to open file
     int 21h                             ;call DOS
     jnc .FileOpened                     ;if no error opening
+    %endif
     or byte [File.Attribs],File.Atr_ReadOnly
-.TryReadOnly:
+;.TryReadOnly:
     mov ax,3D00h|FileOpen.FullAccess|FileOpen.Read  ;attempt read only
     int 21h                             ;call DOS
     jnc .FileOpened                     ;if no error opening
@@ -4648,7 +4651,8 @@ Text:
         db 13,10
         db "email:    FDwR@hotmail.com",13,10
         db "homepage: http://pikensoft.com/",13,10
-        db "          http://members.tripod.com/FDwR/snes.htm",13,10
+        db "          http://fdwr.tripod.com/snes.htm",13,10
+        db "          http://github.com/TileMapViewer",13,10
 .EmptyString:
         db 0,"$"
 .FileOpenError:         db "Could not open the file. Check that it was spelled right.",0,"$"

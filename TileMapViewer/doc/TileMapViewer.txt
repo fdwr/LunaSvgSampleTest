@@ -2,7 +2,9 @@
 Tilemap Viewer 1.9.3 (c)1998-2021 PikenSoft
 File pattern viewer (speedy and tiny)
 By Dwayne Robinson, using Yasm/Nasm/WDOSX/Alink
-http://pikensoft.com/ (old http://fdwr.tripod.com/snes.htm)
+http://pikensoft.com/
+http://github.com/TileMapViewer
+http://fdwr.tripod.com/snes.htm
 FDwR at hotmail.com
 
 1. Changes
