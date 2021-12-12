@@ -1,4 +1,4 @@
-{I2}========
+========
   SpriteView .166 (uncopyright)2003..2021 PeekinSoft
   Little console tile graphics viewer
   By Dwayne Robinson, using Nasm/WDOSX/Alink
