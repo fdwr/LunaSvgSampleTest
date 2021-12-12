@@ -1058,7 +1058,7 @@ WinDosInt21h: ; DOS
 .CreateNewFile:
     debugwrite "int 21h 3C CreateNewFile, filename='%d'", edx
     xor eax,eax
-    api CreateFileA, edx, GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ, eax, CREATE_ALWAYS, eax,eax
+    api CreateFileA, edx, GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, eax, CREATE_ALWAYS, eax,eax
     cmp eax,INVALID_HANDLE_VALUE
     mov [esp+WinDosStackReg.eax],eax
     je .ReturnFailureFromLastError
@@ -1084,18 +1084,38 @@ WinDosInt21h: ; DOS
 ;  011  deny others read access
 ;  100  full access permitted to all
 ;
+section data
+.OpenExistingFileAccessTable:
+    db GENERIC_READ>>24                 ; 000  read access
+    db GENERIC_WRITE>>24                ; 001  write access
+    db (GENERIC_READ|GENERIC_WRITE)>>24 ; 010  read/write access
+    db (GENERIC_READ|GENERIC_WRITE)>>24 ; 011 (invalid mode)
+.OpenExistingFileSharingTable:
+    db 0                                                  ;  000  compatibility mode (exclusive)
+    db 0                                                  ;  001  deny others read/write access
+    db FILE_SHARE_READ                                    ;  010  deny others write access
+    db FILE_SHARE_WRITE|FILE_SHARE_DELETE                 ;  011  deny others read access
+    db FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE ;  100  full access permitted to all
+    db FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE ;  101  (invalid mode)
+    db FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE ;  110  (invalid mode)
+    db FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE ;  111  (invalid mode)
+section code
+
 .3D:
 .OpenExistingFile:
     debugwrite "int 21h 3D OpenExistingFile, filename='%s'", edx
+
+    ; Check read access bits.
+    movzx ebx,al
+    movzx eax,al
+    and bl,70h                          ;access bits 4-6 for file sharing
+    and al,03h                          ;access bits 0-2 for desired file access
+    shr bl,4
+    movzx ecx,[.OpenExistingFileAccessTable + eax]
+    movzx ebx,[.OpenExistingFileSharingTable + ebx]
     xor eax,eax
 
-    mov ecx,GENERIC_READ
-    test al,00000011b
-    jz .OpenExistingFileNoWrite
-    or ecx,GENERIC_WRITE
-.OpenExistingFileNoWrite:
-
-    api CreateFileA, edx, ecx,FILE_SHARE_READ|FILE_SHARE_READ|FILE_SHARE_DELETE, eax, OPEN_EXISTING, eax,eax
+    api CreateFileA, edx, ecx,ebx, eax, OPEN_EXISTING, eax,eax
     cmp eax,INVALID_HANDLE_VALUE
     mov [esp+WinDosStackReg.eax],eax
     je .ReturnFailureFromLastError
