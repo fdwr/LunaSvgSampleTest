@@ -1,12 +1,14 @@
-See [Project Page](http://pikensoft.com/programs-bgmapper.html) and [BgMapper.txt](doc/BgMapper.txt).
-
 ## What is it?
 
-This is an ancient DOS project in x86 asm, not actively updated anymore, but here's the source for those who asked. Should I clean it up more? Yes. Will I? Nope.
+This is an ancient DOS project in x86 asm. It's not actively updated anymore, but here's the source for those who asked. Should I clean it up more? Yes. Will I? Nope.
 
-![Scene Viewer](doc/ScreenShot0.png "Scene Viewer showing Dottie Dreads Nought by Goldlocke https://goldlocke.itch.io/dottie-dreads-nought")
+See [Project Page](http://pikensoft.com/programs-bgmapper.html) and [BgMapper.txt](doc/BgMapper.txt) for more.
 
-![VRAM Graphics Viewer](doc/ScreenShot1.png "VRAM Graphics Viewer showing Dottie dreads nought by Goldlocke https://goldlocke.itch.io/dottie-dreads-nought")
+![Scene Viewer](doc/ScreenShot0.png)<br/>
+<small>Scene viewer showing <a href="https://goldlocke.itch.io/dottie-dreads-nought">Dottie Dreads Nought by Goldlocke</a></small>
+
+![VRAM Graphics Viewer](doc/ScreenShot1.png)<br/>
+<small>VRAM viewer showing <a href="https://goldlocke.itch.io/dottie-dreads-nought">Dottie Dreads Nought by Goldlocke</a></small>
 
 ## Building
 
