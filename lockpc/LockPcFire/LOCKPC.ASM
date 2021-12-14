@@ -88,7 +88,7 @@ global Main
 %include "mywininc.asm"         ;standard Windows constants, structs...
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section data
 hwnd:   dd 0            ;window handle
 hdc:    dd 0            ;class device context
@@ -125,7 +125,7 @@ SineTable:
 .Degrees    equ 1024
 incbin "sinewave.dat"
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section bss
 msg:        resb MSG_size
 ps:         resb PAINTSTRUCT_size
@@ -163,7 +163,7 @@ Passwords:
 .Current:   resb 10
 .Size       equ $-Passwords
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section text
 
 ProgramClass:   db "PeekinPcLock",0
@@ -175,7 +175,7 @@ ErrMsgCoopLevel:db "Setting DirectDraw cooperative level",0
 ErrMsgGfxMode:  db "Setting set screen mode",0
 ErrMsgSurface:  db "Creating primary drawing surface",0
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 section code
 
 Main:
@@ -188,63 +188,63 @@ Main:
     mov [wc+WNDCLASS.hIcon],eax
 
     ; register window class
-    debugmsg "registering class"
+    debugwrite "registering class"
     api RegisterClass, wc
-    debugmsg "register result=%X", eax
+    debugwrite "register result=%X", eax
     test eax,eax
     jz near .End
 
     ; create instance of window
-    debugmsg "creating window"
+    debugwrite "creating window"
     api CreateWindowEx, WS_EX_TOPMOST, ProgramClass, ProgramTitle, WS_POPUP|WS_MAXIMIZE|WS_MINIMIZEBOX|WS_MAXIMIZEBOX|WS_VISIBLE|WS_SYSMENU, 0,0, 3000,3000, NULL, NULL, wc.BaseAddress, NULL
-    debugmsg "window handle=%X", eax
+    debugwrite "window handle=%X", eax
     test eax,eax
     jz near .End
     ;mov [hwnd],eax
 
     ; get window class display handle
     api GetDC, eax
-    debugmsg "get hdc=%X",eax
+    debugwrite "get hdc=%X",eax
     mov [hdc],eax
 
 ;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; Initialize DirectDraw
     ; initialize direct draw
-    debugmsg "initializing direct draw"
+    debugwrite "initializing direct draw"
     api DirectDrawCreate, NULL,dxd,NULL
-    ;debugmsg "direct draw result=%X",eax
+    ;debugwrite "direct draw result=%X",eax
     test eax,eax
     mov esi,ErrMsgDxInit
     js near EndWithErrMsg
 
-    debugmsg "setting cooperative level"
+    debugwrite "setting cooperative level"
     ;com IDirectDraw.SetCooperativeLevel,dxd, [hwnd],DDSCL_NORMAL|DDSCL_NOWINDOWCHANGES
     com IDirectDraw.SetCooperativeLevel,dxd, [hwnd],DDSCL_FULLSCREEN|DDSCL_EXCLUSIVE|DDSCL_NOWINDOWCHANGES
     ;api GetDesktopWindow
     ;com IDirectDraw.SetCooperativeLevel,dxd, eax,DDSCL_FULLSCREEN|DDSCL_EXCLUSIVE|DDSCL_ALLOWREBOOT|DDSCL_NOWINDOWCHANGES
-    debugmsg "cooperative level result=%X",eax
+    debugwrite "cooperative level result=%X",eax
     test eax,eax
     mov esi,ErrMsgCoopLevel
     js near EndWithErrMsg
 
-    debugmsg "setting screen mode"
+    debugwrite "setting screen mode"
     com IDirectDraw.SetDisplayMode,dxd, Screen.Width,Screen.Height,Screen.Bits
-    debugmsg "screen mode result=%X",eax
+    debugwrite "screen mode result=%X",eax
     test eax,eax
     mov esi,ErrMsgGfxMode
     js near EndWithErrMsg
 
-    debugmsg "creating primary surface"
+    debugwrite "creating primary surface"
     mov dword [ddsd+DDSURFACEDESC.dwSize],DDSURFACEDESC_size
     mov dword [ddsd+DDSURFACEDESC.dwFlags],DDSD_CAPS
     mov dword [ddsd+DDSURFACEDESC.ddsCaps],DDSCAPS_PRIMARYSURFACE
     com IDirectDraw.CreateSurface,dxd, ddsd,ddps,NULL
-    debugmsg "create primary surface result=%X",eax
+    debugwrite "create primary surface result=%X",eax
     test eax,eax
     mov esi,ErrMsgSurface
     js near EndWithErrMsg
 
-    debugmsg "setting palette"
+    debugwrite "setting palette"
     call CreateFirePalette
     ;com IDirectDraw.CreatePalette,dxd, DDPCAPS_8BIT|DDPCAPS_ALLOW256|DDPCAPS_INITIALIZE|DDPCAPS_PRIMARYSURFACE,Screen.Palette,ddcp,0
     com IDirectDraw.CreatePalette,dxd, DDPCAPS_8BIT|DDPCAPS_INITIALIZE,Screen.Palette,ddcp,0
@@ -288,7 +288,7 @@ Main:
 
 ;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ; Main Loop
-    debugmsg "entering main loop"
+    debugwrite "entering main loop"
     jmp short .Inside
 .Next:
     mov eax,[msg+MSG.message]
@@ -379,7 +379,7 @@ Main:
     jmp .Inside
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 MsgProc:
     params .hwnd, .message, .wParam, .lParam
 
@@ -418,7 +418,7 @@ MsgProc:
     ret 16
 
 .Destroy:
-    debugmsg "destroying window"
+    debugwrite "destroying window"
     api PostQuitMessage,0
 .RetFalse:
     xor eax,eax
@@ -429,14 +429,14 @@ MsgProc:
     cmp word [esp+.wParam],FALSE
     je near .LoseFocus
 .GainFocus:
-    ;debugmsg "enable timer"
+    ;debugwrite "enable timer"
     api SetTimer,[hwnd],1,33,NULL   ;30 times per second, no callback
     api SetWindowPos, [hwnd],0, 0,0,0,0, SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOSIZE|SWP_NOZORDER|SWP_NOREDRAW
     mov dword [Active],TRUE
     xor eax,eax
     ret 16
 .LoseFocus:
-    ;debugmsg "disable timer"
+    ;debugwrite "disable timer"
     api KillTimer,[hwnd],1      ;destroy 30 tick per second timer
     api PeekMessage, msg,0,WM_TIMER,WM_TIMER,PM_REMOVE
     api SetWindowPos, [hwnd],0, -10000,-10000,0,0, SWP_NOACTIVATE|SWP_NOCOPYBITS|SWP_NOSIZE|SWP_NOZORDER;|SWP_NOREDRAW
@@ -454,7 +454,7 @@ MsgProc:
 
 ;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 ;.Paint:
-;    debugmsg "paint background"
+;    debugwrite "paint background"
 ;    api BeginPaint, [hwnd],ps
 ;    ;draw background here
 ;    api EndPaint, [hwnd],ps
@@ -537,7 +537,7 @@ LlKeyboardProc:
     ret 12
 %endif
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; create fire palette
 CreateFirePalette:
     cld
@@ -580,7 +580,7 @@ CreateFirePalette:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 InitParticles:
     mov edi,(Particles.MaxCount-1)*4
 ;%define UseSimpleRnd
@@ -637,7 +637,7 @@ InitParticles:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; advance flames by one frame
 AdvanceFlames:
 
@@ -712,7 +712,7 @@ DoNothing:
     ret
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 DrawParticles:
     mov ebx,(Particles.MaxCount-1)*4
 .Next:
@@ -774,7 +774,7 @@ DrawParticles:
     ret
 
 %if 0
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 DrawMsg:
     mov esi,TextMsgBits
     mov edi,Screen.Buffer+(Screen.Width*240)+160
@@ -804,7 +804,7 @@ TextMsgBits: incbin "LOCKPCTM.LBM"
 %endif
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 DrawOverlay:
         mov edx,[Particles.BaseY]
         mov ecx,[Particles.BaseX]
@@ -827,7 +827,7 @@ section bss
 .Pixels:resb Screen.Height*Screen.Width
 section code
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Releases COM interface and nulls the pointer.
 ; (dword com object indirect ptr)
 ; (HRESULT)
@@ -837,32 +837,32 @@ ReleaseCom:
     xchg [edx],eax              ;null COM ptr and get previous
     test eax,eax
     jz .Ret                     ;already null
-    ;debugmsg "setting COM object null"
+    ;debugwrite "setting COM object null"
     mov edx,[eax]               ;get function table
     mov [esp+4],eax             ;pass object
     jmp [edx+8]                 ;call release function
 .Ret:
-    ;debugmsg "COM object already null"
+    ;debugwrite "COM object already null"
     ret 4
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; (esi=error message ptr)
 EndWithErrMsg:
-    debugmsg "releasing resources"
+    debugwrite "releasing resources"
     push dword ddcp             ;color palette
     call ReleaseCom
     push dword ddps             ;primary surface
     call ReleaseCom
     push dword dxd              ;directx draw
     call ReleaseCom
-    debugmsg "exiting process from fatal error: %s", esi
+    debugwrite "exiting process from fatal error: %s", esi
     api MessageBox, [hwnd],esi,ErrMsgFatal,MB_OK ;|MB_SETFOREGROUND|MB_TOPMOST ;MB_ICONERROR|MB_TASKMODAL|
     api DestroyWindow, [hwnd]
     api ExitProcess, -1
 
 
-;ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+;-----------------------------------------------------------------------------
 ; Turns a 32bit number into a decimal (or other) string, writing it to edi.
 ; By default, it converts a number to a decimal string, maximum of ten
 ; characters, stored in NumToString.Buffer. To change where the string is
