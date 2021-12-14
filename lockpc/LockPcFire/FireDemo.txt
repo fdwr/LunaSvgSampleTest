@@ -1,10 +1,10 @@
-Read the source code LOCKPC.ASM for more info
+Read the source code FireDemo.asm for more info
 
-LOCKPC.TXT   - this useless text
-LOCKPC.EXE   - executable (press F12 to quit)
-LOCKPC.ASM   - the assembler source code
-LOCKPC.ICO   - simple fire icon
-LOCKPC.RC    - resource text file
-LOCKPC.RES   - precompiled resource file
-MYWININC.ASM - personal include file of Windows definitions
-WINIMP.LIB   - small import library
+FireDemo.txt - this useless text
+FireDemo.exe - executable (press F12 to quit)
+FireDemo.asm - the assembler source code
+FireDemo.ico - simple fire icon
+FireDemo.rc  - resource text file
+FireDemo.res - precompiled resource file
+MyWinInc.asm - personal include file of Windows definitions
+WinImp.lib   - small import library

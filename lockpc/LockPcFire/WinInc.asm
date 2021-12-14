@@ -980,7 +980,8 @@ PBM_SETBARCOLOR equ 409h        ;lParam = bar color
 
 ;=============================================================================
 %ifdef UseWindowMsgs
-[extern DefWindowProc]
+[extern DefWindowProcA]
+[extern DefWindowProcW]
 
 WM_NULL equ 0h
 WM_CREATE equ 1h
