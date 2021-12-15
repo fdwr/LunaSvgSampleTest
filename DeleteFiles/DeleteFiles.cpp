@@ -11,7 +11,15 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
     if (argc <= 1)
     {
-        wprintf(L"Dwayne Robinson 2016-04-13..2021-12-08\n\nDeleteFiles usage:\n    DeleteFiles d:\\olddocuments\\largefolder\n\nThis utility will forcibly try to delete readonly files,\nbut currently open files cannot be deleted.");
+        wprintf(
+            L"Dwayne Robinson 2016-04-13..2021-12-15\n"
+            L"\n"
+            L"DeleteFiles usage:\n"
+            L"    DeleteFiles d:\\olddocuments\\largefolder\n"
+            L"\n"
+            L"This utility will forcibly try to delete readonly files,\n"
+            L"but files held open by another process cannot be deleted."
+        );
     }
     else if (argc > 2)
     {
@@ -19,7 +27,9 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
     }
     else
     {
-        std::wstring s(argv[1]);
+        std::wstring s;
+        s.reserve(1024);
+        s.assign(argv[1]);
         DeleteDirectoryTree(s);
     }
 
@@ -29,17 +39,15 @@ int wmain(int argc, wchar_t* argv[], wchar_t* envp[])
 
 size_t GetFilenameOffset(std::wstring_view path)
 {
-    size_t filenameOffset = path.size();
-    for (size_t i = filenameOffset; i-- > 0; )
+    for (size_t i = path.size(); i-- > 0; )
     {
         wchar_t ch = path[i];
         if (ch == '/' || ch == '\\' || ch == ':')
         {
-            filenameOffset = i + 1;
-            break;
+            return i + 1;
         }
     }
-    return filenameOffset;
+    return 0;
 }
 
 uint32_t DeleteDirectoryTree_count = 0;
@@ -104,6 +112,12 @@ bool DeleteDirectoryTree(/*inout*/std::wstring& path)
         {
             path.resize(directoryLength);
             path.append(findFileData.cFileName);
+
+            if ((DeleteDirectoryTree_count & 1023) == 0)
+            {
+                wprintf_s(L"%d items deleted. Deleting '%s'.\r\n", DeleteDirectoryTree_count, path.c_str());
+            }
+
             if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 // Attempt early deletion if empty directory or if only contains virtual files.
@@ -130,11 +144,6 @@ bool DeleteDirectoryTree(/*inout*/std::wstring& path)
                 }
             }
 
-            if ((DeleteDirectoryTree_count & 2047) == 0)
-            {
-                wprintf_s(L"%d items deleted. Deleting '%s'.\r\n", DeleteDirectoryTree_count, path.c_str());
-            }
-
             ++DeleteDirectoryTree_count;
         }
 
@@ -147,7 +156,7 @@ bool DeleteDirectoryTree(/*inout*/std::wstring& path)
                 break;
             }
             else {
-                // some error occured, close the handle and return FALSE
+                // Some error occured. Close the handle, and return FALSE.
                 ++DeleteDirectoryTree_errorCount;
                 wprintf_s(L"Failed to enumerate next file in '%s'. FindNextFile error=%d\r\n", path.c_str(), result);
                 FindClose(findHandle);
