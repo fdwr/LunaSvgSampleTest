@@ -1,7 +1,7 @@
 Read the source code FireDemo.asm for more info
 
 FireDemo.txt - this useless text
-FireDemo.exe - executable (press F12 to quit)
+FireDemo.exe - executable (press Esc/F12 to quit, hold shift when launching to lock PC)
 FireDemo.asm - the assembler source code
 FireDemo.ico - simple fire icon
 FireDemo.rc  - resource text file

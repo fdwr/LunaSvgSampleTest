@@ -140,15 +140,9 @@ Particles:
 .AngleY:    resd .MaxCount      ; y rotation (clockwise/countercw)
 .AngleZ:    resd .MaxCount      ; z rotation (forward/backward)
 section data
-.OriginY:   dd Screen.Height / 2    ; origin for all particles to swirl around
-.OriginX:   dd Screen.Width / 2     ; which follows the mouse
+.OriginY:   dd Screen.Height / 2 ; origin for all particles to swirl around
+.OriginX:   dd Screen.Width  / 2 ; which follow the mouse
 section bss
-
-Passwords:
-.Minimize:  resb 10
-.Quit:      resb 10
-.Current:   resb 10
-.Size       equ $-Passwords
 
 ;-----------------------------------------------------------------------------
 section text
@@ -244,17 +238,15 @@ Main:
     mov ecx,(Screen.Height*Screen.Width)/4
     xor eax,eax
     rep stosd
-    mov edi,Passwords
-    mov ecx,Passwords.Size/4
-    rep stosd
 
     api ShowCursor, FALSE               ;Don't want a distracting cursor, just a fireball.
 
-    ; Note that low level keyboard hooks are unsupported on 9x systems.
-    ; No big deal, since the function will simply return NULL.
+    ; Lock the PC if the user held shift when launching.
     api GetKeyState, VK_SHIFT
     test al,80h
     jz .NoPcLock
+    ; Note that low level keyboard hooks are unsupported on 9x systems.
+    ; No big deal, since the function will simply return NULL.
     api SetWindowsHookExA, WH_KEYBOARD_LL, LlKeyboardProc, wc.BaseAddress, NULL
     mov [hkbd],eax
 .NoPcLock:
