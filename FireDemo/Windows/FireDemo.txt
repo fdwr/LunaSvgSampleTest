@@ -6,5 +6,5 @@ FireDemo.asm - the assembler source code
 FireDemo.ico - simple fire icon
 FireDemo.rc  - resource text file
 FireDemo.res - precompiled resource file
-MyWinInc.asm - personal include file of Windows definitions
+WinInc.asm   - personal include file of Windows definitions
 WinImp.lib   - small import library

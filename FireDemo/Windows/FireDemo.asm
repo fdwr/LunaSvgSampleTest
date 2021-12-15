@@ -252,12 +252,12 @@ Main:
 
     ; Note that low level keyboard hooks are unsupported on 9x systems.
     ; No big deal, since the function will simply return NULL.
-;    api GetKeyState, VK_SHIFT
-;    test al,80h
-;    jz .NoPcLock
-;    api SetWindowsHookExA, WH_KEYBOARD_LL, LlKeyboardProc, wc.BaseAddress, NULL
-;    mov [hkbd],eax
-;.NoPcLock:
+    api GetKeyState, VK_SHIFT
+    test al,80h
+    jz .NoPcLock
+    api SetWindowsHookExA, WH_KEYBOARD_LL, LlKeyboardProc, wc.BaseAddress, NULL
+    mov [hkbd],eax
+.NoPcLock:
 
 ;-------------------
 ; Main Loop
@@ -713,7 +713,7 @@ DrawParticles:
 ReleaseCom:
     mov edx,[esp+4]             ;get indirect ptr to COM object
     xor eax,eax
-    xchg [edx],eax              ;null COM ptr and get previous
+    xchg [edx],eax              ;nullify COM ptr and get previous
     test eax,eax
     jz .Ret                     ;already null
     debugwrite "setting COM object null"
