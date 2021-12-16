@@ -3,13 +3,6 @@
 // 2006-03-04 Dwayne Robinson
 // 2021-12-15 Update for C++20
 
-#include <ctype.h>
-#include <stdarg.h>
-#include <memory>
-#include <span>
-#include <string>
-#include <assert.h>
-#include <io.h>
 #include "Precomp.h"
 
 ////////////////////////////////////////////////////////////////
