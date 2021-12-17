@@ -118,24 +118,24 @@ bool DeleteDirectoryTree(/*inout*/std::wstring& path)
                 wprintf_s(L"%d items deleted. Deleting '%s'.\r\n", DeleteDirectoryTree_count, path.c_str());
             }
 
+            // Remove the read only attribute (if there is one).
+            if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+            {
+                SetFileAttributes(path.c_str(), FILE_ATTRIBUTE_NORMAL);
+            }
+
             if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 // Attempt early deletion if empty directory or if only contains virtual files.
-                path.push_back('\\');
                 if (RemoveDirectory(path.c_str()) == 0)
                 {
                     // Deletion failed. So recurse to delete all subfolders and files first.
+                    path.push_back('\\'); // Optimize a bit by appending "\" early, to avoid unnecessary GetFileAttributes call.
                     DeleteDirectoryTree(path);
                 }
             }
             else
             {
-                // Remove the read only attribute (if there is one).
-                if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_READONLY)
-                {
-                    SetFileAttributes(path.c_str(), FILE_ATTRIBUTE_NORMAL);
-                }
-
                 auto result = DeleteFile(path.c_str());
                 if (!result)
                 {
@@ -170,6 +170,7 @@ bool DeleteDirectoryTree(/*inout*/std::wstring& path)
     bool result = true;
     if (isDirectory)
     {
+        path.resize(directoryLength);
         result = RemoveDirectory(path.c_str());
         if (result == 0)
         {
