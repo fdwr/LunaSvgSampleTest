@@ -314,7 +314,7 @@ Things left out
 Future plans (NA)
 =================
   Things to be done that I'm probably too lazy to finish. *The year is now 2021,
-  and there is no "probably" about it:
+  and "probably" is "definitely":
 
 - Map data exporting
 - Sprites in Scene Viewing

@@ -1,6 +1,7 @@
+
 ## What is it?
 
-This is an ancient DOS project in x86 asm to view raw graphics in files. It's not actively updated anymore, but here's the source for those who asked. Should I clean it up more? Yes. Will I? Nope.
+✋ There are better viewing programs out there now. This is an ancient (~1999) DOS utility in x86 asm to view raw graphics in files, and it's not actively updated anymore, but here's the source for those who asked. Should I clean it up more? Yes. Will I? Nope.
 
 See [Project Page](http://pikensoft.com/programs-spriteview.html) and [BgMapper.txt](doc/SpriteView.txt) for more.
 

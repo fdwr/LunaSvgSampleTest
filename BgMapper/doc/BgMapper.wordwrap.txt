@@ -197,10 +197,10 @@ Things left out
   Windowing and HDMA effects could be added, but it would be difficult since they are real-time effects that would require BgMapper to be even more of an emulator and simulate a complete frame. The lack of HDMA means that a lot of scenes will not appear exactly as they do in emulation, (with no wavy effects, skewing, midframe palette changes, and such) but will instead look flat and plain. Of course, that is exactly what we want! Ironically what the emulation authors strive so hard to perfect is the very thing that I've intentionally removed.
 
 
-============{I2}
-Future plans
-============
-  Things to be done that I'm probably too lazy to finish:
+=================
+Future plans (NA)
+=================
+  Things to be done that I'm probably too lazy to finish. *The year is now 2021, and "probably" is "definitely":
 
 - Map data exporting
 - Sprites in Scene Viewing

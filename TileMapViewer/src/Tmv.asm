@@ -20,7 +20,7 @@
 ;   Wrap width (w)
 ;   Quit (ctrl+Q)
 ;
-; Tilemap Viewer - Savestate/Rom array viewer
+; Tilemap Viewer - file array viewer
 ; PikenSoft (c)2001-2021
 ;
 ; By Dwayne Robinson (FDwR@hotmail.com)
