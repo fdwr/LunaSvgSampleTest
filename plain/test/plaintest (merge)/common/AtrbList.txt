@@ -1,5 +1,0 @@
-This is a shared component, originally designed specifically for
-filemole, then separated into its own user control for use in
-PlainGfxTest and CopyBadFile.
-
-Read the top of AtrbList.c for more info about the control itself.

@@ -1,0 +1,530 @@
+========
+  SpriteView .166 (uncopyright)2003..2021 PeekinSoft
+  Little console tile graphics viewer
+  By Dwayne Robinson, using Nasm/WDOSX/Alink
+  http://pikensoft.com/
+  http://github.com/fdwr/BgMapper
+  http://fdwr.tripod.com/snes.htm
+  FDwR at hotmail.com
+
+  1. Changes
+  2. About
+  3. Requirements
+  4. Features
+  5. Viewing window keys
+  6. Tile graphics formats
+  7. Other tile viewers/editors
+  8. History
+
+=======
+Changes
+=======
+
+.166    2003-03-10
+- Recompiled to PE format, rather than RDOFF.
+
+.165    2001-03-05
+- Added variable sized tile blocking, for viewing nonsequential tile
+  arrangements like individual character frames, which tend to be 2x2 blocks.
+- Increased maximum wrap width to 1024, hopefully sufficiently large enough
+  for any graphic entity. Can also be used to scroll through large files very
+  quickly.
+- Uses anti-thrashing routine now to spare your hard disk an early death when
+  loading huge files.
+- Changed some of the keys, due to adding tile blocking. Ctrl+(PgUp/PgDn) are
+  now for scrolling 32k banks. ", ." are for changing the user palette index.
+
+
+=============
+What is this?
+=============
+  SpriteView is just a little tile viewer for various console graphics,
+  including SNES, NES, Sega Genesis, Game Boy, Virtual Boy, and N64. Although
+  it is a simple program and does not support editing, it does have fast
+  scrolling, variable tile wrap, built in generic palettes, savestate palette
+  importing, and speed. For true tile editors, I would suggest Tile Layer Pro,
+  Smc-Ripper, TilEd, or YY-CHR.
+
+  Wow, I first created this program four years ago. Where did the time go?
+
+Disclaimer
+----------
+  This program is provided as freeware, in appreciation of all the free
+  utilities others have written which I enjoy. The only cost is suggestions
+  for improvement, bug reports, and maybe a letter of appreciation :)
+
+  Although this program does not have any known problems, it is not guaranteed
+  to be free of unknown ones. You use this program by your own choice, and I
+  disclaim any responsibility for damage it could cause. Please tell me if you
+  do find any errors so they can be fixed. After all I use this on my computer
+  too!
+
+Thanks to
+---------
+ -Michael Tippach for WdosX, 32bit DOS extender
+ -Authors of NASM for a great compiler
+ -Gaz for his simple to use assembly library
+ -Yoshi for his informative docs
+ -Corsair and Kari for making the 4bit format clear in their doc
+ -Vilewrath for the little Qb example, the mustard that became an oak (SV)
+ -Savoury Snax for explaining how tiles are converted to different formats
+ -Magnus Runesson for letting me see his source to the SMC-Ripper
+ -Louis Bontes for writing the first tile viewer/editor I ever saw (Naga)
+ -Wombatman for the Sega Genesis format
+ -Any others who have contributed to SNES emulation...
+
+
+============
+Requirements
+============
+
+Something to look at
+--------------------
+  Both game ROM backups and savestates have graphics in them. Simply include
+  the name of the file to view after the program name, and it will try to load
+  the whole file into memory. Sorry that it has no internal file selection.
+
+   sv allstars.smc
+   sv zelda.nes
+   sv metroid3.zs3
+
+  Note that most graphics in ROMs are compressed, so unfortunately many of the
+  graphics arent' viewable. So instead try to find them in uncompressed
+  savestates like that of ZSNES (zst, zmv), SneMul (sml), or SneQr (qs0). Note
+  that Snes9x saves are compressed.
+
+System
+------
+- 386+
+- Memory
+- VGA
+- Keyboard (goes without saying)
+- DOS/Windows
+
+  SpriteView was written to be fast enough for even my slow machine (25MHz
+  386), so anything faster is more than enough. The amount of memory needed
+  depends on the size of the file to view. For small files like savestates or
+  little ROMs, 4MB is more than enough; but since SV loads the entire file
+  into memory, you may need 32MB for huge ROMs like 'Zelda 64'. Under Windows
+  95+ virtual memory should alleviate any such concerns.
+
+
+========
+Features
+========
+- Fast/flexible scrolling
+- Variable wrap width (tiles per row)
+- Several display formats
+- Five builtin generic palettes
+- Import user palette from ZSNES savestate
+- Tile blocking
+- Goto position from command line
+
+- SNES 1,2,3,4,8bpl tiles
+- SNES mode 7 linear/interleaved tiles
+- SNES fx chip low/high nybble linear
+  (in other words all SNES formats as far as I know!)
+- NES 2bpl tiles
+- GameBoy 2bpl tiles (same as SNES 2bpl)
+- Sega Genesis 4bit tiles
+- VB 2bit tiles
+- N64 high color (16bit)/true color(32bit)
+- Little endian 2,4,8bit linear
+
+Scrolling
+---------
+  The scrolling in SV is a bit more flexible than most other viewers, allowing
+  easy window panning. You can scroll by a single tile, one row, or an entire
+  page. SV always pages sixteen rows at a time rather than the height of the
+  window, to stay better aligned to the ROM's 32k banks. For graphics that are
+  not perfectly aligned to even bank boundaries, you can adjust the fine
+  alignment.
+
+  Scrolling is timed to the keyboard repeat (unlike Naga) instead of simply
+  running at its maximum rate, since it would be uncontrollable on faster
+  machines. So how fast it scrolls depends on how fast you have your repeat
+  rate set to. To get the fastest repeat under DOS, you can type in "mode con:
+  rate=32 delay=1". For Windows, just use the Control Panel to set it.
+
+Wrap width
+----------
+  Games often store their graphics in the same arrangement as they would in
+  VRAM for simplicity (16 tiles per row), but for more efficient storage, they
+  might store them in smaller sized strips.
+
+Graphics Modes
+---------------
+  Simply press the number key of mode you want to change to. Since most keys
+  function for two modes though, you may have to press it twice. For example,
+  there are two variations for mode 7, one for linear tiles in ROMs and the
+  other for the interleaved tiles in savestates. Simply pressing "7" once will
+  switch to mode 7 graphics, but pressing it again toggles between the two
+  variations. The first time you press "2", the mode will switch to SNES 2bpl
+  tiles. Pressing it again toggles to linear 2bit. I had to do this as I soon
+  ran out of number keys to use with all the new modes added :)
+
+Palettes
+--------
+  Five generic palettes are included that should help viewing. They are the
+  VGA default, the color spectrum (rainbow), gray, inverse gray, and true
+  color (for high/true color modes). Each one has its niche - just cycle
+  through them for the one that looks best for the part you viewing. The last
+  one is the user palette. You can specify a ZSNES savestate filename to load
+  colors from when you start SV. Just use the '-p' switch with a filename
+  after it.
+
+    sv dkc.fig -p dkc.zmv
+    sv metroid3.smc -p metroid3.zs3
+    sv mario2.smc -p mario2.zst -g 110000
+
+Tile blocking
+-------------
+  I'm not really sure what to call it, but I can describe what I mean. Often
+  times games will store their tiles 16 per row, every row comes 16 tiles
+  after the previous one; but they may also block a group of tiles together
+  (like a single character frame) in a different order.
+
+  Usual 16 wide arrangement:        A common 2x2 arrangement:
+  A B C D E F G H I J K L M N O P   A B E F I J M N Q R U V Y Z c d
+  Q R S T U V W X Y Z a b c d e f   C D G H K L O P S T W X a b e f
+  g h i j k l m n o p q r s t u v   g h k l o p s t w x ...
+
+  Normally SpriteView displays tiles in sequential order, left to right, then
+  top to bottom. With a tile pattern, or block size, it displays them in a
+  suborder.
+
+  Normal:                           Blocked (2x2 suborder):
+   0  1  2  3  4 ...                 0  1  4  5  8 10 ...
+  16 17 18 19 20 ...                 2  3  6  7  9 11 ...
+  32 33 34 35 36 ...                32 33 36 37 40 41 ...
+
+  For these unusual arrangements, you can size both the height and width for a
+  block of tiles. It is important which dimension you change first, because
+  that is the way the tile pattern forms. If you increase the width first, the
+  pattern will procede right, then down. If you increase the height first, the
+  tile pattern is arranged down, then right. You will have to play around with
+  both the block size and wrap width to get it just right.
+
+Goto position from command line
+-------------------------------
+  Rather than starting from the beginning and scrolling through the entire
+  image, you can start where you want to look at with the "-g" switch.
+
+    sv mario2.smc -g 110000 -p mario2.zst
+    sv zelda64.rom -g 7bbe70
+    sv smrpg.smc -g 30c4c0
+
+
+===================
+Viewing window keys
+===================
+
+Scrolling:
+  Up Down             Tile row
+  Left Right          Single tile
+  PgUp PgDn           Page of tiles (sixteen rows)
+  Ctrl+(PgUp PgDn)    32k bank
+  Ctrl+(<- ->)        Byte forward or backward
+
+Tile arrangement:
+  + -             Change block width
+  * /             Change block height
+  [ ]             Increase or decrease window width (tiles per row)
+  { }             Half/double tile width
+
+Tile format:
+  1               monochrome bitdepth
+  2,4,8           SNES bitplane / linear
+  3               SNES bitplane / VB
+  5               Sega Genesis  / NES
+  6               fx chip graphics low/high
+  7               mode 7 linear/interleaved
+  9               N64 graphics high/true
+
+Palette:
+  p P (+shift)    Cycle forward or backward through five available palettes
+  , .             Change user palette page
+
+Other:
+  h               Toggle hex or decimal offset
+  Esc             Quit
+
+
+=====================
+Tile graphics formats
+=====================
+
+Nintendo bitplane tiles
+-----------------------
+  NES, GB, and SNES tiles (except for mode 7) are all stored in a bitplane
+  format, where each 8x8 tile is made of multiple monochrome tiles (called
+  bitplanes) that are layered together to make the full bitdepth. Every byte
+  makes up a single layer of a single row, which combined with other bytes of
+  the same row, make a eight complete pixel columns. Just how many bitplanes
+  need to be layered together is determined by total color indexes desired for
+  that tile (1bitplane=2colors, 2=4, 4=16, 8=256). SpriteView just takes the
+  bitplane format and rearranges it into a more useable linear format. Then
+  the indexes are translated to colors when blit to the screen. If you know
+  how old monochrome graphics modes use to work, the idea is pretty simple. As
+  you can see, each bit is a pixel column and each byte is a row of pixel
+  columns. Below is a simple image of a dot in a circle (ya I know, silly
+  picture) and the hexadecimal numbers to represent it.
+
+  Columns (bits)	    0 1 2 3 4 5 6 7
+                       -----------------
+                $3C 0 | . . 1 1 1 1 . .
+                $7E 1 | . 1 1 1 1 1 1 .
+                $C3 2 | 1 1 . . . . 1 1
+  Rows (bytes)  $DB 3 | 1 1 . 1 1 . 1 1
+                $DB 4 | 1 1 . 1 1 . 1 1
+                $C3 5 | 1 1 . . . . 1 1
+                $7E 6 | . 1 1 1 1 1 1 .
+                $3C 7 | . . 1 1 1 1 . .
+
+  More depth simply requires another bitplane.
+
+        0 1 2 3 4 5 6 7         0 1 2 3 4 5 6 7         0 1 2 3 4 5 6 7
+       -----------------       -----------------       -----------------
+    0 | . . 1 1 1 1 . .     0 | 1 . . . . . . 1     0 | 2 . 1 1 1 1 . 2
+    1 | . 1 1 1 1 1 1 .     1 | . . . . . . . .     1 | . 1 1 1 1 1 1 .
+    2 | 1 1 . . . . 1 1     2 | . . . 1 1 . . .     2 | 1 1 . 2 2 . 1 1
+    3 | 1 1 . 1 1 . 1 1  +  3 | . . 1 1 1 1 . .  =  3 | 1 1 2 3 3 2 1 1
+    4 | 1 1 . 1 1 . 1 1     4 | . . 1 1 1 1 . .     4 | 1 1 2 3 3 2 1 1
+    5 | 1 1 . . . . 1 1     5 | . . . 1 1 . . .     5 | 1 1 . 2 2 . 1 1
+    6 | . 1 1 1 1 1 1 .     6 | . . . . . . . .     6 | . 1 1 1 1 1 1 .
+    7 | . . 1 1 1 1 . .     7 | 1 . . . . . . 1     7 | 2 . 1 1 1 1 . 2
+
+  Unfortunately the bitplanes of each row are not arranged in an order that
+  they can simply be read straight through from start to finish. To fix that,
+  I just use a table. Each index in the table points to the next byte in the
+  tile. Using the table slows it down, but also allows any bitplane format to
+  be converted all by the same routine. It being written in assembly makes up
+  for the slow down too. ;)
+
+Bitplane patterns
+-----------------
+  These are the patterns for all bitplane formats known and supported by SV.
+  The bytes are arranged by pixel row and bitplane. Remember that each byte
+  consists of eight column bits. The highest bits in each byte are the left
+  columns and lowest bits are the right columns.
+
+  Bitdepth: <1>    <2>       <3>           <4>                  <8>
+  Bitplane:  0    0  1     0  1  2     0  1  2  3     0  1  2  3  4  5  6  7
+            ---  ------   ---------   ------------   ------------------------
+      0|     0    0  1     0  1  16    0  1  16 17    0  1  16 17 32 33 48 49
+      1|     1    2  3     2  3  17    2  3  18 19    2  3  18 19 34 35 50 51
+      2|     2    4  5     4  5  18    4  5  20 21    4  5  20 21 36 37 52 53
+  Row 3|     3    6  7     6  7  19    6  7  22 23    6  7  22 23 38 39 54 55
+      4|     4    8  9     8  9  20    8  9  24 25    8  9  24 25 40 41 56 57
+      5|     5    10 11    10 11 21    10 11 26 27    10 11 26 27 42 43 58 59
+      6|     6    12 13    12 13 22    12 13 28 29    12 13 28 29 44 45 60 61
+      7|     7    14 15    14 15 23    14 15 30 31    14 15 30 31 46 47 62 63
+
+  Bitdepth: <2 NES>
+  Bitplane:  0  1
+            ------
+      0|     0  8
+      1|     1  9
+      2|     2  10
+  Row 3|     3  11
+      4|     4  12
+      5|     5  13
+      6|     6  14
+      7|     7  15
+
+  The bitplane formats 2,4 & 8 are all used by the SNES for tilemaps (BGs)
+  while sprites can only use the 4bpl (16 color) format. The other two, 1bpl
+  and 3bpl, are only used by games (like Zelda and FF2) to store their
+  graphics and must be first uncompressed to one of the useable SNES formats
+  before being put on the playfield. 1bit is usually used to store monochrome
+  text, while 3bit is used for images that need at least five colors, but not
+  more than eight. Games might also store their graphics in these packed
+  formats in WRAM for quick transfer to VRAM whenever needed, so you may find
+  these in savestates too. The SNES 2bpl format is exactly the same as the
+  GameBoy's, while the NES format is more like two individual 1bpl tiles
+  (rather than being interleaved). I figured 8bit and 3bit by trial and error.
+  Now I think all that remains are compressed formats.
+
+SNES mode 7
+-----------
+  You may not find many (if any) mode 7 graphics in ROMs, since they are
+  usually compressed. The only commercial game I have ever seen them in, is
+  "Zelda" at 811008. However, there are some demos with them, and since you
+  might also look in savestates with this prog, it is a format worth
+  supporting. It is the only (Nintendo) tile format that does not use
+  bitplanes. Each one is a little linear 8x8 bitmap, or would be except for
+  just one little quirk. When the graphics are stored in the SNES's VRAM, they
+  are interleaved with tilemap numbers. One byte of graphics follows each byte
+  of the tilemap, but you can simply skip every even byte though to get only
+  the pixels.
+
+  Type:       Noninterleaved as in ROMs   Odd interleaved as VRAM
+  Column:     0  1  2  3  4  5  6  7      0   1   2   3   4   5   6   7   
+             ------------------------    --------------------------------
+       0|     0  1  2  3  4  5  6  7      1   3   5   7   9   11  13  15
+       1|     8  9  10 11 12 13 14 15     17  19  21  23  25  27  29  31
+       2|     16 17 18 19 20 21 22 23     33  35  37  39  41  43  45  47
+  Row: 3|     24 25 26 27 28 29 30 31     49  51  53  55  57  59  61  63
+       4|     32 33 34 35 36 37 38 39     65  67  69  71  73  75  77  79
+       5|     40 41 42 43 44 45 46 47     81  83  85  87  89  91  93  95
+       6|     48 49 50 51 52 53 54 55     97  99  101 103 105 107 109 111
+       7|     56 57 58 59 60 61 62 63     113 115 117 119 121 123 125 127
+
+Sega Genesis tiles
+------------------
+  Tiles are linear, going from top to bottom, each row (four bytes) goes left
+  to right. The two nybble pixels per byte are stored in big endian form. So
+  the leftmost pixel would be in the first byte bits 4-7, the second pixel to
+  the right would be the first byte bits 0-3, and the rightmost pixel would be
+  in the fourth byte bits 0-3. Thanks (not!) to all you Genesis emulator
+  authors who would not spare a single sentence even that long to let me know
+  that Sega didn't use planar graphics, and thanks (this time I mean it for
+  real) to Wombatman for telling me the format :)
+
+FX graphics
+-----------
+  These are some of the simplest graphics to work with, since they all one
+  huge linear bitmap 256 pixels wide. Each 'tile' is really an 8x8 section out
+  of that bitmap. The only odd thing is that each pixel is 4bits, so what they
+  did was interleave two 16 color bitmaps. The lower nybble of each byte is a
+  pixel from the first bitmap and the higher nybble is from the other bitmap.
+  Before they can be used on the scene, the fx chip does its streching/scaling
+  effects on them and then converts them into bitplane format for the PPU.
+
+              As arranged in the ROM
+  Column:     0  1  2  3  4  5  6  7
+             --------------------------------
+       0|    0    1    2    3    4    5    6    7
+       1|    256  257  258  259  260  261  262  263
+       2|    512  513  514  515  516  517  518  519
+  Row: 3|    768  769  770  771  772  773  774  775
+       4|    1024 1025 1026 1027 1028 1029 1030 1031
+       5|    1280 1281 1282 1283 1284 1285 1286 1287
+       6|    1536 1537 1538 1539 1540 1541 1542 1543
+       7|    1792 1793 1794 1795 1796 1797 1798 1799
+
+Virtual Boy
+-----------
+  Tiles are linear, going from top to bottom, each row (two bytes) goes left
+  to right. The four 2bit pixels in each byte are stored (oddly for consoles)
+  in little endian form. So the leftmost pixel would be in the first byte bits
+  0-1, the second pixel to the right would be the first byte bits 2-3, and the
+  rightmost pixel would be in the second byte bits 6-7.
+
+N64 High/True color
+-------------------
+  The two modes so far found are 32bit (256 levels of
+  red/green/blue/transparency) and 16bit (32 levels of red/green/blue and 1
+  level of transparency). Both are linear (no tiles), each row (variable size)
+  proceding left to right going, top to bottom. Complete transparency has a
+  value of 0. For 16bit, 1 is opaque. For 32bit, 255 is completely opaque. If
+  transparency is true (not opaque) and the other color values are greater
+  than 0, you get translucency (like the colored transparency you see in
+  stained glass). Before you can view the colors correctly, you must change to
+  the true color palette.
+
+  You may also find 8bit and 4bit linear graphics in certain N64 games. Since
+  I am not familiar with the details of that console (I only have one N64 game
+  compared to 30 SNES), I'm not certain about this, but most likely 4 & 8bit
+  graphics are expanded to high/true color before being used in rendering.
+
+  32bit pixel:
+    0 ..... 8 ..... 16 .... 24 ... 31
+    rrrrrrrrggggggggbbbbbbbbtttttttt
+    Byte 0 = Red
+    Byte 1 = Green
+    Byte 2 = Blue
+    Byte 3 = Transparency (255=opaque, 0=transparent)
+
+  16bit pixel:
+    0 ..... 8 .... 15
+    tbbbbbgggggrrrrr
+    Bit  0     = Transparency (1=opaque, 0=transparent)
+    Bits 1-5   = Blue
+    Bits 6-10  = Green
+    Bits 11-15 = Red
+
+  I wish Nintendo would make up their mind about the rgb order. For the SNES,
+  it's BGR with an unused top bit. For N64 high color, it's BGR with a used
+  bottom bit; and for true color, it's RGB and a used top byte.
+
+
+=================================
+Other useful tile viewers/editors
+=================================
+  This is not a complete listing, just ones that I have happened to use.
+  Each one is unique, so just try them all.
+
+  Tile Layer by SnowBro
+  TilEd by Mr.Click
+  RomView by Phantom Menace
+  Smc-Ripper by Magnus Runesson
+  Naga by Louis Bontes
+  Nana by Neill Corlett
+  TileEdit by Qwertie
+
+
+=========
+Revisions
+=========
+
+Past:
+.160  1999-??-??
+- Supports VB 2bit linear tiles.
+- Detects ZSNES savestates, automatically setting the position to VRAM
+  (20C13h) and loading the color palette from it. Of course you still have to
+  use the command line switch (-p) for viewing a ROM along with a savestate's
+  palette.
+
+.150  1999-??-??
+- Added 3 linear graphics modes for 2,4,8 bits.
+- Added goto from command line (-g #)
+
+.140  1999-08-16
+- Window is wider, allowing complete window to be seen.
+- Info is in a bar down on the bottom rather than right side. Filesize is no
+  longer shown.
+- Help was added for key reference (F1).
+- Wrap is now shown in pixels rather than the number of 8x8 tiles.
+- Keys quickly half/double wrap ().
+- Added two N64 graphics modes, 15bit high color and 24bit true color.
+- Added pseudo true color palette for N64 modes. You must change to it
+  manually since it is not automatically set when you change to those modes.
+- Made fx chip graphics linear according to wrap. So it does not now
+  automatically set the wrap to 32 tiles.
+
+.130
+- Fx chip graphics, used in "StarFox" and "Mario World 2" (press '6')
+- Pressing '7' now toggles between linear and interleaved mode 7.
+- Inverse gray palette and rainbow palette
+- Widened window a little to allow more tiles to be seen. That space was
+  simply blank anyway.
+- Changed default offset to hex instead of decimal after spending stupid
+  amounts of time converting hex offsets in an emulator to decimal so that I
+  could find the graphics in the ROM. You can still use decimal though,
+  press 'h' to toggle it.
+- Allow user to specify palette from a savestate (with -p switch)
+- Redid the small color bar on bottom to only show used colors
+
+.100  1998-11-03
+- Start assembly version
+- Sega Genesis tiles
+- NES 2bpl
+
+.004  1998-02-08
+- Start Qbasic version
+- SNES 4bpl,2bpl tiles
+- Rainbow and gray palettes
+- Allow variable width
+- SNES 1bpl,8bpl tiles
+- 3bpl finally figured out (Zelda and FF2)
+- Mode 7 graphics
+
+
+Future: (hopes, no promises)
+- Support 8x12 and 8x16 tiles sizes
+- Add window exporting to a image file
+- Add raw tile exporting from the ROM window to a separate file
+
+
+(:Peekin:)  eof || ^Z

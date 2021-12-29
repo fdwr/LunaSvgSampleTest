@@ -11,6 +11,14 @@
 ;   NASM.EXE -f bin makewav.asm -o test.wav
 
 %if 1
+    %define WaveFile "D:\src\spc2midi\captures\wave\SoundDump(raw int16).pcm"
+    WaveFileStart   equ 0
+    Channels        equ 1       ;1-mono 2-stereo
+    Mode            equ 1       ;1-uncompressed PCM
+    BytesPerSample  equ 2*Channels
+    BitsPerSample   equ BytesPerSample*8
+    SampleRate      equ 11025
+%elif 0
     %define WaveFile "e:\music\godown.umx"
     WaveFileStart   equ 0
     Channels        equ 1       ;1-mono 2-stereo
@@ -54,7 +62,7 @@
 
 WaveHeader:         db "RIFF"
                     dd 4+24+8+WaveDataSize
-                    dd "WAVE","fmt "
+                    db "WAVE","fmt "
                     dd 16               ;format info header size
                     dw Mode,Channels    ;PCM/Channels
                     dd SampleRate,SampleRate*BytesPerSample*Channels

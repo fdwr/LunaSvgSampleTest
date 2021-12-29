@@ -1,0 +1,11 @@
+This early version of Spc2Midi (Spc2Dsp.exe) just dumps the DSP events to a .dsp file
+which can then be played by DspPlay.exe. Later versions of Spc2Midi lack .dsp dumping
+since they play the music directly.
+
+The file format is very simple:
+
+- 128 bytes of SPC700 DSP RAM
+- 6 byte records
+    - uint32 clock cycle of register write (2496000 per second). This limits a single DSP to 28.6 minutes.
+    - uint8 register index (channel = byte >> 4; command = byte & 4; just like actual DSP)
+    - uint8 register value

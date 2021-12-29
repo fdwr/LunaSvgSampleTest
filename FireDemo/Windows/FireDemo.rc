@@ -1,0 +1,30 @@
+1 VERSIONINFO
+FILEVERSION 2,0,0,0
+PRODUCTVERSION 2,0,0,0
+FILEFLAGSMASK 0x0000003FL
+FILEFLAGS 0
+FILEOS 40004h //VOS_NT_WINDOWS32
+FILETYPE 1 //VFT_APP
+FILESUBTYPE 0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "FileVersion", "20020501"
+            VALUE "ProductVersion", "20020501"
+            VALUE "FileDescription","Shows fire demo"
+            VALUE "ProductName","Piken's Fire Demo"
+            VALUE "LegalCopyright","Copyright\251 2002 Dwayne Robinson"
+            VALUE "Company Name", "PikenSoft"
+            VALUE "Author Address", "FDwR@hotmail.com\r\nhttp://fdwr.tripod.com/"
+            VALUE "Purpose","Displays a beautiful fire scene while discouraging annoying people - that sit down at your computer and close all your open programs - from touching your station ):-\"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409,1252
+    END
+END
+
+1 ICON FireDemo.ico

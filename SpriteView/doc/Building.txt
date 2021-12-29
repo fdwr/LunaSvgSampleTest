@@ -1,0 +1,10 @@
+SpriteView for DOS requires:
+
+- NASM (Netwide Assembler https://nasm.us/), a great and powerful assembler that is so much more readable than disgusting GAS/AT&T syntax.
+- Alink by Anthony Williams (https://sourceforge.net/projects/alink/), to link the .coff into an executable .exe.
+- WDOSX memory extender by Michael Tippach (http://tippach.business.t-online.de/wdosx/), to wrap the executable to access more memory.
+
+The tools/ folder includes them for convenience (they are fairly small anyway).
+Then run BuildDos.bat
+
+Note you'll need to build on 32-bit Windows, or (awkwardly) build half of it on Win64 (NASM and ALINK) and then rerun it in DOSBox for STUBIT.
