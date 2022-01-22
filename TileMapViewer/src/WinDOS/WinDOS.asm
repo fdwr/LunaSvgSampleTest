@@ -1111,8 +1111,9 @@ section code
     and bl,70h                          ;access bits 4-6 for file sharing
     and al,03h                          ;access bits 0-2 for desired file access
     shr bl,4
-    movzx ecx,[.OpenExistingFileAccessTable + eax]
-    movzx ebx,[.OpenExistingFileSharingTable + ebx]
+    movzx ecx,byte [.OpenExistingFileAccessTable + eax]
+    movzx ebx,byte [.OpenExistingFileSharingTable + ebx]
+    shl ecx,24
     xor eax,eax
 
     api CreateFileA, edx, ecx,ebx, eax, OPEN_EXISTING, eax,eax

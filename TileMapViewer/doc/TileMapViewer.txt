@@ -177,7 +177,7 @@ Keys
     u           Change unit bit size (1-32 bit)
     U           Double to next bit size
     e           Toggle endianness increasing LE/decreasing BE
-    + -         Decrease/increase right shift
+    < >         Decrease/increase right shift
     / *         Decrease/increase bitmask size
 
   Others:
@@ -254,6 +254,9 @@ Past:
             Added 1:1 pixels mode with '2' key.
 2021-11-11  Add minidialogs for goto, wrap, and unit size, adding some examples to type. Minor polish in help screen.
 2021-11-14  Fix Gameboy tile conversion when passing "-m gb" and loading from VRAM (was treated as 4bpp rather than 2bpp).
+2022-01-22  Display in status bar cyan colored characters for corresponding keypress.
+            Change bitmask keys from + - to > <, which resembles >> and << in C.
+            Fix 'U' key cycling through units to include 32-bit (only went up to 16).
 
 Future: (hopes, no promises)
 - Unify this with SpriteView and BgMapper to avoid duplicate functionality

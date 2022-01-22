@@ -18,8 +18,8 @@ if "%TEMP%"=="" (
 @cd %SOURCE_PATH%
 
 %TOOLS_PATH%\nasmw.exe -f win32 -w+orphan-labels tmv.asm -o %TEMP%\TmvDos.cof -dDosVer -I%INCLUDE_PATH%\windos\
-%TOOLS_PATH%\alink.exe -oPE -o TmvDos.exe %TEMP%\TmvDos.cof -entry Main -subsys con
-%TOOLS_PATH%\stubit.exe -nowfse TmvDos.exe
+%TOOLS_PATH%\alink.exe -oPE -o %OUTPUT_PATH%\TmvDos.exe %TEMP%\TmvDos.cof -entry Main -subsys con
+%TOOLS_PATH%\stubit.exe -nowfse %OUTPUT_PATH%\TmvDos.exe
 
 @cd ..
 

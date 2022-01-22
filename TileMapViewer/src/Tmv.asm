@@ -1219,7 +1219,7 @@ ViewWindowScroll:
 .ShiftUnitSize:
     shl eax,1
     cmp eax,BlitTileStruct.UnitBitSizeMax
-    jb .ValidUnitSize
+    jbe .ValidUnitSize
     mov eax,1                       ;restart at lowest unit bit size
     and byte [FileTiles.Orientation],~BlitTileStruct.BackwardsEndian
     ;jmp short .ValidUnitSize
@@ -1365,8 +1365,8 @@ db "]"
 db "["
 db "}"
 db "{"
-db "+"
-db "-"
+db ">"
+db "<"
 db "*"
 db "/"
 db "u"
@@ -1812,74 +1812,91 @@ RedrawViewingWindow:
     mov eax,[ViewWindow.FilePosition]
     movzx ebx,byte [ViewWindow.PosRadix]
     mov edx,'    '
-    mov edi,StatusBar.Pos+1
+    mov edi,StatusBar.Pos+2
     test byte [ViewWindow.Options],ViewWindow.UseOffsetBase
     jz .NoOffsetBase
     sub eax,[ViewWindow.FileOffsetBase]
-    mov edx,'  r '
+    mov dl,'r'
   .NoOffsetBase:
     cmp bl,10
     je .PosInDec
     mov dh,'h'
   .PosInDec:
-    mov dl,[FileTiles.SrcBit]
-    add dl,'0'
+    mov [StatusBar.RadixRelative],dx
     mov ecx,8
-    mov [edi+9],edx
     call NumToString.AnyRadix
     stosb
-    mov [StatusBar.Pos+ecx],byte 'g'
+    stosb
+    mov [StatusBar.Pos+ecx],word 'g'|(SccWhite<<8)
 
+    mov dl,[FileTiles.SrcBit]
+    add dl,'0'
+    mov [StatusBar.PosBit],dl
+
+    ; show wrap width
     mov eax,[FileTiles.SrcWrap]
-    mov edi,StatusBar.Wrap+1
+    mov edi,StatusBar.Wrap+2
     mov ecx,4
     call NumToString.AnyLength
     stosb
-    mov [StatusBar.Wrap+ecx],byte 'w'
+    stosb
+    mov [StatusBar.Wrap+ecx],word 'w'|(SccWhite<<8)
 
+    ; show unit size
     mov eax,[FileTiles.UnitBitSize]
-    mov edi,StatusBar.Bits+1
+    mov edi,StatusBar.Bits+2
     mov ecx,2
     call NumToString.AnyLength
     stosb
-    mov [StatusBar.Bits+ecx],byte 'u'
-    test byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
-    mov dl,'+'
-    jz .LittleEndian
-    mov dl,'-'
-  .LittleEndian:
-    mov [StatusBar.Bits+3],dl
+    stosb
+    mov [StatusBar.Bits+ecx],word 'u'|(SccWhite<<8)
 
-    ; show mask & shift
+    ; show endianness
+    test byte [FileTiles.Orientation],BlitTileStruct.BackwardsEndian
+    mov dl,'e'
+    jz .LittleEndian
+    mov dl,'E'
+  .LittleEndian:
+    mov [StatusBar.Endianness+0],dl
+
+    ; show mask
     mov eax,[FileTiles.Mask]
     mov ebx,16                  ;hexadecimal
     mov ecx,8
-    mov edi,StatusBar.Mask+1
+    mov edi,StatusBar.Mask+2
     call NumToString.AnyRadix
     stosb
-    mov [StatusBar.Mask+ecx],byte '&'
+    stosb
+    mov [StatusBar.Mask+ecx],word '&'|(SccWhite<<8)
 
+    ; show shift
     movzx eax,byte [FileTiles.Shift]
     mov ecx,2
-    mov edi,StatusBar.Shift+2
+    mov edi,StatusBar.Shift+3
     call NumToString.AnyLength
     stosb
     stosb
+    stosb
     mov [StatusBar.Shift+ecx],word '>>'
+    mov [StatusBar.Shift+ecx+2],byte SccWhite
 
     ; show current orientation
     mov al,[FileTiles.Orientation]
     and al,BlitTileStruct.OrientMask
     add al,'0'
-    mov [StatusBar.Orientation+1],al
+    mov [StatusBar.Orientation+2],al
 
     call .StatusBarClearBackground
 
-    push dword (StatusBar.PixelY)|(StatusBar.PixelX<<16)  ;row/col
-    push dword StatusBar
     mov byte [PrintCharString.Color],GuiColorText
-    call PrintCharStringStd
-    add esp,byte 8
+    ;push dword (StatusBar.PixelY)|(StatusBar.PixelX<<16)  ;row/col
+    ;push dword StatusBar
+    ;call PrintCharStringStd
+    ;add esp,byte 8
+    ;call PrintCharStringStd
+    ;!!!
+    pushcall PrintControlString, StatusBar, makeyxparam(StatusBar.PixelY, StatusBar.PixelX), makeyxparam(StatusBar.PixelHeight, StatusBar.PixelWidth)
+
 .End:
     ;copy buffer to display
     debugwrite "RedrawViewingWindow.End"
@@ -3057,10 +3074,10 @@ BlitTile:
 ;.SegaGen:
 ;.SnesM7:
 .Gb:;GameBoy tilemap byte, no vh flip, palette, or layer
-    shl eax,4
+    shl eax,4                   ;16 bytes per GB graphic tile
     add eax,[Vram.Base]         ;add either 0 or 800h
-    and eax,0FFFh               ;wrap within 256 tiles
-    shl eax,2                   ;*64 bytes per tile graphic
+    and eax,0FFFh               ;wrap within 256 tiles (256 * 16 bytes per GB graphic tile)
+    shl eax,2                   ;*64 bytes per cached tile graphic
     lea esi,[Vram.Buffer+eax]
  .GbBlit:
     mov edx,[BlitTiles.DestWrap]
@@ -3848,7 +3865,7 @@ CacheVram:
 ; (esi=8x8 64-byte tile) (al=most frequent color index)
 ; Finds the most frequent color in an 8x8 tile by counting all the colors
 ; and returning the one with the highest score. To discourage transparency
-; from being returned too often, its score is always halved.
+; from being returned too often, its score is penalized.
 CountTileColors:
     cld
     sub esp,256
@@ -4252,10 +4269,9 @@ KeyScanFor:
 ; (eax=value, edi=text destination, ?ecx=max string length, ?ebx=radix) (ecx=offset of first digit)
 ; Turns a 32bit unsigned number into a decimal string, writing it to edi.
 ; Potential problems: It does not check that radix passed to it is valid, so
-; passing a negative radix could have unpredictable results, or passing it
-; zero could cause a divide overflow. Passing a string length longer than the
-; destination really is will cause it to overwrite data. 4294967295 is the
-; largest number it can handle.
+; passing a radix could have unpredictable results, or passing zero will cause
+; a division overflow. Passing a string length longer than the actual destination
+; will overwrite data. 4294967295 is the largest number it can handle.
 ;
 NumToString:
     mov ecx,NumStringMaxLen ;default maximum of ten characters
@@ -4596,7 +4612,7 @@ Text:
         db SccCyan,"  u      ",SccWhite,"Set unit size (1-32 bits) e.g. '4-'",SccCr
         db SccCyan,"  U      ",SccWhite,"Next unit size",SccCr
         db SccCyan,"  e      ",SccWhite,"Toggle endianness (+LE/-BE)",SccCr
-        db SccCyan,"  - +    ",SccWhite,"Decrease/Increase shift",SccCr
+        db SccCyan,"  < >    ",SccWhite,"Decrease/Increase shift",SccCr
         db SccCyan,"  / *    ",SccWhite,"Decrease/Increase bitmask",SccCr
         db SccCr
         db SccGreen,"Changing display format:",SccCr
@@ -4644,7 +4660,7 @@ Text:
         db "  tmv -g 2000 -u 16 zelda.zst -t 78000,2,2,2 zelda.smc",13,10
         db "  tmv -g 110000 -w 256 mario2.smc",13,10
         db "  tmv -g 127CE2 -w 32 -m 2 dkc.fig",13,10
-        db "  tmv -t 20AAD6,4,4,2 -g 203836 -w 16 -u 16 -o dkc.fig dkc.zs9",13,10
+        db "  tmv -t 20AAD6,4,4,2 -g 203836 -w 16 -u 16 -o 4 dkc.fig dkc.zs9",13,10
         db 13,10
         db "Compiled with NASM/YASM compiler and WDOSX.",13,10
         db "Viewer written by Dwayne Robinson, for curiosity's sake.",13,10
@@ -4675,12 +4691,26 @@ Text:
 %endif
 
 StatusBar:
-.Pos:   db "g12345678.9hr "
-.Wrap:  db "w1234 "
-.Bits:  db "u12l "
-.Mask:  db "&12345678 "
-.Shift: db ">>12 "
-.Orientation: db "o#",0
+                db SccCyan
+.Pos:           db "g",SccWhite,"12345678."
+.PosBit:        db "9"
+                db SccCyan
+.RadixRelative:
+.Radix:         db "h"
+                ;db SccCyan
+.Relative:      db "b "
+                db SccCyan
+.Wrap:          db "w",SccWhite,"1234 "
+                db SccCyan
+.Bits:          db "u",SccWhite,"12"
+                db SccCyan
+.Endianness:    db "e "
+                ;db SccCyan
+.Mask:          db "&",SccWhite,"12345678 "
+                db SccCyan
+.Shift:         db ">>",SccWhite,"12 "
+                db SccCyan
+.Orientation:   db "o",SccWhite,"1",0
 .PixelHeight equ GuiFont.GlyphPixelHeight
 .PixelWidth  equ Screen.DefaultWidth-5-5
 .PixelY equ Screen.DefaultHeight-.PixelHeight-5
