@@ -316,7 +316,7 @@ struct PgfxLayer {
 		// The value in .left can be interpreted as:
 		//   Offset Column: column is pixel offset from same edge
 		//     x = section_left + layer_left
-		//   Opposite offsett: column is instead pixel offset from opposite edge
+		//   Opposite offset: column is instead pixel offset from opposite edge
 		//     x = section_right - layer_left
 		//   Size: interpret as pixel width
 		//     x = layer_right - layer_left

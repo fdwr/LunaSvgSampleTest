@@ -70,6 +70,9 @@ endstruc
 	dw %6,%7	; x,y origin
 %endmacro
 ; (1pixels, 2type&flags, 3bpp, 4wrap, 5left, 6top, 7width, 8height, 9xorg, 10yorg)
+; note:
+; wrap is in element count, not byte count.
+; the pixels are adjusted by the left and top coordinate (so pass the unadjusted base image).
 ; computes left and top offset
 %macro DefPgtImage 10
 	dd %1+((%6)*(%4) + (%5)) * (%3) / 8	; (top*wrap + left) * bpp / 8
@@ -184,16 +187,16 @@ PgtLayer.FlagTile			equ PgtLayer.FlagTileHorz|PgtLayer.FlagTileVert
 ; The value in .left can be interpreted as:
 ;   Offset Column: column is pixel offset from same edge
 ;     x = section_left + layer_left
-;   Opposite offsett: column is instead pixel offset from opposite edge
+;   Opposite offset: column is instead pixel offset from opposite edge
 ;     x = section_right - layer_left
-;   Size: interpret as pixel width
+;   Size: interpret right as absolute coordinate to compute pixel width
 ;     x = layer_right - layer_left
 ;   Percent: interpret as percentage between section sides
 ;     x = section_left + (layer_left/1024) * section_width
 ; They are essentially the same for right, top, and bottom, except that
 ; corresponding variables are used and some signs are reversed.
 PgtLayer.FlagLeftMask		equ 3<<16
- PgtLayer.FlagLeftOffset		equ 0<<16
+ PgtLayer.FlagLeftOffset		equ 0<<16 ;The amount inset from the left edge
  PgtLayer.FlagLeftOpposite		equ 1<<16
  PgtLayer.FlagLeftSize			equ 2<<16
  PgtLayer.FlagLeftPercent		equ 3<<16
