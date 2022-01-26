@@ -1,5 +1,5 @@
 ========
-Tilemap Viewer 1.9.3 (c)1998-2021 PikenSoft
+Tilemap Viewer 1.9.4 (c)1998-2022 PikenSoft
 File pattern viewer (speedy and tiny)
 By Dwayne Robinson, using Yasm/Nasm/WDOSX/Alink
 http://pikensoft.com/
@@ -179,6 +179,7 @@ Keys
     e           Toggle endianness increasing LE/decreasing BE
     < >         Decrease/increase right shift
     / *         Decrease/increase bitmask size
+    &           Set hexadecimal bitmask
 
   Others:
     g           Goto file position (depends on hex/dec offset)
@@ -257,6 +258,7 @@ Past:
 2022-01-22  Display in status bar cyan colored characters for corresponding keypress.
             Change bitmask keys from + - to > <, which resembles >> and << in C.
             Fix 'U' key cycling through units to include 32-bit (only went up to 16).
+2022-01-25  Add '&' to set unit bitmask.
 
 Future: (hopes, no promises)
 - Unify this with SpriteView and BgMapper to avoid duplicate functionality

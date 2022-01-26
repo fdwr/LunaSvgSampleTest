@@ -6,7 +6,7 @@ xcopy /d %COMPILER_BIN_PATH%\rc.exe tools\
 xcopy /d %COMPILER_BIN_PATH%\rcdll.dll tools\
 xcopy /d %COMPILER_BIN_PATH%\alink.exe tools\
 xcopy /d %COMPILER_BIN_PATH%\yasm-1.3.0-win32.exe tools\
-xcopy /d %COMPILER_BIN_PATH%\STUBIT.EXE tools\
+xcopy /d %COMPILER_BIN_PATH%\Stubit.exe tools\
 xcopy /d %COMPILER_BIN_PATH%\msvcr100.dll tools\
 
 xcopy /d /s ..\WinDOS\* src\WinDOS\

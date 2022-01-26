@@ -1113,17 +1113,32 @@ ViewWindowScroll:
     call SetPalette; (esi=palette ptr)
     jmp .SetFullChange
 
-.DecMask:
+.DecreaseMask:
     mov eax,[FileTiles.Mask]
     shr eax,1
     jmp short .SetMask
-.IncMask:
+.IncreaseMask:
     mov eax,[FileTiles.Mask]
     shl eax,1
     ;jmp short .SetMask
 .SetMask:
     or eax,1
     mov [FileTiles.Mask],eax
+    jmp .SetPartialChange
+
+.AskMask:
+    mov esi,Text.EmptyString
+    mov ebx,Text.PromptMask
+    call ViewingWindowPrompt
+    jbe near .SetStatBarChange      ;cancel
+    ; esi=string, ecx=string length
+    mov ebx,16
+    call StringToNum.AnyRadix       ;eax=value
+    test eax,eax
+    jnz .MaskNonzero
+    inc eax
+.MaskNonzero:
+    mov dword [FileTiles.Mask],eax
     jmp .SetPartialChange
 
 .DecShift:
@@ -1361,32 +1376,33 @@ dd .KeysList
 db .KeysListNormalKeyCount,.KeysListExtendedKeyCount
 
 .KeysList:
-db "]"
-db "["
-db "}"
-db "{"
-db ">"
-db "<"
-db "*"
-db "/"
-db "u"
-db "U"
-db "e"
-db "h"
-db "b"
-db "B"
+db "]"  ;increment wrap width
+db "["  ;decrement wrap width
+db "}"  ;double wrap width
+db "{"  ;halve wrap width
+db ">"  ;increase shift
+db "<"  ;decrease shift
+db "*"  ;increase mask
+db "/"  ;decrease mask
+db "&"  ;ask mask
+db "u"  ;unit size
+db "U"  ;next unit size
+db "e"  ;endianness
+db "h"  ;hex/dec
+db "b"  ;base, relative or absolute
+db "B"  ;set base
 %if 0 ;disable until I can correct the cycling
 db "m"
 db "M"
 %endif
-db "g"
-db "f"
-db "w"
+db "g"  ;goto
+db "f"  ;find bytes (not implemented)
+db "w"  ;wrap width
 %if Personal
 db "c"
 %endif
-db "o"
-db "p"
+db "o"  ;orientation
+db "p"  ;palette enable/disable
 .KeysListNumbersOffset  equ $-.KeysList
 db "123456789"      ; == NumberedFormatsTbl.Size
 db 15               ;Ctrl+O
@@ -1416,8 +1432,9 @@ dd .DoubleWrap      ;'}' double wrap
 dd .HalfWrap        ;'{' half wrap
 dd .IncShift        ;'+' increment shift
 dd .DecShift        ;'-' decrement shift
-dd .IncMask         ;'*' increment mask
-dd .DecMask         ;'/' decrement mask
+dd .IncreaseMask    ;'*' increase mask
+dd .DecreaseMask    ;'/' decrease mask
+dd .AskMask         ;'&'
 dd .AskUnitSize     ;'u' enter unit bite size
 dd .NextUnitSize    ;'U' 1,2,4,8,16,32
 dd .ToggleEndianness;'e' toggle between increasing/decreasing endianness
@@ -1429,7 +1446,7 @@ dd .NextMode        ;'m' - disable until I can correct the cycling
 dd .PreviousMode    ;'M'
 %endif
 dd .Goto            ;'g' goto position
-dd .FindBytes       ;'f' find data
+dd .FindBytes       ;'f' find data (not implemented)
 dd .AskWrapWidth    ;'w' set wrap width
 %if Personal
 dd .SetColorValue   ;'c' set color data value
@@ -1816,7 +1833,7 @@ RedrawViewingWindow:
     test byte [ViewWindow.Options],ViewWindow.UseOffsetBase
     jz .NoOffsetBase
     sub eax,[ViewWindow.FileOffsetBase]
-    mov dl,'r'
+    mov dl,'b'
   .NoOffsetBase:
     cmp bl,10
     je .PosInDec
@@ -1889,12 +1906,6 @@ RedrawViewingWindow:
     call .StatusBarClearBackground
 
     mov byte [PrintCharString.Color],GuiColorText
-    ;push dword (StatusBar.PixelY)|(StatusBar.PixelX<<16)  ;row/col
-    ;push dword StatusBar
-    ;call PrintCharStringStd
-    ;add esp,byte 8
-    ;call PrintCharStringStd
-    ;!!!
     pushcall PrintControlString, StatusBar, makeyxparam(StatusBar.PixelY, StatusBar.PixelX), makeyxparam(StatusBar.PixelHeight, StatusBar.PixelWidth)
 
 .End:
@@ -4614,6 +4625,7 @@ Text:
         db SccCyan,"  e      ",SccWhite,"Toggle endianness (+LE/-BE)",SccCr
         db SccCyan,"  < >    ",SccWhite,"Decrease/Increase shift",SccCr
         db SccCyan,"  / *    ",SccWhite,"Decrease/Increase bitmask",SccCr
+        db SccCyan,"  &      ",SccWhite,"Set hexadecimal bitmask",SccCr
         db SccCr
         db SccGreen,"Changing display format:",SccCr
         %if 0 ;disable until I can correct the cycling
@@ -4681,6 +4693,7 @@ Text:
 .PromptColorValue:      db "Write new color value to file: #",0
 .PromptGotoPosition:    db "Goto position (0-filelastbyte)",0
 .PromptWrapWidth:       db "Wrap width (1-2048) e.g. 16,32,128,320,640...",0
+.PromptMask:            db "Mask (0-FFFFFFFF) e.g. F0,7FE0,AAAA",0
 .PromptUnitBitSize:     db "Unit bit size (1-32) e.g. 1,3,4-,4+,12,24,32",0
 .PromptOpenFilename:    db "Open filename",0
 %ifdef debug
