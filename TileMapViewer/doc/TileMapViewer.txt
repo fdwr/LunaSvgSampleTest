@@ -259,6 +259,8 @@ Past:
             Change bitmask keys from + - to > <, which resembles >> and << in C.
             Fix 'U' key cycling through units to include 32-bit (only went up to 16).
 2022-01-25  Add '&' to set unit bitmask.
+2022-01-26  For current orientation on status bar, show little arrows
+2022-01-27  Colored numbers now display with shaded outline to make them easier to see against background, and they retain a square shape regardless of unit size to make it easier to see structures, because wide blocks distorted them.
 
 Future: (hopes, no promises)
 - Unify this with SpriteView and BgMapper to avoid duplicate functionality

@@ -32,7 +32,7 @@ ClearScreen:
 ; Blits a single colored, transparent character to any 8bit destination.
 ;
 ; Initial regs:
-; esi=font character bitmask
+; esi=font character bitmask in backwards endian order
 ; edi=destination on screen or buffer
 ; edx=destination width minus character width todo: Change this to be straight wrap.
 ;  bl=character rows
@@ -66,9 +66,73 @@ FontMonochromeChar:
     add edi,edx
     dec ch
     jnz .NextRow
-.Clipped:
     ret
 
+
+;------------------------------
+; (esi=glyph 1bpp bitmap, edi=destination 8bpp bitmap, ebx=character rows/cols/color, edx=dest wrap width-char width)
+; Blits a single colored, 2 color character to any 8bit destination (color 0 is transparent).
+; Width is limited to 8 bits.
+;
+; Initial regs:
+; esi=font character bitmask (dibits in logical endian order, left to right, top to bottom, each row byte aligned)
+; edi=destination on screen or buffer
+; edx=destination width minus character width todo: Change this to be straight wrap.
+;  bl=character rows
+;  bh=character columns (need not be multiple of 8, but source rows must be byte aligned)
+; ebl=pixel color #1 (0-255)
+; ebh=pixel color #2 (0-255)
+;
+align 16
+FontTwoColorChar:
+    mov ch,bl               ;copy height
+    mov ah,bh               ;copy width
+    shr ebx,16              ;bring colors #1 and #2 down
+    cld                     ;set direction forward!
+
+; Regs:
+;  ch=character rows
+;  ah=character columns
+;  bl=pixel color #1
+;  bh=pixel color #2
+;  ch=row counter
+;  cl=column counter
+;  edi=screen destination
+;  esi=character bits
+;  edx=screen wrap
+
+.NextRow:
+    xor cl,cl               ;reset column count
+    lodsb                   ;read first (leftmost) pixel group
+.NextCol:
+    test al,0x03
+    jz .Color0              ;transparent pixel, so just skip it
+    test al,0x02
+    jz .Color1
+.Color2:
+    mov [edi],bh
+    jmp short .IncrementPixel
+.Color1:
+    mov [edi],bl
+.Color0:
+.IncrementPixel:
+    shr al,2
+    inc edi
+    inc cl
+    cmp cl,ah
+    jae .EndCol
+    test cl,0x03            ;if count is not aligned to multiple of 4, use rest of old byte
+    jnz .NextCol
+.ReadNextByte:
+    lodsb
+    jmp short .NextCol
+.EndCol:
+    add edi,edx
+    dec ch
+    jnz .NextRow
+    ret
+
+;------------------------------
 
 section data
 align 4

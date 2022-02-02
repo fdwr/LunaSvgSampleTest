@@ -65,8 +65,9 @@ DefaultTileFont.GlyphPixelHeight    equ 8
 DefaultTileFont.GlyphPixelCount     equ DefaultTileFont.GlyphPixelHeight * DefaultTileFont.GlyphPixelWidth
 GuiFont.GlyphPixelHeight            equ 7
 GuiFont.GlyphPixelWidth             equ 5
-SmallHexFont.GlyphPixelWidth        equ 5
-SmallHexFont.GlyphPixelHeight       equ 5
+SmallHexFont.GlyphPixelWidth        equ 7
+SmallHexFont.GlyphPixelHeight       equ 7
+SmallHexFont.CharacterSpacing       equ -1 ; Negative spacing brings them closer and shaded outlines overlap.
 
 WindowRedraw:
 .StatusBar      equ 1
@@ -145,6 +146,7 @@ GuiColorBottom          equ 0
 GuiColorBackDword       equ 08080808h
 GuiColorHashDword       equ 08000800h
 GuiColorText            equ 15
+GuiColorBlack           equ 0
 
 File.BufferByteSize     equ 2097152; 262144 (old value for maxwrap=512)
 ;ExportBuffer.Size      equ 262144
@@ -1833,11 +1835,11 @@ RedrawViewingWindow:
     test byte [ViewWindow.Options],ViewWindow.UseOffsetBase
     jz .NoOffsetBase
     sub eax,[ViewWindow.FileOffsetBase]
-    mov dl,'b'
+    mov dh,'b'
   .NoOffsetBase:
     cmp bl,10
     je .PosInDec
-    mov dh,'h'
+    mov dl,'h'
   .PosInDec:
     mov [StatusBar.RadixRelative],dx
     mov ecx,8
@@ -1900,8 +1902,13 @@ RedrawViewingWindow:
     ; show current orientation
     mov al,[FileTiles.Orientation]
     and al,BlitTileStruct.OrientMask
-    add al,'0'
-    mov [StatusBar.Orientation+2],al
+    lea esi,[eax+eax*2]                 ;*3
+    add esi,StatusBar.OrientationStrings
+    mov edi,StatusBar.Orientation+2
+    cld
+    movsb
+    movsb
+    movsb
 
     call .StatusBarClearBackground
 
@@ -2968,8 +2975,8 @@ BlitTile:
 .NumericValue:
     ;Clear the background behind the number.
     push edi
-    mov esi,SmallHexFont.GlyphPixelHeight+2
-    movzx ebx,byte [FileTiles.TileWidth];
+    movzx esi,byte [FileTiles.TileHeight]
+    movzx ebx,byte [FileTiles.TileWidth]
     mov edx,[BlitTiles.DestWrap]
     sub edx,ebx
 .NextNumBgLine:
@@ -2980,34 +2987,7 @@ BlitTile:
     jnz .NextNumBgLine
     pop edi
 
-    ;Select glyph color based on how light the background color is.
-    ;Add the R G B channels together to gauge lightness (ignoring lower bits)
-    mov ecx,eax
-    and ecx,255                         ;clamp to palette entry size
-    lea ebx,[ecx*2+ecx]                 ;*3
-    add ebx,[Display.PalettePtr]
-    mov ecx,[ebx]                       ;read BGRA value
-    and ecx,00FCFCFCh
-    mov ebx,ecx
-    shr ebx,8
-    add ecx,ebx
-    shr ebx,8
-    add ecx,ebx
-    and ecx,000003FFh
-    cmp ecx,(64*3)*1/2
-    mov ebx,(GuiColorTop<<16)           ;light gray is a readable default
-    jb .NumericValueDimColor
-    mov ebx,(GuiColorBack<<16)          ;dark gray is better with light background
-.NumericValueDimColor:
-
-;    mov ebx,eax             ;copy color
-;    cmp bl,GuiColorBack
-;    jne .NumColorOk
-;    dec ebx
-;  .NumColorOk:
-;    shl ebx,16              ;shift color into upper 16 bits
-;    or ebx,5|(5<<8)         ;merge character height/width with color
-    or ebx,SmallHexFont.GlyphPixelHeight|(SmallHexFont.GlyphPixelWidth<<8);merge character height/width with color
+    mov ebx,(GuiColorTop<<16)|(GuiColorBlack<<24)|(SmallHexFont.GlyphPixelHeight)|(SmallHexFont.GlyphPixelWidth<<8);merge character height/width with color
     push ebx                ;save character height/width/color
 
     ;Convert the value to digits.
@@ -3026,8 +3006,8 @@ BlitTile:
     jnz .DivNextChar
 
     ;add centered offset to destination
-    add edi,[BlitTiles.DestWrap]
-    add edi,byte 2              ;move 2 pixels right
+    mov edx,[BlitTiles.DestWrap]
+    lea edi,[edi+edx*1+1]       ;move 2 pixels down and 2 pixels right
   .DrawNextChar:
     mov ebx,[esp]               ;get character height/width/color
     xor eax,eax                 ;cancel out upper 24 bits
@@ -3036,13 +3016,13 @@ BlitTile:
     push esi                    ;save current character ptr
     mov edx,[BlitTiles.DestWrap]
     sub edx,byte SmallHexFont.GlyphPixelWidth ;set screen wrap for blit
-    imul eax,SmallHexFont.GlyphPixelHeight ;width cancels out because 8-bits per scanline
+    imul eax,SmallHexFont.GlyphPixelHeight * ((SmallHexFont.GlyphPixelWidth * 2 + 7) / 8)
     lea esi,[SmallHexFont.Chars+eax]
-    call FontMonochromeChar
+    call FontTwoColorChar
     pop esi
     pop edi
     inc esi                     ;next character
-    add edi,byte SmallHexFont.GlyphPixelWidth + 1 ;move right by glyph width in pixel
+    add edi,byte SmallHexFont.GlyphPixelWidth + SmallHexFont.CharacterSpacing ;move right
     dec byte [.DigitCounter]
     jnz .DrawNextChar
 
@@ -3429,9 +3409,9 @@ SetTileFormat:
     jb .NvNextDigit
 .NvLastDigit:
     mov [BlitTile.NumDigits],cl ;save number of digits highest value has
-    lea ecx,[ecx*2+ecx]         ;*3
-    lea ecx,[ecx*2+4]           ;*2+4  "(ecx*6)+4"
-    mov byte [edi+BlitTileStruct.TileHeight],7  ;set tile height
+    imul ecx,(SmallHexFont.GlyphPixelWidth + SmallHexFont.CharacterSpacing)
+    add ecx,byte 3              ;add horizontal padding
+    mov [edi+BlitTileStruct.TileHeight],cl ;Note SmallHexFont.GlyphPixelHeight should be equal in size
     mov [edi+BlitTileStruct.TileWidth],cl
     ret
 
@@ -4573,12 +4553,12 @@ DefaultTileFont:
 GuiFont:
 .Chars:             equ $-128       ;adjust base pointer since font only includes characters 32-127
                     incbin "Gui5x7_1bit.fnt"
-;.GlyphPixelHeight  equ 7
+;.GlyphPixelHeight  equ 7 ;defined above
 ;.GlyphPixelWidth   equ 5
 SmallHexFont:
-.Chars:             incbin "SmallHex5x5_1bit.fnt"
-;.GlyphPixelWidth   equ 5
-;.GlyphPixelHeight  equ 5
+.Chars:             incbin "SmallHex7x7_2bit.fnt"
+;.GlyphPixelWidth   equ 7 ;defined above
+;.GlyphPixelHeight  equ 7
 
 ; Experimental numeric glyphs:
 ;   0     1     2       3       4       5       6       7       8       9       ?
@@ -4598,7 +4578,7 @@ Text:
 .KeyHelp:
         db SccWhite,"Tilemap Viewer ",SccWhite,ProgramVersionStr, SccCr
         db SccWhite,"File pattern viewer",SccCr
-        db SccBlack,SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccWhite," 2021",SccCr
+        db SccBlack,SccRed,"P",SccYellow,"i",SccGreen,"k",SccCyan,"e",SccPurple,"n",SccWhite," 2022",SccCr
         db SccCr
         db SccWhite,"(Press down ",SccCyan,25,SccWhite," or ",SccCyan,"PgDn",SccWhite," for more, ",SccCyan,"Esc",SccWhite," to exit help)",SccCr
         db SccCr
@@ -4723,7 +4703,16 @@ StatusBar:
                 db SccCyan
 .Shift:         db ">>",SccWhite,"12 "
                 db SccCyan
-.Orientation:   db "o",SccWhite,"1",0
+.Orientation:   db "o",SccWhite,"0",1Ah,19h
+.End:           db 0
+.OrientationStrings:    db "0",1Ah,19h
+                        db "1",1Bh,19h
+                        db "2",1Ah,18h
+                        db "3",1Bh,18h
+                        db "4",19h,1Ah
+                        db "5",18h,1Ah
+                        db "6",19h,1Bh
+                        db "7",18h,1Bh
 .PixelHeight equ GuiFont.GlyphPixelHeight
 .PixelWidth  equ Screen.DefaultWidth-5-5
 .PixelY equ Screen.DefaultHeight-.PixelHeight-5

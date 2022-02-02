@@ -2,7 +2,7 @@
 ;The 5x5 character set consists of only 0-9,A-F since it only needs to
 ;display binary, decimal, or hex numbers, not any character strings.
 ;
-; nasm SmallHex.asm -o SmallHex.fnt
+; tools\nasmw.exe src\SmallHex5x5_1bit.asm -o src\SmallHex5x5_1bit.fnt
 
 ;0
 db 01110000b
