@@ -4936,16 +4936,18 @@ unlocals
 
 ;//////////////////////////////////////////////////////////////////////////////
 ; 20050404	created
-; Maps 32bit to 32bit using chroma map. The unusual palette passed to this
-; function has 1024 entries, consisting of four palettes concatenated, one
-; for each chroma.
+; Maps 32bit to 32bit using chroma map consisting of of four 256-color palettes
+; concatenated (total 1024 uint32 entries), one for each chroma. The exact
+; interpretation of the output entries are unspecified, as they could be uint32
+; values directly, BGRA (4 8-bit channels), or another channel combination so
+; long as the values are set such that they don't overflow across channels.
 ;
-; dword = pal[B] + pal[G] + pal[R] + pal[A]
+; dword = pal[B + 0] + pal[G + 256] + pal[R + 512] + pal[A + 768]
 ;
 ; Potential uses include:
-; -convoluting colors
-; -determining distance (R^2+G^2+B^2)
-; -converting to high precision monochrome (.30R+.59G+.11B)
+; -convoluting/swizzling colors, outputting BGRA
+; -determining distance (R^2+G^2+B^2), outputting uint32
+; -converting to high precision monochrome (.30R+.59G+.11B), outputting uint32
 ;
 %ifdef UseBlitPal32i32i32p
 csym BlitPal32i32i32p

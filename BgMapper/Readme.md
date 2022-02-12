@@ -20,3 +20,7 @@ Source files:
 - src/BgTile.asm - Tile conversion, savestate loading, scene rendering
 - src/Memory.inc - Memory allocation (thanks to Gaz Jones)
 - src/System.inc - Program startup/shutdown
+
+## License
+
+See [License.txt]. tldr: Do whatever you want with it - I don't care.
