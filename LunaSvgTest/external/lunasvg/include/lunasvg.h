@@ -106,6 +106,9 @@ public:
      */
     static std::unique_ptr<Document> loadFromFile(const std::string& filename);
 
+    // TODO: Conditionalize on Windows build (UTF-16).
+    static std::unique_ptr<Document> loadFromFile(const std::wstring& filename);
+
     /**
      * @brief Creates a document from a string
      * @param string - string to load

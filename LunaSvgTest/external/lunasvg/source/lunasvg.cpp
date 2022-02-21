@@ -93,6 +93,20 @@ std::unique_ptr<Document> Document::loadFromFile(const std::string& filename)
     return loadFromData(content);
 }
 
+std::unique_ptr<Document> Document::loadFromFile(const std::wstring& filename)
+{
+    std::ifstream fs;
+    fs.open(filename);
+    if(!fs.is_open())
+        return nullptr;
+
+    std::string content;
+    std::getline(fs, content, '\0');
+    fs.close();
+
+    return loadFromData(content);
+}
+
 std::unique_ptr<Document> Document::loadFromData(const std::string& string)
 {
     return loadFromData(string.data(), string.size());

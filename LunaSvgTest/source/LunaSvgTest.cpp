@@ -1,5 +1,22 @@
-// LunaSvgTest.cpp : Defines the entry point for the application.
-//
+/*
+LunaSvgTest.cpp: Main application.
+
+TODO:
+    Fix void Canvas::rgba() to use macros. canvas.cpp line 195
+        plutovg-private.h
+        #define plutovg_alpha_shift 24
+        #define plutovg_red_shift 0
+        #define plutovg_green_shift 8
+        #define plutovg_blue_shift 16
+
+    Gridfitting prototype - add extended SVG attributes for gridfitting
+        Anchor points (round up, down, left, right, in, out)
+        Round relative another point
+        Round even/odd (e.g. 1 and 3 pixel lines vs 2 and 4 pixel lines)
+        Translate anchor and entire grouped object and then stretch by other anchor
+        Set minimum path width
+        Conditional visibility based on device pixels per canvas unit
+*/
 
 #include "precomp.h"
 #include "LunaSvgTest.h"
@@ -8,40 +25,82 @@
 
 constexpr size_t MAX_LOADSTRING = 100;
 // Global Variables:
-HINSTANCE hInst;                                // current instance
+HINSTANCE g_instanceHandle;                     // current process instance
+HWND g_windowHandle;
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
+enum class BitmapSizingDisplay
+{
+    SingleSize,
+    WindowSize,
+    Waterfall,
+};
+
+enum class BackgroundColorMode
+{
+    TransparentBlack,
+    GrayCheckerboard,
+    OpaqueWhite,
+};
+
+const uint32_t g_bitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
+std::unique_ptr<lunasvg::Document> g_document;
+unsigned int g_bitmapMaximumSize = 0x16;
+BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
+BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 lunasvg::Bitmap g_bitmap;
 
 // Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitializeInstance(HINSTANCE, int);
+LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
+void RedrawSvg(HWND hWnd);
 
 int APIENTRY wWinMain(
-    _In_ HINSTANCE hInstance,
-    _In_opt_ HINSTANCE hPrevInstance,
-    _In_ LPWSTR lpCmdLine,
+    _In_ HINSTANCE instanceHandle,
+    _In_opt_ HINSTANCE previousInstance,
+    _In_ LPWSTR commandLine,
     _In_ int nCmdShow
     )
 {
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(previousInstance);
+    UNREFERENCED_PARAMETER(commandLine);
+
+    // Parse parameters.
+    wchar_t fileName[MAX_PATH];
+    fileName[0] = 0;
+    int argumentCount = 0;
+    wchar_t** arguments = CommandLineToArgvW(GetCommandLine(), &argumentCount);
+    if (arguments != nullptr && argumentCount > 1)
+    {
+        wcsncpy_s(fileName, arguments[1], wcslen(arguments[1]));
+        LocalFree(arguments);
+    }
 
     // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_LUNASVGTEST, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
+    LoadStringW(instanceHandle, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    LoadStringW(instanceHandle, IDC_LUNASVGTEST, szWindowClass, MAX_LOADSTRING);
+    MyRegisterClass(instanceHandle);
 
     // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitializeInstance(instanceHandle, nCmdShow))
     {
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LUNASVGTEST));
+    // Load the file name if given.
+    if (fileName[0])
+    {
+        g_document = lunasvg::Document::loadFromFile(fileName);
+        if (g_document)
+        {
+            RedrawSvg(g_windowHandle);
+        }
+    }
+
+    HACCEL hAccelTable = LoadAccelerators(instanceHandle, MAKEINTRESOURCE(IDC_LUNASVGTEST));
 
     MSG msg;
 
@@ -59,63 +118,530 @@ int APIENTRY wWinMain(
 }
 
 
-
-//
 //  FUNCTION: MyRegisterClass()
 //
 //  PURPOSE: Registers the window class.
 //
-ATOM MyRegisterClass(HINSTANCE hInstance)
+ATOM MyRegisterClass(HINSTANCE instanceHandle)
 {
     WNDCLASSEXW wcex;
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
     wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
+    wcex.lpfnWndProc    = &WindowProcedure;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LUNASVGTEST));
+    wcex.hInstance      = instanceHandle;
+    wcex.hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST);
     wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.hIconSm        = wcex.hIcon;
 
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
+//   FUNCTION: InitializeInstance(HINSTANCE, int)
 //
 //   PURPOSE: Saves instance handle and creates main window
 //
 //   COMMENTS:
-//
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
 //
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+    g_instanceHandle = instanceHandle; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowExW(WS_EX_ACCEPTFILES, szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+    HWND hWnd = CreateWindowExW(
+        WS_EX_ACCEPTFILES,
+        szWindowClass,
+        szTitle,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        0,
+        CW_USEDEFAULT,
+        0,
+        nullptr,
+        nullptr,
+        instanceHandle,
+        nullptr
+    );
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+    if (!hWnd)
+    {
+        return FALSE;
+    }
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
 
-   return TRUE;
+    g_windowHandle = hWnd;
+
+    return TRUE;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
+
+void PremultiplyBgraData(uint8_t* pixels, uint32_t pixelByteCount)
+{
+    uint8_t* data = g_bitmap.data();
+    for (uint32_t i = 0; i < pixelByteCount; i += 4)
+    {
+        data[i + 0] = data[i + 0] * data[i + 3] / 255;
+        data[i + 1] = data[i + 1] * data[i + 3] / 255;
+        data[i + 2] = data[i + 2] * data[i + 3] / 255;
+    }
+}
+
+const uint32_t g_smallDigitHeight = 7;
+const uint32_t g_smallDigitWidth = 5;
+const uint32_t g_smallDigitAdvance = 3;
+const uint8_t g_smallDigitPixels[10][g_smallDigitHeight][g_smallDigitWidth] =
+{
+    { // 0
+        {0,1,1,1,0},
+        {1,2,3,2,1},
+        {1,3,1,3,1},
+        {1,3,1,3,1},
+        {1,3,1,3,1},
+        {1,2,3,2,1},
+        {0,1,1,1,0},
+    },
+    { // 1
+        {0,0,1,0,0},
+        {0,1,3,1,0},
+        {1,2,3,1,0},
+        {0,1,3,1,0},
+        {0,1,3,1,0},
+        {1,2,3,2,1},
+        {0,1,1,1,0},
+    },
+    { // 2
+        {0,1,1,1,0},
+        {1,3,3,2,1},
+        {0,1,1,3,1},
+        {0,1,3,1,0},
+        {1,3,1,1,0},
+        {1,3,3,3,1},
+        {0,1,1,1,0},
+    },
+    { // 3
+        {0,1,1,0,0},
+        {1,3,3,1,0},
+        {0,1,1,3,1},
+        {1,3,3,2,1},
+        {0,1,1,3,1},
+        {1,3,3,1,0},
+        {0,1,1,0,0},
+    },
+    { // 4
+        {0,1,0,1,0},
+        {1,3,1,3,1},
+        {1,3,1,3,1},
+        {1,3,3,3,1},
+        {0,1,1,3,1},
+        {0,0,1,3,1},
+        {0,0,0,1,0},
+    },
+    { // 5
+        {0,1,1,1,0},
+        {1,3,3,3,1},
+        {1,3,1,0,0},
+        {1,3,3,1,0},
+        {0,1,1,3,1},
+        {1,3,3,1,0},
+        {0,1,1,0,0},
+    },
+    { // 6
+        {0,1,1,1,0},
+        {1,2,3,3,1},
+        {1,3,1,1,0},
+        {1,3,3,2,1},
+        {1,3,1,3,1},
+        {1,2,3,2,1},
+        {0,1,1,1,0},
+    },
+    { // 7
+        {0,1,1,1,0},
+        {1,3,3,3,1},
+        {0,1,1,3,1},
+        {0,0,1,3,1},
+        {0,1,3,1,0},
+        {0,1,3,1,0},
+        {0,0,1,0,0},
+    },
+    { // 8
+        {0,1,1,1,0},
+        {1,2,3,2,1},
+        {1,3,1,3,1},
+        {1,2,3,2,1},
+        {1,3,1,3,1},
+        {1,2,3,2,1},
+        {0,1,1,1,0},
+    },
+    { // 9
+        {0,1,1,1,0},
+        {1,2,3,2,1},
+        {1,3,1,3,1},
+        {0,1,3,3,1},
+        {0,0,1,3,1},
+        {0,0,1,3,1},
+        {0,0,0,1,0},
+    },
+};
+
+void DrawSmallDigits(
+    uint8_t* pixels, // BGRA
+    const unsigned char* digits,
+    uint32_t digitCount,
+    uint32_t x,
+    uint32_t y,
+    uint32_t width,
+    uint32_t height,
+    uint32_t byteStridePerRow
+    )
+{
+    if (y + g_smallDigitHeight > height)
+    {
+        return;
+    }
+
+    // transparent, black, gray, white.
+    const uint32_t digitPixelColors[4] = { 0x00000000, 0xFF000000, 0xFFC0C0C0, 0xFFFFFFFF };
+
+    pixels += y * byteStridePerRow;
+    const uint32_t rowByteDelta = byteStridePerRow - (g_smallDigitWidth * sizeof(uint32_t));
+
+    for (uint32_t digitIndex = 0; digitIndex < digitCount; ++digitIndex)
+    {
+        if (x + g_smallDigitWidth > width)
+        {
+            return;
+        }
+
+        uint32_t digit = digits[digitIndex] - '0';
+        const uint8_t* digitPixels = &g_smallDigitPixels[std::min(digit, 9u)][0][0];
+        uint8_t* pixel = pixels + x * sizeof(uint32_t);
+        for (uint32_t j = 0; j < g_smallDigitHeight; ++j)
+        {
+            for (uint32_t i = 0; i < g_smallDigitWidth; ++i)
+            {
+                // Check for transparency (0), black (1), or white (2).
+                uint32_t digitPixelValue = *digitPixels;
+                if (digitPixelValue > 0)
+                {
+                    assert(digitPixelValue < std::size(digitPixelColors));
+                    *reinterpret_cast<uint32_t*>(pixel) = digitPixelColors[digitPixelValue];
+                }
+                pixel += sizeof(uint32_t);
+                ++digitPixels;
+            }
+            pixel += rowByteDelta;
+        }
+
+        x += g_smallDigitAdvance + 1;
+    }
+}
+
+
+lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t width, uint32_t height)
+{
+    auto documentWidth = document.width();
+    auto documentHeight = document.height();
+    if (documentWidth == 0.0 || documentHeight == 0.0)
+    {
+        return {};
+    }
+
+    if (width == 0 && height == 0)
+    {
+        width = static_cast<uint32_t>(std::ceil(documentWidth));
+        height = static_cast<uint32_t>(std::ceil(documentHeight));
+    }
+    else if (width != 0 && height == 0)
+    {
+        height = static_cast<uint32_t>(std::ceil(width * documentHeight / documentWidth));
+    }
+    else if (height != 0 && width == 0)
+    {
+        width = static_cast<uint32_t>(std::ceil(height * documentWidth / documentHeight));
+    }
+
+    lunasvg::Matrix matrix{width / documentWidth, 0, 0, height / documentHeight, 0, 0};
+    return matrix;
+}
+
+
+void DrawCheckerboardBackgroundUnderneath(
+    uint8_t* pixels, // BGRA
+    uint32_t x,
+    uint32_t y,
+    uint32_t width,
+    uint32_t height,
+    uint32_t byteStridePerRow
+    )
+{
+    struct PixelBgra
+    {
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
+        uint8_t a;
+    };
+
+    //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
+    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
+    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
+
+    for (uint32_t j = 0; j < height; ++j)
+    {
+        for (uint32_t i = 0; i < width; ++i)
+        {
+            const PixelBgra backgroundColor = ((i & 8) ^ (j & 8)) ? PixelBgra{0x20, 0x20, 0x20, 0xFF} : PixelBgra{0x40, 0x40, 0x40, 0xFF};
+            const PixelBgra bitmapColor = *reinterpret_cast<PixelBgra const*>(pixel);
+            const uint32_t bitmapAlpha = bitmapColor.a;
+            const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
+            
+            uint32_t blue  = (inverseBitmapAlpha * backgroundColor.b / 255) + bitmapColor.b;
+            uint32_t green = (inverseBitmapAlpha * backgroundColor.g / 255) + bitmapColor.g;
+            uint32_t red   = (inverseBitmapAlpha * backgroundColor.r / 255) + bitmapColor.r;
+            uint32_t alpha = (inverseBitmapAlpha * backgroundColor.a / 255) + bitmapColor.a;
+            uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+            
+            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
+            assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
+            *reinterpret_cast<uint32_t*>(pixel) = pixelValue;
+            pixel += sizeof(uint32_t);
+        }
+        pixel += rowByteDelta;
+    }
+}
+
+
+void DrawBackgroundColorUnderneath(
+    uint8_t* pixels, // BGRA
+    uint32_t x,
+    uint32_t y,
+    uint32_t width,
+    uint32_t height,
+    uint32_t byteStridePerRow,
+    uint32_t backgroundColor // BGRA
+    )
+{
+    struct PixelBgra
+    {
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
+        uint8_t a;
+    };
+    PixelBgra bgraColor = *reinterpret_cast<PixelBgra*>(&backgroundColor);
+
+    //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
+    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
+    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
+
+    for (uint32_t j = 0; j < height; ++j)
+    {
+        for (uint32_t i = 0; i < width; ++i)
+        {
+            const PixelBgra bitmapColor = *reinterpret_cast<PixelBgra const*>(pixel);
+            const uint32_t bitmapAlpha = bitmapColor.a;
+            const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
+            
+            uint32_t blue  = (inverseBitmapAlpha * bgraColor.b / 255) + bitmapColor.b;
+            uint32_t green = (inverseBitmapAlpha * bgraColor.g / 255) + bitmapColor.g;
+            uint32_t red   = (inverseBitmapAlpha * bgraColor.r / 255) + bitmapColor.r;
+            uint32_t alpha = (inverseBitmapAlpha * bgraColor.a / 255) + bitmapColor.a;
+            uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+            
+            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
+            assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
+            *reinterpret_cast<uint32_t*>(pixel) = pixelValue;
+            pixel += sizeof(uint32_t);
+        }
+        pixel += rowByteDelta;
+    }
+}
+
+
+void RedrawSvg(HWND hWnd)
+{
+    if (!g_document)
+    {
+        return;
+    }
+
+    const uint32_t backgroundColor = 0x00000000u; // Transparent black
+
+    // Draw the image to a bitmap.
+    switch (g_bitmapSizingDisplay)
+    {
+    case BitmapSizingDisplay::SingleSize:
+        {
+            unsigned int bitmapMaximumSize = g_bitmapMaximumSize;
+            g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+        }
+        break;
+
+    case BitmapSizingDisplay::Waterfall:
+        {
+            // Determine the total bitmap size to display all sizes.
+            uint32_t totalBitmapWidth = std::accumulate(std::begin(g_bitmapSizes), std::end(g_bitmapSizes), 0u);
+            uint32_t totalBitmapHeight = *std::max_element(std::begin(g_bitmapSizes), std::end(g_bitmapSizes));
+            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
+            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
+            lunasvg::Bitmap bitmap;
+
+            // Draw each size, left to right.
+            uint32_t x = 0;
+            for (uint32_t size : g_bitmapSizes)
+            {
+                // Draw the icon.
+                bitmap.reset(g_bitmap.data() + x * sizeof(uint32_t), size, size, g_bitmap.stride());
+                auto matrix = GetMatrixForSize(*g_document, size, size);
+                g_document->render(bitmap, matrix, backgroundColor);
+
+                // Draw little digit for icon pixel size.
+                char digits[4] = {};
+                auto result = std::to_chars(std::begin(digits), std::end(digits), size);
+                uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
+                DrawSmallDigits(
+                    g_bitmap.data(),
+                    reinterpret_cast<unsigned char*>(digits),
+                    digitCount,
+                    x + (size - g_smallDigitWidth * digitCount) / 2, // centered across icon
+                    size + 1, // y, 1 pixel under icon
+                    g_bitmap.width(),
+                    g_bitmap.height(),
+                    g_bitmap.stride()
+                );
+
+                x += size;
+            }
+        }
+        break;
+
+    case BitmapSizingDisplay::WindowSize:
+        {
+            RECT clientRect;
+            GetClientRect(hWnd, /*out*/&clientRect);
+            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right);
+            g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+        }
+        break;
+    }
+
+    // Premultiply pixels so that edges are antialiased.
+    PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
+
+    switch (g_backgroundColorMode)
+    {
+    case BackgroundColorMode::TransparentBlack:
+        // Nothing to do since they were already drawn atop transparent black.
+        break;
+
+    case BackgroundColorMode::GrayCheckerboard:
+        DrawCheckerboardBackgroundUnderneath(
+            g_bitmap.data(),
+            0,
+            0,
+            g_bitmap.width(),
+            g_bitmap.height(),
+            g_bitmap.stride()
+        );
+        break;
+
+    case BackgroundColorMode::OpaqueWhite:
+        DrawBackgroundColorUnderneath(
+            g_bitmap.data(),
+            0,
+            0,
+            g_bitmap.width(),
+            g_bitmap.height(),
+            g_bitmap.stride(),
+            0xFFFFFFFF
+        );
+        break;
+    }
+
+    InvalidateRect(hWnd, nullptr, true);
+}
+
+
+void FillBitmapInfoFromLunaSvgBitmap(
+    lunasvg::Bitmap const& bitmap,
+    /*out*/ BITMAPV5HEADER& bitmapInfo
+    )
+{
+    bitmapInfo.bV5Size = sizeof(bitmapInfo);
+    bitmapInfo.bV5Width = bitmap.width();
+    bitmapInfo.bV5Height = -LONG(bitmap.height());
+    bitmapInfo.bV5Planes = 1;
+    bitmapInfo.bV5BitCount = 32;
+    bitmapInfo.bV5Compression = BI_RGB; // BI_BITFIELDS
+    bitmapInfo.bV5SizeImage = g_bitmap.stride() * g_bitmap.height();
+    bitmapInfo.bV5XPelsPerMeter = 3780;
+    bitmapInfo.bV5YPelsPerMeter = 3780;
+    bitmapInfo.bV5ClrUsed = 0;
+    bitmapInfo.bV5ClrImportant = 0;
+
+    bitmapInfo.bV5RedMask = 0x00FF0000;
+    bitmapInfo.bV5GreenMask = 0x0000FF00;
+    bitmapInfo.bV5BlueMask = 0x000000FF;
+    bitmapInfo.bV5AlphaMask = 0xFF000000;
+    bitmapInfo.bV5CSType = 0;// LCS_sRGB;
+    bitmapInfo.bV5Endpoints = {};
+    bitmapInfo.bV5GammaRed = 0;
+    bitmapInfo.bV5GammaGreen = 0;
+    bitmapInfo.bV5GammaBlue = 0;
+    bitmapInfo.bV5Intent = 0;// LCS_GM_IMAGES;
+    bitmapInfo.bV5ProfileData = 0;
+    bitmapInfo.bV5ProfileSize = 0;
+    bitmapInfo.bV5Reserved = 0;
+}
+
+
+void CopySvgBitmapToClipboard(
+    lunasvg::Bitmap& bitmap,
+    HWND hwnd
+    )
+{
+    if (bitmap.valid())
+    {
+        if (OpenClipboard(hwnd))
+        {
+            EmptyClipboard();
+
+            BITMAPV5HEADER bitmapInfo;
+            FillBitmapInfoFromLunaSvgBitmap(bitmap, /*out*/bitmapInfo);
+            uint32_t totalBytes = sizeof(BITMAPINFO) + bitmapInfo.bV5SizeImage;
+
+            HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
+            if (memory != nullptr)
+            {
+                void* lockedMemory= GlobalLock(memory);
+                if (lockedMemory != nullptr)
+                {
+                    BITMAPINFO& clipboardBitmapInfo = *reinterpret_cast<BITMAPINFO*>(lockedMemory);
+                    memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
+                    clipboardBitmapInfo.bmiHeader.biSize = sizeof(clipboardBitmapInfo.bmiHeader);
+                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
+                    memcpy(clipboardPixels, bitmap.data(), bitmapInfo.bV5SizeImage);
+                }
+                GlobalUnlock(memory);
+
+                SetClipboardData(CF_DIB, memory);
+            }
+            CloseClipboard();
+        }
+    }
+}
+
+
+//  FUNCTION: WindowProcedure(HWND, UINT, WPARAM, LPARAM)
 //
 //  PURPOSE: Processes messages for the main window.
 //
@@ -123,53 +649,117 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_PAINT    - Paint the main window
 //  WM_DESTROY  - post a quit message and return
 //
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
-            // Parse the menu selections:
             switch (wmId)
             {
             case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                DialogBox(g_instanceHandle, MAKEINTRESOURCE(IDD_ABOUTBOX), hwnd, &AboutDialogProcedure);
                 break;
+
             case IDM_EXIT:
-                DestroyWindow(hWnd);
+                DestroyWindow(hwnd);
+                break;
+
+            case IDM_OPEN:
+                {
+                    std::array<wchar_t, MAX_PATH> fileName;
+                    fileName[0] = '\0';
+                    OPENFILENAME openFileName = {};
+
+                    openFileName.lStructSize = sizeof(openFileName);
+                    openFileName.hwndOwner = hwnd;
+                    openFileName.hInstance = g_instanceHandle;
+                    openFileName.lpstrFilter = L"SVG\0" L"*.svg\0"
+                                               L"All files\0" L"*\0"
+                                               L"\0";
+                    openFileName.lpstrFile = fileName.data();
+                    openFileName.nMaxFile = static_cast<DWORD>(fileName.size());
+                    openFileName.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE;
+
+                    if (GetOpenFileName(&openFileName))
+                    {
+                        g_document = lunasvg::Document::loadFromFile(fileName.data());
+                        if (g_document)
+                        {
+                            RedrawSvg(hwnd);
+                        }
+                    }
+                }
+                break;
+
+            case IDM_SIZE0:
+            case IDM_SIZE1:
+            case IDM_SIZE2:
+            case IDM_SIZE3:
+            case IDM_SIZE4:
+            case IDM_SIZE5:
+            case IDM_SIZE6:
+            case IDM_SIZE7:
+            case IDM_SIZE8:
+            case IDM_SIZE9:
+            case IDM_SIZE10:
+            case IDM_SIZE11:
+            case IDM_SIZE12:
+            case IDM_SIZE13:
+            case IDM_SIZE14:
+            case IDM_SIZE15:
+            case IDM_SIZE16:
+                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_bitmapSizes), "g_bitmapSizes is too small");
+                g_bitmapMaximumSize = g_bitmapSizes[wmId - IDM_SIZE0];
+                g_bitmapSizingDisplay = BitmapSizingDisplay::SingleSize;
+                RedrawSvg(hwnd);
+                break;
+
+            case IDM_SIZE_WINDOW:
+                g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
+                RedrawSvg(hwnd);
+                break;
+
+            case IDM_SIZE_WATERFALL:
+                g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
+                RedrawSvg(hwnd);
+                break;
+
+            case IDM_COPY:
+                CopySvgBitmapToClipboard(g_bitmap, hwnd);
+                break;
+
+            case IDM_COLOR_GRAY_CHECKERBOARD:
+            case IDM_COLOR_TRANSPARENT_BLACK:
+            case IDM_COLOR_OPAQUE_WHITE:
+                static_assert(IDM_COLOR_GRAY_CHECKERBOARD - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard), "");
+                static_assert(IDM_COLOR_TRANSPARENT_BLACK - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack), "");
+                static_assert(IDM_COLOR_OPAQUE_WHITE - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite), "");
+
+                g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
+                RedrawSvg(hwnd);
                 break;
 
             default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
+                return DefWindowProc(hwnd, message, wParam, lParam);
             }
         }
         break;
 
     case WM_DROPFILES:
         {
+            // Get the filename.
             std::array<char, MAX_PATH> fileName;
             fileName[0] = '\0';
             HDROP dropHandle = reinterpret_cast<HDROP>(wParam);
                     
             if (DragQueryFileA(dropHandle, 0, fileName.data(), static_cast<uint32_t>(fileName.size())))
             {
-                auto document = lunasvg::Document::loadFromFile(fileName.data()); // "reshot-icon-trojan-G6A3QR2ZSF.svg"
-                if (document)
+                g_document = lunasvg::Document::loadFromFile(fileName.data());
+                if (g_document)
                 {
-                    g_bitmap = document->renderToBitmap(256, 256, 0x00000000);
-                    //g_bitmap = document->renderToBitmap(128, 128, 0xC0C0C0FF);
-
-                    // Premultiply pixels so that edges are antialiased.
-                    uint8_t* data = g_bitmap.data();
-                    for (uint32_t i = 0, size = g_bitmap.stride() * g_bitmap.height(); i < size; i += 4)
-                    {
-                        data[i + 0] = data[i + 0] * data[i + 3] / 255;
-                        data[i + 1] = data[i + 1] * data[i + 3] / 255;
-                        data[i + 2] = data[i + 2] * data[i + 3] / 255;
-                    }
-                    InvalidateRect(hWnd, nullptr, false);
+                    RedrawSvg(hwnd);
                 }
             }
         }
@@ -178,23 +768,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
+            HDC hdc = BeginPaint(hwnd, &ps);
+
             if (g_bitmap.valid())
             {
-                BITMAPINFO bitmapInfo = {};
-                bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
-                bitmapInfo.bmiHeader.biWidth = g_bitmap.width();
-                bitmapInfo.bmiHeader.biHeight = -LONG(g_bitmap.height());
-                bitmapInfo.bmiHeader.biPlanes = 1;
-                bitmapInfo.bmiHeader.biBitCount = 32;
-                bitmapInfo.bmiHeader.biCompression = BI_RGB;
-                bitmapInfo.bmiHeader.biSizeImage = 0;
-                bitmapInfo.bmiHeader.biXPelsPerMeter = 1000;
-                bitmapInfo.bmiHeader.biYPelsPerMeter = 1000;
-                bitmapInfo.bmiHeader.biClrUsed = 0;
-                bitmapInfo.bmiHeader.biClrImportant = 0;
+                BITMAPV5HEADER bitmapInfo = {};
+                FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
 
+#if 1
                 SetDIBitsToDevice(
                     ps.hdc,
                     0,
@@ -206,11 +787,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     0,
                     g_bitmap.height(),
                     g_bitmap.data(),
-                    &bitmapInfo,
+                    reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
                     0 // colorUse
                 );
+#else // Why is GDI so stupidly complicated, with simple DrawBitmap call?
+                HBITMAP bitmap = CreateDIBitmap(
+                    hdc,
+                    reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
+                    CBM_INIT,
+                    g_bitmap.data(),
+                    reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                    DIB_RGB_COLORS
+                );
+                BLENDFUNCTION blendFunction = {};
+                blendFunction.BlendOp = AC_SRC_OVER,
+                blendFunction.BlendFlags = 0;
+                blendFunction.SourceConstantAlpha = 255;
+                blendFunction.AlphaFormat = AC_SRC_ALPHA;
+                SelectObject(ps.hdc, ...)
+                AlphaBlend(
+                    ps.hdc,
+                    0,
+                    0,
+                    g_bitmap.width(),
+                    g_bitmap.height(),
+                    0,
+                    0,
+                    0,
+                    g_bitmap.width(),
+                    g_bitmap.height(),
+                    blendFunction
+                );
+#endif
             }
-            EndPaint(hWnd, &ps);
+            EndPaint(hwnd, &ps);
         }
         break;
 
@@ -219,13 +829,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProc(hwnd, message, wParam, lParam);
     }
     return 0;
 }
 
 // Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
     switch (message)
