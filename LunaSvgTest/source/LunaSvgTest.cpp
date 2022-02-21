@@ -16,6 +16,10 @@ TODO:
         Translate anchor and entire grouped object and then stretch by other anchor
         Set minimum path width
         Conditional visibility based on device pixels per canvas unit
+
+    Read
+        A vector format for Flutter by Google
+        https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
 */
 
 #include "precomp.h"
