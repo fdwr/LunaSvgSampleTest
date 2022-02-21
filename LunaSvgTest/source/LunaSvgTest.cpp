@@ -44,7 +44,9 @@ enum class BackgroundColorMode
     OpaqueWhite,
 };
 
-const uint32_t g_bitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
+const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
+const uint32_t g_waterfallBitmapWidth = 832;
+const uint32_t g_waterfallBitmapHeight = 400;
 std::unique_ptr<lunasvg::Document> g_document;
 unsigned int g_bitmapMaximumSize = 0x16;
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
@@ -489,22 +491,33 @@ void RedrawSvg(HWND hWnd)
     case BitmapSizingDisplay::Waterfall:
         {
             // Determine the total bitmap size to display all sizes.
-            uint32_t totalBitmapWidth = std::accumulate(std::begin(g_bitmapSizes), std::end(g_bitmapSizes), 0u);
-            uint32_t totalBitmapHeight = *std::max_element(std::begin(g_bitmapSizes), std::end(g_bitmapSizes));
+            uint32_t totalBitmapWidth = g_waterfallBitmapWidth;
+            uint32_t totalBitmapHeight = g_waterfallBitmapHeight;
             g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
             memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
             lunasvg::Bitmap bitmap;
 
-            // Draw each size, left to right.
-            uint32_t x = 0;
-            for (uint32_t size : g_bitmapSizes)
+            // Draw each size, left to right, top to bottom.
+            uint32_t x = 0, y = 0, previousSize = 1;
+            for (uint32_t size : g_waterfallBitmapSizes)
             {
+                if (x + size > totalBitmapWidth)
+                {
+                    y += previousSize + g_smallDigitHeight + 1;
+                    x = 0;
+                }
+                if (y + size + g_smallDigitHeight + 1 > totalBitmapHeight)
+                {
+                    break;
+                }
+
                 // Draw the icon.
-                bitmap.reset(g_bitmap.data() + x * sizeof(uint32_t), size, size, g_bitmap.stride());
+                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
+                bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
                 auto matrix = GetMatrixForSize(*g_document, size, size);
                 g_document->render(bitmap, matrix, backgroundColor);
 
-                // Draw little digit for icon pixel size.
+                // Draw little digits for icon pixel size.
                 char digits[4] = {};
                 auto result = std::to_chars(std::begin(digits), std::end(digits), size);
                 uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
@@ -513,12 +526,13 @@ void RedrawSvg(HWND hWnd)
                     reinterpret_cast<unsigned char*>(digits),
                     digitCount,
                     x + (size - g_smallDigitWidth * digitCount) / 2, // centered across icon
-                    size + 1, // y, 1 pixel under icon
+                    y + size + 1, // y, 1 pixel under icon
                     g_bitmap.width(),
                     g_bitmap.height(),
                     g_bitmap.stride()
                 );
 
+                previousSize = size;
                 x += size;
             }
         }
@@ -710,8 +724,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE14:
             case IDM_SIZE15:
             case IDM_SIZE16:
-                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_bitmapSizes), "g_bitmapSizes is too small");
-                g_bitmapMaximumSize = g_bitmapSizes[wmId - IDM_SIZE0];
+                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes), "g_waterfallBitmapSizes is too small");
+                g_bitmapMaximumSize = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::SingleSize;
                 RedrawSvg(hwnd);
                 break;
