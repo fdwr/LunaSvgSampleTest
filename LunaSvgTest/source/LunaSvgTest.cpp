@@ -16,6 +16,7 @@ TODO:
         Translate anchor and entire grouped object and then stretch by other anchor
         Set minimum path width
         Conditional visibility based on device pixels per canvas unit
+        rounding-origin for in (toward zero) and out (toward infinity) rounding
 
     Read
         A vector format for Flutter by Google
@@ -646,7 +647,7 @@ void CopySvgBitmapToClipboard(
                     BITMAPINFO& clipboardBitmapInfo = *reinterpret_cast<BITMAPINFO*>(lockedMemory);
                     memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
                     clipboardBitmapInfo.bmiHeader.biSize = sizeof(clipboardBitmapInfo.bmiHeader);
-                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
+                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo.bmiHeader);
                     memcpy(clipboardPixels, bitmap.data(), bitmapInfo.bV5SizeImage);
                 }
                 GlobalUnlock(memory);
