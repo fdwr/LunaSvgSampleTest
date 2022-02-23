@@ -38,94 +38,108 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(lib, "User32.lib")
 
 // Attach output of application to parent console
-static BOOL attachOutputToConsole(void) {
-HANDLE consoleHandleOut, consoleHandleError;
+static BOOL attachOutputToConsole(void)
+{
+    HANDLE consoleHandleOut, consoleHandleError;
 
-if (AttachConsole(ATTACH_PARENT_PROCESS)) {
-// Redirect unbuffered STDOUT to the console
-consoleHandleOut = GetStdHandle(STD_OUTPUT_HANDLE);
-if (consoleHandleOut != INVALID_HANDLE_VALUE) {
-freopen("CONOUT$", "w", stdout);
-setvbuf(stdout, NULL, _IONBF, 0);
-}
-else {
-return FALSE;
-}
-// Redirect unbuffered STDERR to the console
-consoleHandleError = GetStdHandle(STD_ERROR_HANDLE);
-if (consoleHandleError != INVALID_HANDLE_VALUE) {
-freopen("CONOUT$", "w", stderr);
-setvbuf(stderr, NULL, _IONBF, 0);
-}
-else {
-return FALSE;
-}
-return TRUE;
-}
-//Not a console application
-return FALSE;
+    if (AttachConsole(ATTACH_PARENT_PROCESS))
+    {
+        // Redirect unbuffered STDOUT to the console
+        consoleHandleOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (consoleHandleOut != INVALID_HANDLE_VALUE)
+        {
+            freopen("CONOUT$", "w", stdout);
+            setvbuf(stdout, NULL, _IONBF, 0);
+        }
+        else
+        {
+            return FALSE;
+        }
+        // Redirect unbuffered STDERR to the console
+        consoleHandleError = GetStdHandle(STD_ERROR_HANDLE);
+        if (consoleHandleError != INVALID_HANDLE_VALUE)
+        {
+            freopen("CONOUT$", "w", stderr);
+            setvbuf(stderr, NULL, _IONBF, 0);
+        }
+        else
+        {
+            return FALSE;
+        }
+        return TRUE;
+    }
+    // Not a console application
+    return FALSE;
 }
 
 // Send the "enter" to the console to release the command prompt
 // on the parent console
-static void sendEnterKey(void) {
-INPUT ip;
-// Set up a generic keyboard event.
-ip.type = INPUT_KEYBOARD;
-ip.ki.wScan = 0; // hardware scan code for key
-ip.ki.time = 0;
-ip.ki.dwExtraInfo = 0;
+static void sendEnterKey(void)
+{
+    INPUT ip;
+    // Set up a generic keyboard event.
+    ip.type = INPUT_KEYBOARD;
+    ip.ki.wScan = 0; // hardware scan code for key
+    ip.ki.time = 0;
+    ip.ki.dwExtraInfo = 0;
 
-// Send the "Enter" key
-ip.ki.wVk = 0x0D; // virtual-key code for the "Enter" key
-ip.ki.dwFlags = 0; // 0 for key press
-SendInput(1, &ip, sizeof(INPUT));
+    // Send the "Enter" key
+    ip.ki.wVk = 0x0D; // virtual-key code for the "Enter" key
+    ip.ki.dwFlags = 0; // 0 for key press
+    SendInput(1, &ip, sizeof(INPUT));
 
-// Release the "Enter" key
-ip.ki.dwFlags = KEYEVENTF_KEYUP; // KEYEVENTF_KEYUP for key release
-SendInput(1, &ip, sizeof(INPUT));
+    // Release the "Enter" key
+    ip.ki.dwFlags = KEYEVENTF_KEYUP; // KEYEVENTF_KEYUP for key release
+    SendInput(1, &ip, sizeof(INPUT));
 }
 
-int WINAPI WinMain(HINSTANCE hInstance,
-HINSTANCE hPrevInstance,
-PSTR lpCmdLine,
-INT nCmdShow) {
-int argc = __argc;
-char **argv = __argv;
-UNREFERENCED_PARAMETER(hInstance);
-UNREFERENCED_PARAMETER(hPrevInstance);
-UNREFERENCED_PARAMETER(lpCmdLine);
-UNREFERENCED_PARAMETER(nCmdShow);
-BOOL console;
-int i;
+int WINAPI WinMain(
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    PSTR lpCmdLine,
+    INT nCmdShow
+    )
+{
+    int argc = __argc;
+    char** argv = __argv;
+    UNREFERENCED_PARAMETER(hInstance);
+    UNREFERENCED_PARAMETER(hPrevInstance);
+    UNREFERENCED_PARAMETER(lpCmdLine);
+    UNREFERENCED_PARAMETER(nCmdShow);
+    BOOL console;
+    int i;
 
-//Is the program running as console or GUI application
-console = attachOutputToConsole();
+    //Is the program running as console or GUI application
+    console = attachOutputToConsole();
 
-if (console) {
-// Print to stdout
-printf("\nProgram running as console application\n");
-for (i = 0; i < argc; i++) {
-printf("argv[%d] %s\n", i, argv[i]);
-}
+    if (console)
+    {
+        // Print to stdout
+        printf("\nProgram running as console application\n");
+        for (i = 0; i < argc; i++)
+        {
+            printf("argv[%d] %s\n", i, argv[i]);
+        }
 
-// Print to stderr
-fprintf(stderr, "Output to stderr\n");
-}
-else {
-    MessageBox(
-        NULL,
-        L"Program running as Windows GUI application",
-        L"Windows GUI Application",
-        MB_OK | MB_SETFOREGROUND
-    );
-}
+        // Print to stderr
+        fprintf(stderr, "Output to stderr\n");
+    }
+    else
+    {
+        MessageBox(
+            NULL,
+            L"Program running as Windows GUI application",
+            L"Windows GUI Application",
+            MB_OK | MB_SETFOREGROUND
+        );
+    }
 
-// Send "enter" to release application from the console
-// This is a hack, but if not used the console doesn't know the application has
-// returned. The "enter" key only sent if the console window is in focus.
-if (console && (GetConsoleWindow() == GetForegroundWindow())){
-sendEnterKey();
-}
-return 0;
+    // Send "enter" to release application from the console
+    // This is a hack, but if not used the console doesn't know the application has
+    // returned. The "enter" key only sent if the console window is in focus.
+    if (console && (GetConsoleWindow() == GetForegroundWindow()))
+    {
+        sendEnterKey();
+    }
+    return 0;
 }
