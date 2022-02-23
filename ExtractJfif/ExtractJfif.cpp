@@ -1,6 +1,7 @@
 // *** Use JPEGDump instead of this quick hack ***
-// Attempts to extract JPEGs from larger archives
-// by looking for JFIF streams contained within.
+// This tool attempts to extract any JPEGs or PNG's
+// from larger archives or executables by looking for
+// JFIF and PNG streams contained within.
 
 #include "std.h"
 #include "basictypes.h"
@@ -8,131 +9,284 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <tchar.h>
+#include <stdint.h>
+
+// So tired of typing the stupid "_t" every time.
+using uint8  = uint8_t;
+using uint16 = uint16_t;
+using uint32 = uint32_t;
 
 ////////////////////////////////////////////////////////////////
-FILE* NextOutputFile();
-int ScanForSignatures(FILE* infp);
-int ExtractJPEG(uint8* inbuf, int inpos, int size);
-extern "C" void FatalError(TCHAR* msg, ...);
+FILE* NextOutputFile(const char* filenamePattern);
+int LoadFileAndScanForSignatures(FILE* inputFile);
+int ScanForSignatures(const uint8* inputBuffer, int inputBufferSize);
+int ExtractJPEG(const uint8* inputBuffer, int inputBufferSize);
+int ExtractPNG(const uint8* inputBuffer, int inputBufferSize);
+extern "C" void FatalError(TCHAR * msg, ...);
+bool MemoryEqual(_In_reads_bytes_(bufferSize) void const* buffer1, _In_reads_bytes_(bufferSize) void const* buffer2, _In_ size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////
-int nextFileNumber = 0;
+int g_nextFileNumber = 0;
 
 ////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-	//printf("Hello World!\n");
-	if (argc < 2)
-		FatalError(T("No source filename supplied\n"));
+    if (argc < 2)
+        FatalError(T("No source filename supplied\n"));
 
-	FILE* infp = fopen(argv[1], "rb");
-	if (infp == null)
-		FatalError(T("Could not open source filename \"%s\"\n"), argv[1]);
+    FILE* infp = fopen(argv[1], "rb");
+    if (infp == null)
+        FatalError(T("Could not open source filename \"%s\"\n"), argv[1]);
 
-	ScanForSignatures(infp);
+    LoadFileAndScanForSignatures(infp);
 
-	fclose(infp);
-	return 0;
+    fclose(infp);
+    return 0;
 }
 
 
-int ScanForSignatures(FILE* infp)
+bool MemoryEqual(
+    _In_reads_bytes_(bufferSize) void const* buffer1,
+    _In_reads_bytes_(bufferSize) void const* buffer2,
+    _In_ size_t bufferSize
+    )
 {
-	int filesExtracted = 0;
+    // Why isn't there just a memequal function that plainly returns a bool?
+    // How many times have you ever wanted to know whether a block of memory is
+    // less or greater than another ... 1%? How many times have you wanted to
+    // know equality ... 99%?
+    return memcmp(buffer1, buffer2, bufferSize) == 0;
+}
 
-	uint8* inbuf;
+int LoadFileAndScanForSignatures(FILE* infp)
+{
+    uint8* inbuf;
 
-	fseek( infp, 0, SEEK_END );
-	int insize = ftell(infp);
-	rewind(infp);
+    fseek(infp, 0, SEEK_END);
+    int insize = ftell(infp);
+    rewind(infp);
 
-	// allocate memory to contain the whole file.
-	// and copy the file into the buffer.
-	inbuf = (uint8*) malloc(insize+1);
-	if (inbuf == null) FatalError("Could not allocate enough memory for file buffer. File could be too large?");
-	fread( inbuf,1, insize,infp);
-	inbuf[insize] = '\0';
+    // allocate memory to contain the whole file.
+    // and copy the file into the buffer.
+    inbuf = (uint8*)malloc(insize + 1);
+    if (inbuf == null)
+    {
+        FatalError("Could not allocate enough memory for file buffer. File could be too large?");
+    }
+    fread(inbuf, 1, insize, infp);
+    inbuf[insize] = '\0';
 
-	int inpos = 0;
-	int matched = 0;
-	insize -= 4;
+    int filesExtracted = ScanForSignatures(inbuf, insize);
 
-	while (inpos < insize) {
-		switch( inbuf[inpos] ) {
-		case 0xFF:
-			switch (matched) {
-			case 2:
-				matched = 3;
-				//inpos = ExtractJPEG(inbuf, inpos-2, insize);
-				break;
-			default:
-				matched = 1;
-				break;
-			}
-			break;
-		case 0xD8:
-			if (matched == 1) matched = 2;
-			break;
-		case 0xE0:
-			if (matched == 3) {
-				matched = 0;
-				inpos = ExtractJPEG(inbuf, inpos-3, insize);
-				filesExtracted++;
-			}
-			break;
-		default:
-			matched = 0;
-			break;
-		}
-		inpos++;
-	}
+    free(inbuf);
 
-	free(inbuf);
-
-	return filesExtracted;
+    return filesExtracted;
 }
 
 
-int ExtractJPEG(uint8* inbuf, int inpos, int insize)
+int ScanForSignatures(const uint8* inputBuffer, int inputBufferSize)
 {
-	FILE* outfp = NextOutputFile();
-	if (outfp == null) FatalError("Could not open next file for output.");
+    int filesExtracted = 0;
 
-	fwrite(&inbuf[inpos], 2, 1, outfp);
-	inpos+=2;
-	while (inpos < insize) {
-		if ( *(uint16*)(inbuf+inpos) == 0xD9FF ) 
-			break;
-
-		int length = inbuf[inpos+3] | (inbuf[inpos+2] << 8);
-		if (length == 0) break;
-		fwrite(&inbuf[inpos], length+2, 1, outfp);
-		inpos += length+2;
-	}
-	uint8 eos[2] = {0xFF, 0xD9};
-	fwrite(eos, 2, 1, outfp);
-	fclose(outfp);
-
-	/*if (outsize > elmsof(outbuf)-256) {
-		fwrite(outbuf, outsize, 1, outfp);
-		outsize = 0;
-	}*/
+    int inputBufferOffset = 0;
+    int headerByteCount = 0;
 
 
+    const uint8 jpegSignature0[4] = {0xFF,0xD8,0xFF,0xE0};
+    const uint8 jpegSignature1[4] = {0xFF,0xD8,0xFF,0xE1};
+    const uint8 jpegSignature2[4] = {0xFF,0xD8,0xFF,0xE2};
+    const uint8 jpegSignature3[4] = {0xFF,0xD8,0xFF,0xE8};
+    const uint8 pngSignature[8] = {0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A};
+    // 89       Has the high bit set to detect transmission systems that do not support 8-bit data and to reduce the chance that a text file is mistakenly interpreted as a PNG, or vice versa.
+    // 50 4E 47 In ASCII, the letters PNG, allowing a person to identify the format easily if it is viewed in a text editor.
+    // 0D 0A    A DOS-style line ending (CRLF) to detect DOS-Unix line ending conversion of the data.
+    // 1A       A byte that stops display of the file under DOS when the command type has been used—the end-of-file character.
+    // 0A       A Unix-style line ending (LF) to detect Unix-DOS line ending conversion.
 
-	return inpos;
+    // Search for JPEG or PNG headers.
+    while (inputBufferOffset < inputBufferSize)
+    {
+        const uint8* remainingBuffer = &inputBuffer[inputBufferOffset];
+        uint32 remainingBufferSize = inputBufferSize - inputBufferOffset;
+
+        switch (*remainingBuffer)
+        {
+        case 0xFF:
+            if (remainingBufferSize >= sizeof(jpegSignature0))
+            {
+                if (MemoryEqual(remainingBuffer, jpegSignature0, sizeof(jpegSignature0))
+                ||  MemoryEqual(remainingBuffer, jpegSignature1, sizeof(jpegSignature1))
+                ||  MemoryEqual(remainingBuffer, jpegSignature2, sizeof(jpegSignature2))
+                ||  MemoryEqual(remainingBuffer, jpegSignature3, sizeof(jpegSignature3)))
+                {
+                    inputBufferOffset += ExtractJPEG(remainingBuffer, remainingBufferSize);
+                    ++filesExtracted;
+                }
+                else
+                {
+                    ++inputBufferOffset;
+                }
+            }
+            break;
+
+        case 0x89:
+            if (remainingBufferSize >= sizeof(pngSignature))
+            {
+                if (MemoryEqual(remainingBuffer, pngSignature, sizeof(pngSignature)))
+                {
+                    inputBufferOffset += ExtractPNG(remainingBuffer, remainingBufferSize);
+                    ++filesExtracted;
+                }
+                else
+                {
+                    ++inputBufferOffset;
+                }
+            }
+            break;
+
+        default:
+            ++inputBufferOffset;
+            break;
+        }
+    }
+
+    return filesExtracted;
 }
 
 
-FILE* NextOutputFile()
+// Read backwards endian (e.g. Motorola) order.
+uint32 ReadUint16BE(const uint8* input)
 {
-	TCHAR fileName[1024];
-	sprintf(fileName, "out%04d.jpg", nextFileNumber);
-	FILE* fp = fopen(fileName, "wb");
+    return (input[1] << 0)
+         | (input[0] << 8);
+}
 
-	if (fp != null) nextFileNumber++;
 
-	return fp;
+uint32 ReadUint32BE(const uint8* input)
+{
+    return (input[3] <<  0)
+         | (input[2] <<  8)
+         | (input[1] << 16)
+         | (input[0] << 24);
+}
+
+
+// Returns the first byte offset in the buffer after the JPEG.
+int ExtractJPEG(const uint8* inputBuffer, int inputBufferSize)
+{
+    if (inputBufferSize < 2)
+    {
+        return 0; // Cannot be valid since chunk id's are 2 bytes.
+    }
+
+    FILE* outputFile = NextOutputFile("out%04d.jpg");
+    if (outputFile == nullptr)
+    {
+        FatalError("Could not open next file for output.");
+    }
+
+    const uint32 idTagSize = 2;
+
+    int inputBufferOffset = 0;
+    fwrite(&inputBuffer[inputBufferOffset], idTagLength, 1, outputFile);
+    inputBufferOffset += idTagSize;
+
+    while (inputBufferOffset < inputBufferSize)
+    {
+        uint32 remainingBufferSize = inputBufferSize - inputBufferOffset;
+
+        // Check for terminal chunk.
+        if (remainingBufferSize < idTagSize)
+            break;
+
+        if (ReadUint16BE(inputBuffer + inputBufferOffset) == 0xFFD9)
+            break;
+
+        // Read 2-byte chunk length after 2-byte chunk id.
+        if (remainingBufferSize < idTagSize + 2)
+            break;
+
+        uint32 length = ReadUint16BE(inputBuffer + inputBufferOffset + idTagSize);
+        if (length == 0)
+            break;
+
+        if (idTagSize + length > remainingBufferSize)
+            break;
+
+        // Write out chunk.
+        uint32 totalChunkLength = 2 + length;
+        fwrite(&inputBuffer[inputBufferOffset], totalChunkLength, 1, outputFile);
+        inputBufferOffset += totalChunkLength;
+    }
+    uint8 eos[2] = { 0xFF, 0xD9 };
+    fwrite(eos, sizeof(eos), 1, outputFile);
+    fclose(outputFile);
+
+    return inputBufferOffset;
+}
+
+
+// Returns the first byte offset in the buffer after the JPEG.
+int ExtractPNG(const uint8* inputBuffer, int inputBufferSize)
+{
+    const uint32 fileHeaderSize = 8;
+    const uint32 chunkNondataSize = 12;
+
+    if (inputBufferSize < fileHeaderSize + chunkNondataSize)
+    {
+        return 0; // Cannot be valid because smaller than header signature and minimum chunk.
+    }
+
+    FILE* outputFile = NextOutputFile("out%04d.png");
+    if (outputFile == nullptr)
+    {
+        FatalError("Could not open next file for output.");
+    }
+
+    int inputBufferOffset = 0;
+    fwrite(&inputBuffer[inputBufferOffset], fileHeaderSize, 1, outputFile);
+    inputBufferOffset += fileHeaderSize;
+
+    while (inputBufferOffset < inputBufferSize)
+    {
+        uint32 remainingBufferSize = inputBufferSize - inputBufferOffset;
+
+        if (remainingBufferSize < chunkNondataSize) // Size of a single empty chunk.
+            break;
+
+        uint32 length = ReadUint32BE(inputBuffer + inputBufferOffset);
+        uint32 totalChunkLength = chunkNondataSize + length;
+        if (totalChunkLength > remainingBufferSize)
+            break;
+
+        // Check for terminal chunk.
+        if (ReadUint32BE(inputBuffer + inputBufferOffset + 4) == 'IEND')
+            break;
+
+        // Write out chunk.
+        fwrite(&inputBuffer[inputBufferOffset], totalChunkLength, 1, outputFile);
+        inputBufferOffset += totalChunkLength;
+    }
+    uint8 eos[] = { 0x00,0x00,0x00,0x00,0x49,0x45,0x4E,0x44,0xAE,0x42,0x60,0x82 };
+    fwrite(eos, sizeof(eos), 1, outputFile);
+    fclose(outputFile);
+
+    return inputBufferOffset;
+}
+
+
+FILE* NextOutputFile(const char* filenamePattern)
+{
+    TCHAR fileName[1024];
+    sprintf(fileName, filenamePattern, g_nextFileNumber);
+    FILE* fp = fopen(fileName, "wb");
+
+    if (fp != nullptr)
+    {
+        ++g_nextFileNumber;
+    }
+
+    return fp;
 }
 
 
@@ -143,20 +297,20 @@ FILE* NextOutputFile()
 \param[in]	msg		Text message.
 \param[in]	...		Variable number of parameters (anything printf can handle)
 */
-extern "C" void FatalError(TCHAR* msg, ...)
+extern "C" [[noreturn]] void FatalError(TCHAR* msg, ...)
 {
-	TCHAR text[1024];
-	va_list args;
-	va_start(args, msg);
-	_vsntprintf(text, elmsof(text), msg, args);
-	text[1023] = '\0';
+    TCHAR text[1024];
+    va_list args;
+    va_start(args, msg);
+    _vsntprintf(text, elmsof(text), msg, args);
+    text[1023] = '\0';
 
-	// delete old lines if too long
-	#ifdef _DEBUG
-	//OutputDebugString(text);
-	#endif
-	puts("StripScript 1.0 - Dwayne Robinson\r\nStrips javascript from HTML.\r\n");
-	puts(text);
+    // delete old lines if too long
+#ifdef _DEBUG
+//OutputDebugString(text);
+#endif
+    puts("ExtractJfif 1.0 - Dwayne Robinson\r\nExports JPEG files from another file.\r\n");
+    puts(text);
 
-	exit(-1);
+    exit(-1);
 }

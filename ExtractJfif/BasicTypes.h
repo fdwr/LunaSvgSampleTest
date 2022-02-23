@@ -19,56 +19,56 @@ system specific header files.
 
 // essential primitives every version of C should have had from day 1
 #if defined(_MSC_VER)
- 	typedef	unsigned int		uint;
- 	typedef	unsigned __int8		byte;
- 	typedef	  signed __int8		sbyte;
- 	typedef	  signed __int8		int8;
- 	typedef	  signed __int16	int16;
- 	typedef	  signed __int32	int32;
- 	typedef	unsigned __int8		ubyte;
- 	typedef	unsigned __int8		uint8;
- 	typedef	unsigned __int16	uint16;
- 	typedef	unsigned __int32	uint32;
+typedef	unsigned int		uint;
+typedef	unsigned __int8		byte;
+typedef	  signed __int8		sbyte;
+typedef	  signed __int8		int8;
+typedef	  signed __int16	int16;
+typedef	  signed __int32	int32;
+typedef	unsigned __int8		ubyte;
+typedef	unsigned __int8		uint8;
+typedef	unsigned __int16	uint16;
+typedef	unsigned __int32	uint32;
 #elif defined(__MWERKS__)
- 	typedef	unsigned int		uint;
- 	typedef	  signed int8_t		byte;
- 	typedef	  signed int8_t		int8;
- 	typedef	  signed int16_t	int16;
- 	typedef	  signed int32_t	int32;
- 	typedef	unsigned int8_t		ubyte;
- 	typedef	unsigned int8_t		uint8;
- 	typedef	unsigned int16_t	uint16;
- 	typedef	unsigned int32_t	uint32;
+typedef	unsigned int		uint;
+typedef	  signed int8_t		byte;
+typedef	  signed int8_t		int8;
+typedef	  signed int16_t	int16;
+typedef	  signed int32_t	int32;
+typedef	unsigned int8_t		ubyte;
+typedef	unsigned int8_t		uint8;
+typedef	unsigned int16_t	uint16;
+typedef	unsigned int32_t	uint32;
 #elif defined(__GNUC__)
- 	typedef	unsigned int		uint;
- 	typedef  signed char		byte;
- 	typedef  signed char		int8;
- 	typedef  signed short		int16;
- 	typedef	 signed int			int32;
- 	typedef	unsigned char		ubyte;
- 	typedef	unsigned char		uint8;
- 	typedef	unsigned short		uint16;
- 	typedef	unsigned int		uint32;
+typedef	unsigned int		uint;
+typedef  signed char		byte;
+typedef  signed char		int8;
+typedef  signed short		int16;
+typedef	 signed int			int32;
+typedef	unsigned char		ubyte;
+typedef	unsigned char		uint8;
+typedef	unsigned short		uint16;
+typedef	unsigned int		uint32;
 #endif
 
 // surprisingly, this essential primitive is sometimes undefined on systems
 #ifndef   null
-# ifdef __cplusplus
-#  define null 0
-# else
-#  define null ((void *)0)
-# endif
+  # ifdef __cplusplus
+    #  define null 0
+  # else
+    #  define null ((void *)0)
+  # endif
 #endif
 #ifndef  NULL
-# define NULL null
+  # define NULL null
 #endif
 
 // these two should also have been defined from the very beginning of C
 #ifndef __cplusplus
-#ifndef true
-#define true  1
-#define false 0
-#endif
+  #ifndef true
+    #define true  1
+    #define false 0
+  #endif
 #endif
 
 #define elif else if
