@@ -3,6 +3,7 @@
 // from larger archives or executables by looking for
 // JFIF and PNG streams contained within.
 
+#define _CRT_SECURE_NO_WARNINGS // Oh shove it. fopen_s is no safer than fopen.
 #include "std.h"
 #include "basictypes.h"
 #include <stdio.h>
@@ -22,7 +23,7 @@ int LoadFileAndScanForSignatures(FILE* inputFile);
 int ScanForSignatures(const uint8* inputBuffer, int inputBufferSize);
 int ExtractJPEG(const uint8* inputBuffer, int inputBufferSize);
 int ExtractPNG(const uint8* inputBuffer, int inputBufferSize);
-extern "C" void FatalError(TCHAR * msg, ...);
+extern "C" void FatalError(TCHAR* msg, ...);
 bool MemoryEqual(_In_reads_bytes_(bufferSize) void const* buffer1, _In_reads_bytes_(bufferSize) void const* buffer2, _In_ size_t bufferSize);
 
 ////////////////////////////////////////////////////////////////
@@ -188,7 +189,7 @@ int ExtractJPEG(const uint8* inputBuffer, int inputBufferSize)
     const uint32 idTagSize = 2;
 
     int inputBufferOffset = 0;
-    fwrite(&inputBuffer[inputBufferOffset], idTagLength, 1, outputFile);
+    fwrite(&inputBuffer[inputBufferOffset], idTagSize, 1, outputFile);
     inputBufferOffset += idTagSize;
 
     while (inputBufferOffset < inputBufferSize)
@@ -278,7 +279,7 @@ int ExtractPNG(const uint8* inputBuffer, int inputBufferSize)
 FILE* NextOutputFile(const char* filenamePattern)
 {
     TCHAR fileName[1024];
-    sprintf(fileName, filenamePattern, g_nextFileNumber);
+    sprintf_s(fileName, filenamePattern, g_nextFileNumber);
     FILE* fp = fopen(fileName, "wb");
 
     if (fp != nullptr)
@@ -302,7 +303,7 @@ extern "C" [[noreturn]] void FatalError(TCHAR* msg, ...)
     TCHAR text[1024];
     va_list args;
     va_start(args, msg);
-    _vsntprintf(text, elmsof(text), msg, args);
+    _vsntprintf_s(text, elmsof(text), msg, args);
     text[1023] = '\0';
 
     // delete old lines if too long
