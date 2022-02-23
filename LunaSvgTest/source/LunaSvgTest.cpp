@@ -21,6 +21,7 @@ TODO:
     Read
         A vector format for Flutter by Google
         https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
+        http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
 */
 
 #include "precomp.h"
@@ -474,7 +475,7 @@ void DrawBackgroundColorUnderneath(
 }
 
 
-void RedrawSvg(HWND hWnd)
+void RedrawSvg(HWND hwnd)
 {
     if (!g_document)
     {
@@ -482,6 +483,12 @@ void RedrawSvg(HWND hWnd)
     }
 
     const uint32_t backgroundColor = 0x00000000u; // Transparent black
+
+    LARGE_INTEGER startTime;
+    LARGE_INTEGER endTime;
+    LARGE_INTEGER cpuFrequency;
+    QueryPerformanceFrequency(&cpuFrequency);
+    QueryPerformanceCounter(&startTime);
 
     // Draw the image to a bitmap.
     switch (g_bitmapSizingDisplay)
@@ -546,12 +553,20 @@ void RedrawSvg(HWND hWnd)
     case BitmapSizingDisplay::WindowSize:
         {
             RECT clientRect;
-            GetClientRect(hWnd, /*out*/&clientRect);
+            GetClientRect(hwnd, /*out*/&clientRect);
             unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right);
             g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
         }
         break;
     }
+
+    QueryPerformanceCounter(&endTime);
+    double durationMs = static_cast<double>(endTime.QuadPart - startTime.QuadPart);
+    durationMs /= static_cast<double>(cpuFrequency.QuadPart);
+    durationMs *= 1000.0;
+    wchar_t windowTitle[1000];
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms)", szTitle, durationMs);
+    SetWindowText(hwnd, windowTitle);
 
     // Premultiply pixels so that edges are antialiased.
     PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
@@ -586,7 +601,7 @@ void RedrawSvg(HWND hWnd)
         break;
     }
 
-    InvalidateRect(hWnd, nullptr, true);
+    InvalidateRect(hwnd, nullptr, true);
 }
 
 
