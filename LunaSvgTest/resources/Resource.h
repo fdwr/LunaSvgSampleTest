@@ -37,6 +37,10 @@
 #define IDM_COLOR_TRANSPARENT_BLACK 131
 #define IDM_COLOR_GRAY_CHECKERBOARD 132
 #define IDM_COLOR_OPAQUE_WHITE  133
+#define IDM_ZOOM0               134
+#define IDM_ZOOM1               135
+#define IDM_ZOOM2               136
+#define IDM_ZOOM3               137
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

@@ -18,10 +18,15 @@ TODO:
         Conditional visibility based on device pixels per canvas unit
         rounding-origin for in (toward zero) and out (toward infinity) rounding
 
-    Read
+    Read:
         A vector format for Flutter by Google
         https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
         http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+
+    Scenarios to support:
+        Ensure 1 pixel gap between lines
+        Align 1/3/5/any odd pixel width lines/paths to half pixel
+        Align 2/4/6/any even pixel width lines/paths to pixel intersection
 */
 
 #include "precomp.h"
@@ -53,11 +58,13 @@ enum class BackgroundColorMode
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
+const uint32_t g_zoomFactors[] = {1,2,4,8};
 std::unique_ptr<lunasvg::Document> g_document;
 unsigned int g_bitmapMaximumSize = 0x16;
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 lunasvg::Bitmap g_bitmap;
+uint32_t g_bitmapPixelZoom = 1;
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -363,21 +370,37 @@ lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t width, ui
         return {};
     }
 
+    double actualWidth = width;
+    double actualHeight = height;
     if (width == 0 && height == 0)
     {
-        width = static_cast<uint32_t>(std::ceil(documentWidth));
-        height = static_cast<uint32_t>(std::ceil(documentHeight));
+        actualWidth = documentWidth;
+        actualHeight = documentHeight;
     }
     else if (width != 0 && height == 0)
     {
-        height = static_cast<uint32_t>(std::ceil(width * documentHeight / documentWidth));
+        actualHeight = actualWidth * documentHeight / documentWidth;
     }
     else if (height != 0 && width == 0)
     {
-        width = static_cast<uint32_t>(std::ceil(height * documentWidth / documentHeight));
+        actualWidth = actualHeight * documentWidth / documentHeight;
     }
 
-    lunasvg::Matrix matrix{width / documentWidth, 0, 0, height / documentHeight, 0, 0};
+    lunasvg::Matrix matrix{actualWidth / documentWidth, 0, 0, actualHeight / documentHeight, 0, 0};
+    return matrix;
+}
+
+
+lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t minimumSize)
+{
+    auto documentWidth = document.width();
+    auto documentHeight = document.height();
+    if (documentWidth == 0.0 || documentHeight == 0.0)
+    {
+        return {};
+    }
+    auto largerDocumentSize = std::max(documentWidth, documentHeight);
+    lunasvg::Matrix matrix{minimumSize / largerDocumentSize, 0, 0, minimumSize / largerDocumentSize, 0, 0};
     return matrix;
 }
 
@@ -496,7 +519,17 @@ void RedrawSvg(HWND hwnd)
     case BitmapSizingDisplay::SingleSize:
         {
             unsigned int bitmapMaximumSize = g_bitmapMaximumSize;
-            g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+            g_bitmap.reset(bitmapMaximumSize, bitmapMaximumSize);
+            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
+            auto matrix = GetMatrixForSize(*g_document, bitmapMaximumSize);
+
+            // Don't call renderToBitmap() directly because it distorts
+            // the aspect ratio, unless the viewport is exactly square.
+            //
+            // g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+            //
+            // Compute the matrix ourselves instead, and use that:
+            g_document->render(g_bitmap, matrix, backgroundColor);
         }
         break;
 
@@ -526,7 +559,7 @@ void RedrawSvg(HWND hwnd)
                 // Draw the icon.
                 uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
                 bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
-                auto matrix = GetMatrixForSize(*g_document, size, size);
+                auto matrix = GetMatrixForSize(*g_document, size);
                 g_document->render(bitmap, matrix, backgroundColor);
 
                 // Draw little digits for icon pixel size.
@@ -554,8 +587,11 @@ void RedrawSvg(HWND hwnd)
         {
             RECT clientRect;
             GetClientRect(hwnd, /*out*/&clientRect);
-            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right);
-            g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
+            g_bitmap.reset(bitmapMaximumSize, bitmapMaximumSize);
+            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
+            auto matrix = GetMatrixForSize(*g_document, bitmapMaximumSize);
+            g_document->render(g_bitmap, matrix, backgroundColor);
         }
         break;
     }
@@ -744,7 +780,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE14:
             case IDM_SIZE15:
             case IDM_SIZE16:
-                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes), "g_waterfallBitmapSizes is too small");
+                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes), "g_waterfallBitmapSizes is not the correct size");
                 g_bitmapMaximumSize = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::SingleSize;
                 RedrawSvg(hwnd);
@@ -757,6 +793,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_SIZE_WATERFALL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
+                RedrawSvg(hwnd);
+                break;
+
+            case IDM_ZOOM0:
+            case IDM_ZOOM1:
+            case IDM_ZOOM2:
+            case IDM_ZOOM3:
+                static_assert(IDM_ZOOM3 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+                g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
                 RedrawSvg(hwnd);
                 break;
 
@@ -791,11 +836,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             if (DragQueryFileA(dropHandle, 0, fileName.data(), static_cast<uint32_t>(fileName.size())))
             {
                 g_document = lunasvg::Document::loadFromFile(fileName.data());
-                if (g_document)
-                {
-                    RedrawSvg(hwnd);
-                }
+                RedrawSvg(hwnd);
             }
+        }
+        break;
+
+    case WM_WINDOWPOSCHANGED:
+        if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE) && g_bitmapSizingDisplay == BitmapSizingDisplay::WindowSize)
+        {
+            RedrawSvg(hwnd);
         }
         break;
 
@@ -810,21 +859,52 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
 
 #if 1
-                SetDIBitsToDevice(
-                    ps.hdc,
-                    0,
-                    0,
-                    g_bitmap.width(),
-                    g_bitmap.height(),
-                    0,
-                    0,
-                    0,
-                    g_bitmap.height(),
-                    g_bitmap.data(),
-                    reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
-                    0 // colorUse
-                );
-#else // Why is GDI so stupidly complicated, with simple DrawBitmap call?
+                if (g_bitmapPixelZoom == 1)
+                {
+                    SetDIBitsToDevice(
+                        ps.hdc,
+                        0,
+                        0,
+                        g_bitmap.width(),
+                        g_bitmap.height(),
+                        0,
+                        0,
+                        0,
+                        g_bitmap.height(),
+                        g_bitmap.data(),
+                        reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                        0 // colorUse
+                    );
+                }
+                else // Scale
+                {
+                    HBITMAP bitmap = CreateDIBitmap(
+                        hdc,
+                        reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
+                        CBM_INIT,
+                        g_bitmap.data(),
+                        reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                        DIB_RGB_COLORS
+                    );
+                    HDC sourceHdc = CreateCompatibleDC(ps.hdc);
+                    SelectObject(sourceHdc, bitmap);
+                    StretchBlt(
+                        ps.hdc,
+                        0,
+                        0,
+                        g_bitmap.width() * g_bitmapPixelZoom,
+                        g_bitmap.height() * g_bitmapPixelZoom,
+                        sourceHdc,
+                        0,
+                        0,
+                        g_bitmap.width(),
+                        g_bitmap.height(),
+                        SRCCOPY
+                    );
+                    DeleteDC(sourceHdc);
+                    DeleteObject(bitmap);
+                }
+#else // Why is GDI so stupidly complicated, lacking a simple DrawBitmap call?
                 HBITMAP bitmap = CreateDIBitmap(
                     hdc,
                     reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
