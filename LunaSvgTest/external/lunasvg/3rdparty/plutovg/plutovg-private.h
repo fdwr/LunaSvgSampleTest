@@ -142,10 +142,17 @@ void plutovg_blend_color(plutovg_t* pluto, const plutovg_rle_t* rle, const pluto
 void plutovg_blend_gradient(plutovg_t* pluto, const plutovg_rle_t* rle, const plutovg_gradient_t* gradient);
 void plutovg_blend_texture(plutovg_t* pluto, const plutovg_rle_t* rle, const plutovg_texture_t* texture);
 
+#if PLUTOVG_BGRA_PIXEL_ORDER
+#define plutovg_blue_shift 0
+#define plutovg_green_shift 8
+#define plutovg_red_shift 16
 #define plutovg_alpha_shift 24
+#else
 #define plutovg_red_shift 0
 #define plutovg_green_shift 8
 #define plutovg_blue_shift 16
+#define plutovg_alpha_shift 24
+#endif
 
 #define plutovg_alpha(c) ((c) >> plutovg_alpha_shift)
 #define plutovg_red(c) (((c) >> plutovg_red_shift) & 0xff)

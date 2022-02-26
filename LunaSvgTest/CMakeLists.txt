@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD 11)
 
 #set(BUILD_SHARED_LIBS ON)
 
+set(PLUTOVG_BGRA_PIXEL_ORDER ON CACHE BOOL "Use BGRA order instead of RGBA, useful for Windows GDI." FORCE)
 add_subdirectory(external/lunasvg)
 
 add_executable(LunaSvgTest source/LunaSvgTest.cpp source/LunaSvgTest.h resources/LunaSvgTest.rc)

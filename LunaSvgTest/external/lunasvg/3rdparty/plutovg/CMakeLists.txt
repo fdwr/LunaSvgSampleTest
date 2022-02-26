@@ -12,3 +12,8 @@ target_include_directories(lunasvg
 PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}"
 )
+
+option(PLUTOVG_BGRA_PIXEL_ORDER "Use BGRA order instead of RGBA, useful for GDI/GDI+/Direct2D/Cairo." ON)
+if(PLUTOVG_BGRA_PIXEL_ORDER)
+    target_compile_definitions(lunasvg PUBLIC PLUTOVG_BGRA_PIXEL_ORDER=1)
+endif()

@@ -41,6 +41,7 @@
 #define IDM_ZOOM1               135
 #define IDM_ZOOM2               136
 #define IDM_ZOOM3               137
+#define IDM_RELOAD              140
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

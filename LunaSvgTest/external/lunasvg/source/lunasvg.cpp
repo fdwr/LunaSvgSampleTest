@@ -93,6 +93,8 @@ std::unique_ptr<Document> Document::loadFromFile(const std::string& filename)
     return loadFromData(content);
 }
 
+#if defined(_WIN32) || defined(WIN32)
+// Windows uses UTF-16 for filenames, from file picker dialogs and drag&drop...
 std::unique_ptr<Document> Document::loadFromFile(const std::wstring& filename)
 {
     std::ifstream fs;
@@ -106,6 +108,7 @@ std::unique_ptr<Document> Document::loadFromFile(const std::wstring& filename)
 
     return loadFromData(content);
 }
+#endif
 
 std::unique_ptr<Document> Document::loadFromData(const std::string& string)
 {
@@ -209,7 +212,11 @@ void Document::render(Bitmap bitmap, const Matrix& matrix, std::uint32_t backgro
     state.transform = Transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
     state.canvas->clear(backgroundColor);
     root->render(state);
-    state.canvas->rgba();
+    // For some reason LunaSvg is *unpremultiplying* all the BGRA values,
+    // which makes them useless for the caller to composite icons against a backgound /:-/.
+    // Additionally it's swapping all the color channels, which leads to blue and red
+    // being backwards when trying to draw them to GDI SetDIBitsToDevice.
+    // state.canvas->rgba();
 }
 
 Bitmap Document::renderToBitmap(std::uint32_t width, std::uint32_t height, std::uint32_t backgroundColor) const

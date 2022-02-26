@@ -106,8 +106,10 @@ public:
      */
     static std::unique_ptr<Document> loadFromFile(const std::string& filename);
 
-    // TODO: Conditionalize on Windows build (UTF-16).
+    #if defined(_WIN32) || defined(WIN32)
+    // Windows uses UTF-16 for filenames, from file picker dialogs and drag&drop...
     static std::unique_ptr<Document> loadFromFile(const std::wstring& filename);
+    #endif
 
     /**
      * @brief Creates a document from a string

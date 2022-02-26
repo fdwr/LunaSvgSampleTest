@@ -2,31 +2,107 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
-    Fix void Canvas::rgba() to use macros. canvas.cpp line 195
-        plutovg-private.h
-        #define plutovg_alpha_shift 24
-        #define plutovg_red_shift 0
-        #define plutovg_green_shift 8
-        #define plutovg_blue_shift 16
 
-    Gridfitting prototype - add extended SVG attributes for gridfitting
-        Anchor points (round up, down, left, right, in, out)
-        Round relative another point
-        Round even/odd (e.g. 1 and 3 pixel lines vs 2 and 4 pixel lines)
-        Translate anchor and entire grouped object and then stretch by other anchor
-        Set minimum path width
-        Conditional visibility based on device pixels per canvas unit
-        rounding-origin for in (toward zero) and out (toward infinity) rounding
+Fix void Canvas::rgba() to use macros. canvas.cpp line 195
+    plutovg-private.h
+    #define plutovg_alpha_shift 24
+    #define plutovg_red_shift 0
+    #define plutovg_green_shift 8
+    #define plutovg_blue_shift 16
 
-    Read:
-        A vector format for Flutter by Google
-        https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
-        http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+Gridfitting prototype - add extended SVG attributes for gridfitting
+    Anchor points
+    Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
+    Round relative another point
+    Round at a fraction of the grid, such as half pixels
+    Round even/odd (e.g. 1 and 3 pixel lines vs 2 and 4 pixel lines)
+    Translate anchor and entire grouped object and then stretch by other anchor
+    Set minimum path width minimum-strokewidth="1dpx" (e.g. no thinner than 1 pixel)
+    Conditional visibility based on device pixels per canvas unit
+    rounding-origin for in (toward zero) and out (toward infinity) rounding
+    inward and outward rounding based on path direction clockwise vs counterclockwise
+    Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
+    Align 1/3/5/any odd pixel width lines/paths to half pixel
+    Align 2/4/6/any even pixel width lines/paths to pixel intersection
 
-    Scenarios to support:
-        Ensure 1 pixel gap between lines
-        Align 1/3/5/any odd pixel width lines/paths to half pixel
-        Align 2/4/6/any even pixel width lines/paths to pixel intersection
+Read:
+    A vector format for Flutter by Google
+    https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
+    http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+
+Investigate callstack for pixel coordinate rounding / grid-fitting:
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 128	C
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
+    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 111	C++
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
+
+    lunasvgtest.exe!lunasvg::to_plutovg_path(plutovg * pluto, const lunasvg::Path & path) Line 293	C++
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 106	C++
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
+
+    lunasvgtest.exe!plutovg_matrix_map_point(const plutovg_matrix_t * matrix, const plutovg_point_t * src, plutovg_point_t * dst) Line 128	C
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 108	C
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
+    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
+
+Example:
+    Grid alignment cannot be part of transform or else any unrecognized transform ignores the entire transform in Chrome, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter)").
+
+    <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
+    <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+    <g grid-align="plusSignTopLeftCorner">
+        <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
+        <g grid-align="plusSignCenter">
+            <circle cx="38" cy="38" r="10"/>
+            <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
+            <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
+
+            ...
+            <!-- 3 anchors are used in the path for displacement.
+                 Multiple anchors can apply to multiple points,
+                 such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
+            <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+        </g>
+    </g>
+
+    todo: Can you just declare values inline, rather than require anchor?
+        <g grid-align="37.5 37.5 halves-up fraction-left">
+
+    Referring to the same anchor twice in a nested group will be a nop, since the outer group
+    already aligned the anchor.
+
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+        <g grid-align="plusSignTopLeftCorner">
+            <g grid-align="plusSignTopLeftCorner"><!-- nop since already pixel aligned -->
+                <path d="m 10 10 h20 v20 z"/>
+            </g>
+        </g>
+
+    You should be able to stretch components too between the bounds, which translates to a tranform scale and translate:
+
+        <anchor id="topLeftCorner" x="40" y="40" grid-rounding="up left">
+        <anchor id="bottomRightCorner" x="60" y="60" grid-rounding="down right">
+        <g grid-fit="topLeftCorner bottomRightCorner">
+            <circle cx="50" cy="50" r="10"/>
+        </g>
+
+    Minimum stroke:
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1dpx"/>
 */
 
 #include "precomp.h"
@@ -55,22 +131,26 @@ enum class BackgroundColorMode
     OpaqueWhite,
 };
 
+std::unique_ptr<lunasvg::Document> g_document;
+lunasvg::Bitmap g_bitmap;
+
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,4,8};
-std::unique_ptr<lunasvg::Document> g_document;
-unsigned int g_bitmapMaximumSize = 0x16;
+
+unsigned int g_bitmapMaximumSize = 16;
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
-lunasvg::Bitmap g_bitmap;
 uint32_t g_bitmapPixelZoom = 1;
+std::wstring g_fileLastLoaded;
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
 BOOL InitializeInstance(HINSTANCE, int);
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
+void LoadSvgFile(const wchar_t* filePath);
 void RedrawSvg(HWND hWnd);
 
 int APIENTRY wWinMain(
@@ -498,8 +578,18 @@ void DrawBackgroundColorUnderneath(
 }
 
 
+void LoadSvgFile(const wchar_t* filePath)
+{
+    g_document = lunasvg::Document::loadFromFile(filePath);
+    g_bitmap = lunasvg::Bitmap();
+    g_fileLastLoaded = filePath;
+}
+
+
 void RedrawSvg(HWND hwnd)
 {
+    InvalidateRect(hwnd, nullptr, true);
+
     if (!g_document)
     {
         return;
@@ -605,7 +695,7 @@ void RedrawSvg(HWND hwnd)
     SetWindowText(hwnd, windowTitle);
 
     // Premultiply pixels so that edges are antialiased.
-    PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
+    // hack:::PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
 
     switch (g_backgroundColorMode)
     {
@@ -636,8 +726,6 @@ void RedrawSvg(HWND hwnd)
         );
         break;
     }
-
-    InvalidateRect(hwnd, nullptr, true);
 }
 
 
@@ -754,12 +842,18 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                     if (GetOpenFileName(&openFileName))
                     {
-                        g_document = lunasvg::Document::loadFromFile(fileName.data());
-                        if (g_document)
-                        {
-                            RedrawSvg(hwnd);
-                        }
+                        LoadSvgFile(fileName.data());
+                        RedrawSvg(hwnd);
+                        g_fileLastLoaded = fileName.data();
                     }
+                }
+                break;
+
+            case IDM_RELOAD:
+                if (!g_fileLastLoaded.empty())
+                {
+                    LoadSvgFile(g_fileLastLoaded.data());
+                    RedrawSvg(hwnd);
                 }
                 break;
 
@@ -829,13 +923,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_DROPFILES:
         {
             // Get the filename.
-            std::array<char, MAX_PATH> fileName;
+            std::array<wchar_t, MAX_PATH> fileName;
             fileName[0] = '\0';
             HDROP dropHandle = reinterpret_cast<HDROP>(wParam);
                     
-            if (DragQueryFileA(dropHandle, 0, fileName.data(), static_cast<uint32_t>(fileName.size())))
+            if (DragQueryFile(dropHandle, 0, fileName.data(), static_cast<uint32_t>(fileName.size())))
             {
-                g_document = lunasvg::Document::loadFromFile(fileName.data());
+                LoadSvgFile(fileName.data());
                 RedrawSvg(hwnd);
             }
         }
@@ -933,6 +1027,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     blendFunction
                 );
 #endif
+            }
+            else
+            {
+                HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
+                TextOut(ps.hdc, 0, 0, L"No SVG loaded", _countof(L"No SVG loaded") - 1);
+                SelectObject(ps.hdc, oldFont);
             }
             EndPaint(hwnd, &ps);
         }
