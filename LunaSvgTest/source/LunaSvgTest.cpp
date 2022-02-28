@@ -17,7 +17,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
     Round at a fraction of the grid, such as half pixels
     Round even/odd (e.g. 1 and 3 pixel lines vs 2 and 4 pixel lines)
     Translate anchor and entire grouped object and then stretch by other anchor
-    Set minimum path width minimum-strokewidth="1dpx" (e.g. no thinner than 1 pixel)
+    Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
     Conditional visibility based on device pixels per canvas unit
     rounding-origin for in (toward zero) and out (toward infinity) rounding
     inward and outward rounding based on path direction clockwise vs counterclockwise
@@ -61,26 +61,42 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
 
 Example:
-    Grid alignment cannot be part of transform or else any unrecognized transform ignores the entire transform in Chrome, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter)").
+    Grid alignment cannot be part of transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" ignores the translate).
 
-    <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
-    <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
-    <g grid-align="plusSignTopLeftCorner">
-        <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
-        <g grid-align="plusSignCenter">
-            <circle cx="38" cy="38" r="10"/>
-            <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
-            <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
+        <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+        <g grid-align="plusSignTopLeftCorner">
+            <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
+            <g grid-align="plusSignCenter">
+                <circle cx="38" cy="38" r="10"/>
+                <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
+                <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
 
-            ...
-            <!-- 3 anchors are used in the path for displacement.
-                 Multiple anchors can apply to multiple points,
-                 such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
-            <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+                ...
+                <!-- 3 anchors are used in the path for displacement.
+                     Multiple anchors can apply to multiple points,
+                     such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
+                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+            </g>
         </g>
-    </g>
 
-    todo: Can you just declare values inline, rather than require anchor?
+    One anchor can be defined relative to another one.
+    Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
+    todo: second anchor is relative to the rounded location rather than user coordinates, right?
+    todo: should I use an explicit attribute like grid-minimum="1px" instead of rounding, that way nearest can be used?
+    todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
+    todo: what about 45 degree angles, so that two octagons keep the same distance from each other? It's okay if the corners
+    todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
+          are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
+          A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
+
+        <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
+        <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
+        <path id="topComponent" anchors="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor -->
+        <path id="bottomComponent" anchors="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
+
+    todo: Can you just declare values inline with shorthand, rather than require anchor?
+
         <g grid-align="37.5 37.5 halves-up fraction-left">
 
     Referring to the same anchor twice in a nested group will be a nop, since the outer group
@@ -102,7 +118,15 @@ Example:
         </g>
 
     Minimum stroke:
-        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1dpx"/>
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
+
+Related:
+    WPF SnapsToDevicePixels and UseLayoutRounding. https://blog.benoitblanchon.fr/wpf-blurry-images/
+    WPF GuidelineSets https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
+    Images and Icons for Visual Studio https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
+    
+    Microsoft W3C rep for SVG https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
+    SVG specification https://github.com/w3c/svgwg/tree/master
 */
 
 #include "precomp.h"
@@ -279,6 +303,7 @@ BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
 }
 
 
+#if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST
 void PremultiplyBgraData(uint8_t* pixels, uint32_t pixelByteCount)
 {
     uint8_t* data = g_bitmap.data();
@@ -289,6 +314,166 @@ void PremultiplyBgraData(uint8_t* pixels, uint32_t pixelByteCount)
         data[i + 2] = data[i + 2] * data[i + 3] / 255;
     }
 }
+
+void Unpremultiply1(
+    lunasvg::Bitmap& bitmap,
+    int ri,
+    int gi,
+    int bi,
+    int ai,
+    bool unpremultiply
+    )
+{
+    const uint32_t width = bitmap.width();
+    const uint32_t height = bitmap.height();
+    const uint32_t stride = bitmap.stride();
+    auto rowData = bitmap.data();
+
+    // warning C4018: '<': signed/unsigned mismatch
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        auto data = rowData;
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            auto b = data[0];
+            auto g = data[1];
+            auto r = data[2];
+            auto a = data[3];
+
+            if (unpremultiply && a != 0)
+            {
+                r = (r * 255) / a;
+                g = (g * 255) / a;
+                b = (b * 255) / a;
+            }
+
+            //data[ri] = r;
+            //data[gi] = g;
+            //data[bi] = b;
+            //data[ai] = a;
+            data[0] = b;
+            data[1] = g;
+            data[2] = r;
+            data[3] = a;
+            data += 4;
+        }
+        rowData += stride;
+    }
+}
+
+
+void Unpremultiply2(
+    lunasvg::Bitmap& bitmap,
+    int ri,
+    int gi,
+    int bi,
+    int ai,
+    bool unpremultiply
+    )
+{
+    const uint32_t width = bitmap.width();
+    const uint32_t height = bitmap.height();
+    const uint32_t stride = bitmap.stride();
+    auto rowData = bitmap.data();
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        auto data = rowData;
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            auto b = data[0];
+            auto g = data[1];
+            auto r = data[2];
+            auto a = data[3];
+
+            uint32_t adjustedA = a - 1;
+            //if (unpremultiply && adjustedA <= 254)
+            // 282ms vs 200ms
+            if (unpremultiply && a != 0)
+            {
+                uint32_t f = (16777215 / a);
+                r = (r * f) >> 16;
+                g = (g * f) >> 16;
+                b = (b * f) >> 16;
+                //r = (r * 255) / a;
+                //g = (g * 255) / a;
+                //b = (b * 255) / a;
+            }
+
+            //data[ri] = r;
+            //data[gi] = g;
+            //data[bi] = b;
+            //data[ai] = a;
+            data[0] = b;
+            data[1] = g;
+            data[2] = r;
+            data[3] = a;
+            data += 4;
+        }
+        rowData += stride;
+    }
+}
+
+
+void Unpremultiply3(
+    lunasvg::Bitmap& bitmap,
+    int ri,
+    int gi,
+    int bi,
+    int ai,
+    bool unpremultiply
+    )
+{
+    const uint32_t width = bitmap.width();
+    const uint32_t height = bitmap.height();
+    const uint32_t stride = bitmap.stride();
+    auto rowData = bitmap.data();
+    uint8_t alphaTable[256][256];
+
+    for (uint32_t i = 0; i < 255; ++i)
+    {
+        alphaTable[i][0] = i;
+    }
+    for (uint32_t i = 0; i < 255; ++i)
+    {
+        for (uint32_t a = 1; a < 256; ++a)
+        {
+            alphaTable[i][a] = (i * 255) / a;
+        }
+    }
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        auto data = rowData;
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            auto b = data[0];
+            auto g = data[1];
+            auto r = data[2];
+            auto a = data[3];
+
+            if (unpremultiply && a != 0)
+            {
+                r = alphaTable[r][a];
+                g = alphaTable[g][a];
+                b = alphaTable[b][a];
+            }
+
+            //data[ri] = r;
+            //data[gi] = g;
+            //data[bi] = b;
+            //data[ai] = a;
+            data[0] = b;
+            data[1] = g;
+            data[2] = r;
+            data[3] = a;
+            data += 4;
+        }
+        rowData += stride;
+    }
+}
+#endif
+
 
 const uint32_t g_smallDigitHeight = 7;
 const uint32_t g_smallDigitWidth = 5;
@@ -646,7 +831,8 @@ void RedrawSvg(HWND hwnd)
                     break;
                 }
 
-                // Draw the icon.
+                // Draw the icon into a subrect of the larger atlas texture,
+                // adjusting the pointer offset while keeping the correct stride.
                 uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
                 bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
                 auto matrix = GetMatrixForSize(*g_document, size);
@@ -694,8 +880,37 @@ void RedrawSvg(HWND hwnd)
     _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms)", szTitle, durationMs);
     SetWindowText(hwnd, windowTitle);
 
+    #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST // hack:::
     // Premultiply pixels so that edges are antialiased.
     // hack:::PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
+
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+    LARGE_INTEGER endTime1, endTime2, endTime3;
+    QueryPerformanceCounter(&startTime);
+
+    for (uint32_t i = 0; i < 300; ++i)
+        Unpremultiply1(g_bitmap, 2,1,0,3, true);
+    QueryPerformanceCounter(&endTime1);
+
+    for (uint32_t i = 0; i < 300; ++i)
+        Unpremultiply2(g_bitmap, 2,1,0,3, true);
+    QueryPerformanceCounter(&endTime2);
+
+    for (uint32_t i = 0; i < 300; ++i)
+        Unpremultiply3(g_bitmap, 2,1,0,3, true);
+    QueryPerformanceCounter(&endTime3);
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+
+    auto GetDuration = [=](LARGE_INTEGER startTime, LARGE_INTEGER endTime) -> double
+    {
+        return double(endTime.QuadPart - startTime.QuadPart) * 1000 / double(cpuFrequency.QuadPart);
+    };
+    double durationMs1 = GetDuration(startTime, endTime1);
+    double durationMs2 = GetDuration(endTime1, endTime2);
+    double durationMs3 = GetDuration(endTime2, endTime3);
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %1.6fms, %1.6fms)", szTitle, durationMs1, durationMs2, durationMs3);
+    SetWindowText(hwnd, windowTitle);
+    #endif
 
     switch (g_backgroundColorMode)
     {

@@ -73,7 +73,7 @@
        y="100.66666"
        rx="10.999973"
        ry="10.000000"
-       visibility="hidden"
+       visibility="visible"
        />
     <circle
        style="fill:#ff3300;stroke-linejoin:round;stroke-miterlimit:10"
@@ -81,7 +81,7 @@
        cx="100.5"
        cy="100.5"
        r="70"
-       visibility="hidden"
+       visibility="visible"
        />
   </g>
 </svg>
