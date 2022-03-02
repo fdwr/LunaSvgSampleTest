@@ -32,6 +32,7 @@
 #define IDM_SIZE16              126
 #define IDM_SIZE_WINDOW         127
 #define IDM_SIZE_WATERFALL      128
+#define IDM_SIZE_NATURAL        129
 #define IDM_COPY                130
 #define IDM_COLOR_FIRST         131
 #define IDM_COLOR_TRANSPARENT_BLACK 131

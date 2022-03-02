@@ -60,6 +60,18 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
     lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
 
+Elements:
+    anchor
+
+Attribute:
+    grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
+    grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
+    grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
+    grid-offset - adjustment in device pixels, such as shifting to a half pixel.
+    grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
+    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
+    anchors - list of relative anchors for a path
+
 Example:
     Grid alignment cannot be part of transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" ignores the translate).
 
@@ -127,6 +139,12 @@ Related:
     
     Microsoft W3C rep for SVG https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
     SVG specification https://github.com/w3c/svgwg/tree/master
+    TrueType hinting is overkill https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
+
+    For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
+      Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+      Possibly use eigen vector?
+      Possibly just check x and y after rotating the transform back to axis alignment?
 */
 
 #include "precomp.h"
@@ -146,6 +164,7 @@ enum class BitmapSizingDisplay
     SingleSize,
     WindowSize,
     Waterfall,
+    Natural,
 };
 
 enum class BackgroundColorMode
@@ -155,19 +174,20 @@ enum class BackgroundColorMode
     OpaqueWhite,
 };
 
-std::unique_ptr<lunasvg::Document> g_document;
+std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
+std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap;
+bool g_svgNeedsRedrawing = true;
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,4,8};
 
-unsigned int g_bitmapMaximumSize = 16;
+unsigned int g_bitmapSizePerDocument = 16; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
-std::wstring g_fileLastLoaded;
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -175,6 +195,7 @@ BOOL InitializeInstance(HINSTANCE, int);
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
 void LoadSvgFile(const wchar_t* filePath);
+void RedrawSvgLater(HWND hWnd);
 void RedrawSvg(HWND hWnd);
 
 int APIENTRY wWinMain(
@@ -212,11 +233,8 @@ int APIENTRY wWinMain(
     // Load the file name if given.
     if (fileName[0])
     {
-        g_document = lunasvg::Document::loadFromFile(fileName);
-        if (g_document)
-        {
-            RedrawSvg(g_windowHandle);
-        }
+        LoadSvgFile(fileName);
+        RedrawSvgLater(g_windowHandle);
     }
 
     HACCEL hAccelTable = LoadAccelerators(instanceHandle, MAKEINTRESOURCE(IDC_LUNASVGTEST));
@@ -763,122 +781,212 @@ void DrawBackgroundColorUnderneath(
 }
 
 
-void LoadSvgFile(const wchar_t* filePath)
+void ClearSvgList()
 {
-    g_document = lunasvg::Document::loadFromFile(filePath);
+    g_svgDocuments.clear();
+    g_filenameList.clear();
     g_bitmap = lunasvg::Bitmap();
-    g_fileLastLoaded = filePath;
 }
 
 
-void RedrawSvg(HWND hwnd)
+void AppendSingleSvgFile(wchar_t const* fileName)
 {
-    InvalidateRect(hwnd, nullptr, true);
+    auto document = lunasvg::Document::loadFromFile(fileName);
+    if (document)
+    {
+        g_svgDocuments.push_back(std::move(document));
+        g_filenameList.push_back(fileName);
+    }
+}
 
-    if (!g_document)
+
+void LoadSvgFile(wchar_t const* fileName)
+{
+    ClearSvgList();
+    AppendSingleSvgFile(fileName);
+}
+
+
+void LoadSvgFiles(std::vector<std::wstring>&& fileList)
+{
+    auto movedFileList = std::move(fileList);
+    ClearSvgList();
+    for (auto& fileName : movedFileList)
+    {
+        AppendSingleSvgFile(fileName.c_str());
+    }
+}
+
+
+void RedrawSvg(RECT const& clientRect)
+{
+    if (g_svgDocuments.empty() || !g_svgDocuments.front())
     {
         return;
     }
 
+    lunasvg::Document& firstDocument = *g_svgDocuments.front();
+
     const uint32_t backgroundColor = 0x00000000u; // Transparent black
 
-    LARGE_INTEGER startTime;
-    LARGE_INTEGER endTime;
-    LARGE_INTEGER cpuFrequency;
-    QueryPerformanceFrequency(&cpuFrequency);
-    QueryPerformanceCounter(&startTime);
+    constexpr uint32_t maximumSmallDigitNumbers = 4;
+    const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
 
     // Draw the image to a bitmap.
     switch (g_bitmapSizingDisplay)
     {
     case BitmapSizingDisplay::SingleSize:
         {
-            unsigned int bitmapMaximumSize = g_bitmapMaximumSize;
-            g_bitmap.reset(bitmapMaximumSize, bitmapMaximumSize);
-            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
-            auto matrix = GetMatrixForSize(*g_document, bitmapMaximumSize);
+            unsigned int bitmapMaximumWidth = clientRect.right / g_bitmapPixelZoom;
 
-            // Don't call renderToBitmap() directly because it distorts
-            // the aspect ratio, unless the viewport is exactly square.
-            //
-            // g_bitmap = g_document->renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
-            //
-            // Compute the matrix ourselves instead, and use that:
-            g_document->render(g_bitmap, matrix, backgroundColor);
+            uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+            uint32_t currentBitmapSize = g_bitmapSizePerDocument;
+            uint32_t bitmapsPerRow = std::max(std::min(bitmapMaximumWidth / currentBitmapSize, totalDocuments), 1u);
+            uint32_t bitmapsPerColumn = (totalDocuments + bitmapsPerRow - 1) / bitmapsPerRow;
+            uint32_t totalBitmapWidth = bitmapsPerRow * currentBitmapSize;
+            uint32_t totalBitmapHeight = bitmapsPerColumn * currentBitmapSize;
+            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
+            g_bitmap.clear(backgroundColor);
+            lunasvg::Bitmap bitmap;
+
+            uint32_t x = 0, y = 0;
+            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            {
+                if (x + currentBitmapSize > totalBitmapWidth)
+                {
+                    y += currentBitmapSize;
+                    x = 0;
+                }
+                if (y + currentBitmapSize > totalBitmapHeight)
+                {
+                    break;
+                }
+
+                lunasvg::Document& document = *g_svgDocuments[documentIndex];
+                auto matrix = GetMatrixForSize(document, currentBitmapSize);
+
+                // Don't call renderToBitmap() directly because it distorts
+                // the aspect ratio, unless the viewport is exactly square.
+                //
+                // g_bitmap = document.renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
+                //
+                // Compute the matrix ourselves instead, and use that:
+                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
+                bitmap.reset(g_bitmap.data() + pixelOffset, currentBitmapSize, currentBitmapSize, g_bitmap.stride());
+                document.render(bitmap, matrix);
+
+                x += currentBitmapSize;
+            }
         }
         break;
 
     case BitmapSizingDisplay::Waterfall:
         {
+            const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+            const bool drawNumbersLeft = totalDocuments > 1;
+            const bool drawNumbersBelow = !drawNumbersLeft;
+
+            const uint32_t startingX = drawNumbersLeft ? maximumDigitPixelsWide : 0;
+            const uint32_t separationY = drawNumbersBelow ? g_smallDigitHeight + 1 : 0;
+
             // Determine the total bitmap size to display all sizes.
             uint32_t totalBitmapWidth = g_waterfallBitmapWidth;
             uint32_t totalBitmapHeight = g_waterfallBitmapHeight;
+
+            if (totalDocuments > 1)
+            {
+                totalBitmapWidth = startingX + totalDocuments * std::end(g_waterfallBitmapSizes)[-1];
+                totalBitmapHeight = 0;
+                for (uint32_t size : g_waterfallBitmapSizes)
+                {
+                    totalBitmapHeight += size + separationY;
+                }
+            }
+
             g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
-            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
+            g_bitmap.clear(backgroundColor);
             lunasvg::Bitmap bitmap;
 
             // Draw each size, left to right, top to bottom.
-            uint32_t x = 0, y = 0, previousSize = 1;
+            uint32_t x = startingX, y = 0, previousSize = 1;
             for (uint32_t size : g_waterfallBitmapSizes)
             {
-                if (x + size > totalBitmapWidth)
+                if (x + size > totalBitmapWidth || (totalDocuments > 1 && x > startingX))
                 {
-                    y += previousSize + g_smallDigitHeight + 1;
-                    x = 0;
+                    y += previousSize + separationY;
+                    x = startingX;
                 }
-                if (y + size + g_smallDigitHeight + 1 > totalBitmapHeight)
+                if (y + size + separationY > totalBitmapHeight)
                 {
                     break;
                 }
 
-                // Draw the icon into a subrect of the larger atlas texture,
-                // adjusting the pointer offset while keeping the correct stride.
-                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
-                bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
-                auto matrix = GetMatrixForSize(*g_document, size);
-                g_document->render(bitmap, matrix, backgroundColor);
+                for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+                {
+                    auto& document = g_svgDocuments[documentIndex];
+                    // Draw the icon into a subrect of the larger atlas texture,
+                    // adjusting the pointer offset while keeping the correct stride.
+                    uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
+                    bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
+                    bitmap.clear(backgroundColor);
+                    auto matrix = GetMatrixForSize(*document, size);
+                    document->render(bitmap, matrix);
 
-                // Draw little digits for icon pixel size.
-                char digits[4] = {};
-                auto result = std::to_chars(std::begin(digits), std::end(digits), size);
-                uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
-                DrawSmallDigits(
-                    g_bitmap.data(),
-                    reinterpret_cast<unsigned char*>(digits),
-                    digitCount,
-                    x + (size - g_smallDigitWidth * digitCount) / 2, // centered across icon
-                    y + size + 1, // y, 1 pixel under icon
-                    g_bitmap.width(),
-                    g_bitmap.height(),
-                    g_bitmap.stride()
-                );
+                    // Draw little digits for icon pixel size.
+                    if (drawNumbersBelow || (drawNumbersLeft && x == startingX))
+                    {
+                        char digits[maximumSmallDigitNumbers] = {};
+                        const auto result = std::to_chars(std::begin(digits), std::end(digits), size);
+                        const uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
+
+                        uint32_t digitX = drawNumbersLeft ?
+                            x - g_smallDigitWidth * digitCount : // left of icon
+                            x + (size - g_smallDigitWidth * digitCount) / 2; // centered horizontally across icon
+                        uint32_t digitY = drawNumbersLeft ?
+                            y + (size - g_smallDigitHeight * digitCount) / 2 : // centered vertical across icon
+                            y + size + 1; // 1 pixel under icon
+
+                        DrawSmallDigits(
+                            g_bitmap.data(),
+                            reinterpret_cast<unsigned char*>(digits),
+                            digitCount,
+                            digitX, 
+                            digitY, // y, 1 pixel under icon
+                            g_bitmap.width(),
+                            g_bitmap.height(),
+                            g_bitmap.stride()
+                        );
+                    }
+
+                    x += size;
+                }
 
                 previousSize = size;
-                x += size;
             }
         }
         break;
 
     case BitmapSizingDisplay::WindowSize:
         {
-            RECT clientRect;
-            GetClientRect(hwnd, /*out*/&clientRect);
             unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
             g_bitmap.reset(bitmapMaximumSize, bitmapMaximumSize);
-            memset(g_bitmap.data(), 0u, g_bitmap.height() * g_bitmap.stride()); // Clear to zero.
-            auto matrix = GetMatrixForSize(*g_document, bitmapMaximumSize);
-            g_document->render(g_bitmap, matrix, backgroundColor);
+            g_bitmap.clear(backgroundColor);
+            auto matrix = GetMatrixForSize(firstDocument, bitmapMaximumSize);
+            firstDocument.render(g_bitmap, matrix);
+        }
+        break;
+
+    case BitmapSizingDisplay::Natural:
+        {
+            lunasvg::Matrix matrix; // Defaults to identity.
+            uint32_t documentWidth  = static_cast<uint32_t>(std::ceil(firstDocument.width()));
+            uint32_t documentHeight = static_cast<uint32_t>(std::ceil(firstDocument.height()));
+            g_bitmap.reset(documentWidth, documentHeight);
+            g_bitmap.clear(backgroundColor);
+            firstDocument.render(g_bitmap, matrix);
         }
         break;
     }
-
-    QueryPerformanceCounter(&endTime);
-    double durationMs = static_cast<double>(endTime.QuadPart - startTime.QuadPart);
-    durationMs /= static_cast<double>(cpuFrequency.QuadPart);
-    durationMs *= 1000.0;
-    wchar_t windowTitle[1000];
-    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms)", szTitle, durationMs);
-    SetWindowText(hwnd, windowTitle);
 
     #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST // hack:::
     // Premultiply pixels so that edges are antialiased.
@@ -911,7 +1019,10 @@ void RedrawSvg(HWND hwnd)
     _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %1.6fms, %1.6fms)", szTitle, durationMs1, durationMs2, durationMs3);
     SetWindowText(hwnd, windowTitle);
     #endif
+}
 
+void RedrawSvgBackground()
+{
     switch (g_backgroundColorMode)
     {
     case BackgroundColorMode::TransparentBlack:
@@ -943,6 +1054,49 @@ void RedrawSvg(HWND hwnd)
     }
 }
 
+
+void RedrawSvgLater(HWND hwnd)
+{
+    g_svgNeedsRedrawing = true;
+
+    RECT invalidationRect = {0, 0, LONG(g_bitmap.width() * g_bitmapPixelZoom), LONG(g_bitmap.height() * g_bitmapPixelZoom)};
+    // Force at least one pixel to be invalidated so the WM_PAINT is generated.
+    if (!g_bitmap.valid())
+    {
+        invalidationRect.right = 1;
+        invalidationRect.top = 1;
+    }
+    InvalidateRect(hwnd, &invalidationRect, true);
+}
+
+void RedrawSvg(HWND hwnd)
+{
+    RECT clientRect;
+    GetClientRect(hwnd, /*out*/&clientRect);
+
+    LARGE_INTEGER startTime;
+    LARGE_INTEGER endTime;
+    LARGE_INTEGER cpuFrequency;
+    QueryPerformanceFrequency(&cpuFrequency);
+    QueryPerformanceCounter(&startTime);
+
+    RedrawSvg(clientRect);
+
+    QueryPerformanceCounter(&endTime);
+    double durationMs = static_cast<double>(endTime.QuadPart - startTime.QuadPart);
+    durationMs /= static_cast<double>(cpuFrequency.QuadPart);
+    durationMs *= 1000.0;
+    wchar_t windowTitle[1000];
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u)", szTitle, durationMs, g_bitmap.width(), g_bitmap.height());
+    SetWindowText(hwnd, windowTitle);
+
+    RedrawSvgBackground();
+
+    RECT invalidationRect = {0, 0, LONG(g_bitmap.width() * g_bitmapPixelZoom), LONG(g_bitmap.height() * g_bitmapPixelZoom)};
+    InvalidateRect(hwnd, &invalidationRect, true);
+
+    g_svgNeedsRedrawing = false;
+}
 
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
@@ -1058,17 +1212,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     if (GetOpenFileName(&openFileName))
                     {
                         LoadSvgFile(fileName.data());
-                        RedrawSvg(hwnd);
-                        g_fileLastLoaded = fileName.data();
+                        RedrawSvgLater(hwnd);
                     }
                 }
                 break;
 
             case IDM_RELOAD:
-                if (!g_fileLastLoaded.empty())
+                if (!g_filenameList.empty())
                 {
-                    LoadSvgFile(g_fileLastLoaded.data());
-                    RedrawSvg(hwnd);
+                    LoadSvgFiles(std::move(g_filenameList));
+                    RedrawSvgLater(hwnd);
                 }
                 break;
 
@@ -1090,19 +1243,24 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE15:
             case IDM_SIZE16:
                 static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes), "g_waterfallBitmapSizes is not the correct size");
-                g_bitmapMaximumSize = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
+                g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::SingleSize;
-                RedrawSvg(hwnd);
+                RedrawSvgLater(hwnd);
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
-                RedrawSvg(hwnd);
+                RedrawSvgLater(hwnd);
                 break;
 
             case IDM_SIZE_WATERFALL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
-                RedrawSvg(hwnd);
+                RedrawSvgLater(hwnd);
+                break;
+
+            case IDM_SIZE_NATURAL:
+                g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
+                RedrawSvgLater(hwnd);
                 break;
 
             case IDM_ZOOM0:
@@ -1110,8 +1268,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM2:
             case IDM_ZOOM3:
                 static_assert(IDM_ZOOM3 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+                RedrawSvgLater(hwnd);
                 g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
-                RedrawSvg(hwnd);
                 break;
 
             case IDM_COPY:
@@ -1126,7 +1284,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_COLOR_OPAQUE_WHITE - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite), "");
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
-                RedrawSvg(hwnd);
+                RedrawSvgLater(hwnd);
                 break;
 
             default:
@@ -1141,24 +1299,41 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             std::array<wchar_t, MAX_PATH> fileName;
             fileName[0] = '\0';
             HDROP dropHandle = reinterpret_cast<HDROP>(wParam);
-                    
-            if (DragQueryFile(dropHandle, 0, fileName.data(), static_cast<uint32_t>(fileName.size())))
+            std::vector<std::wstring> filenameList;
+
+            uint32_t fileCount = DragQueryFile(dropHandle, 0xFFFFFFFF, nullptr, 0);
+            for (uint32_t fileIndex = 0; fileIndex < fileCount; ++fileIndex)
             {
-                LoadSvgFile(fileName.data());
-                RedrawSvg(hwnd);
+                if (DragQueryFile(dropHandle, fileIndex, fileName.data(), static_cast<uint32_t>(fileName.size())))
+                {
+                    filenameList.push_back({fileName.data(), fileName.size()});
+                }
+            }
+            if (!filenameList.empty())
+            {
+                LoadSvgFiles(std::move(filenameList));
+                RedrawSvgLater(hwnd);
             }
         }
         break;
 
     case WM_WINDOWPOSCHANGED:
-        if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE) && g_bitmapSizingDisplay == BitmapSizingDisplay::WindowSize)
+        if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE))
         {
-            RedrawSvg(hwnd);
+            RedrawSvgLater(hwnd);
         }
         break;
 
+    //case WM_ERASEBKGND:
+    //    return 1;
+
     case WM_PAINT:
         {
+            if (g_svgNeedsRedrawing)
+            {
+                RedrawSvg(hwnd);
+            }
+
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
