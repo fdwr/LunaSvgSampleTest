@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Created with Inkscape (http://www.inkscape.org/) and export_objects.py -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="svg1" width="64" height="64" viewBox="0 0 64 64">
+    <defs>
+        <circle
+         style="fill:#ff3300"
+         id="path20"
+         cx="0"
+         cy="0"
+         r="10"
+         visibility="visible"
+        />
+    </defs>
+    <use href="#path20" x="0" y="0" />
+    <use href="#path20" x="30" y="20" />
+</svg>
