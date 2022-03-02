@@ -38,13 +38,14 @@
 
 namespace lunasvg {
 
-class Box
+class Rect;
+
+class LUNASVG_API Box
 {
 public:
     Box() = default;
-    Box(double x, double y, double w, double h)
-        : x(x), y(y), w(w), h(h)
-    {}
+    Box(double x, double y, double w, double h);
+    Box(const Rect& rect);
 
 public:
     double x{0};
@@ -53,13 +54,37 @@ public:
     double h{0};
 };
 
-class Matrix
+class Transform;
+
+class LUNASVG_API Matrix
 {
 public:
     Matrix() = default;
-    Matrix(double a, double b, double c, double d, double e, double f)
-        : a(a), b(b), c(c), d(d), e(e), f(f)
-    {}
+    Matrix(double a, double b, double c, double d, double e, double f);
+    Matrix(const Transform& transform);
+
+    Matrix& rotate(double angle);
+    Matrix& rotate(double angle, double cx, double cy);
+    Matrix& scale(double sx, double sy);
+    Matrix& shear(double shx, double shy);
+    Matrix& translate(double tx, double ty);
+    Matrix& transform(double a, double b, double c, double d, double e, double f);
+    Matrix& identity();
+    Matrix& invert();
+
+    Matrix& operator*=(const Matrix& matrix);
+    Matrix& premultiply(const Matrix& matrix);
+    Matrix& postmultiply(const Matrix& matrix);
+
+    Matrix inverted() const;
+    Matrix operator*(const Matrix& matrix) const;
+    Box map(const Box& box) const;
+
+    static Matrix rotated(double angle);
+    static Matrix rotated(double angle, double cx, double cy);
+    static Matrix scaled(double sx, double sy);
+    static Matrix sheared(double shx, double shy);
+    static Matrix translated(double tx, double ty);
 
 public:
     double a{1};
@@ -74,7 +99,7 @@ class LUNASVG_API Bitmap
 {
 public:
     /**
-     * @note Default bitmap format is RGBA (non-premultiplied).
+     * @note Bitmap format is ARGB Premultiplied.
      */
     Bitmap();
     Bitmap(std::uint8_t* data, std::uint32_t width, std::uint32_t height, std::uint32_t stride);
@@ -87,7 +112,12 @@ public:
     std::uint32_t width() const;
     std::uint32_t height() const;
     std::uint32_t stride() const;
-    bool valid() const;
+
+    void clear(std::uint32_t color);
+    void convert(int ri, int gi, int bi, int ai, bool unpremultiply);
+    void convertToRGBA() { convert(0, 1, 2, 3, true); }
+
+    bool valid() const { return !!m_impl; }
 
 private:
     struct Impl;
@@ -191,6 +221,8 @@ public:
      */
     Document* identity();
 
+    void setMatrix(const Matrix& matrix);
+
     /**
      * @brief Returns the current transformation matrix of the document
      * @return the current transformation matrix
@@ -219,9 +251,8 @@ public:
      * @brief Renders the document to a bitmap
      * @param matrix - the current transformation matrix
      * @param bitmap - target image on which the content will be drawn
-     * @param backgroundColor - background color in 0xRRGGBBAA format
      */
-    void render(Bitmap bitmap, const Matrix& matrix = Matrix{}, std::uint32_t backgroundColor = 0x00000000) const;
+    void render(Bitmap bitmap, const Matrix& matrix = Matrix{}) const;
 
     /**
      * @brief Renders the document to a bitmap
