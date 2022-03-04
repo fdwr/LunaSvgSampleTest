@@ -182,7 +182,7 @@ bool g_svgNeedsRedrawing = true;
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
-const uint32_t g_zoomFactors[] = {1,2,4,8};
+const uint32_t g_zoomFactors[] = {1,2,4,8,16};
 
 unsigned int g_bitmapSizePerDocument = 16; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
@@ -272,7 +272,7 @@ ATOM MyRegisterClass(HINSTANCE instanceHandle)
     wcex.hInstance      = instanceHandle;
     wcex.hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)(COLOR_3DFACE+1);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = wcex.hIcon;
@@ -1211,6 +1211,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                     if (GetOpenFileName(&openFileName))
                     {
+                        RedrawSvgLater(hwnd);
                         LoadSvgFile(fileName.data());
                         RedrawSvgLater(hwnd);
                     }
@@ -1267,7 +1268,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM1:
             case IDM_ZOOM2:
             case IDM_ZOOM3:
-                static_assert(IDM_ZOOM3 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM4:
+                static_assert(IDM_ZOOM4 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 RedrawSvgLater(hwnd);
                 g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
                 break;
@@ -1311,6 +1313,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             }
             if (!filenameList.empty())
             {
+                RedrawSvgLater(hwnd);
                 LoadSvgFiles(std::move(filenameList));
                 RedrawSvgLater(hwnd);
             }
