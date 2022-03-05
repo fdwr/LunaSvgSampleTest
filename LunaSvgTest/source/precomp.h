@@ -9,7 +9,7 @@
 // set the _WIN32_WINNT macro to the platform you wish to support before including SDKDDKVer.h.
 #include <SDKDDKVer.h>
 
-//#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 #define NOMINMAX
 #ifndef UNICODE
 #define UNICODE
@@ -20,6 +20,9 @@
 
 // Windows Header Files
 #include <windows.h>
+#include <commdlg.h> // GetOpenFileName
+#include <shellapi.h> // DragQueryFile
+
 // C RunTime Header Files
 #include <stdlib.h>
 #include <malloc.h>

@@ -2,6 +2,11 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
+    - Show scroll bars
+    - Wrap waterfall to window width
+    - Allow multiple icons at natural size
+    - Cleanup RedrawSvg layout
+    - Upload to GitHub
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -12,18 +17,22 @@ Fix void Canvas::rgba() to use macros. canvas.cpp line 195
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
-    Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
-    Round relative another point
-    Round at a fraction of the grid, such as half pixels
-    Round even/odd (e.g. 1 and 3 pixel lines vs 2 and 4 pixel lines)
-    Translate anchor and entire grouped object and then stretch by other anchor
-    Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
-    Conditional visibility based on device pixels per canvas unit
-    rounding-origin for in (toward zero) and out (toward infinity) rounding
-    inward and outward rounding based on path direction clockwise vs counterclockwise
-    Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
-    Align 1/3/5/any odd pixel width lines/paths to half pixel
-    Align 2/4/6/any even pixel width lines/paths to pixel intersection
+    Grid fitting
+        Align group of objects to adjusted/aligned point
+        Translate anchor and entire grouped object and then stretch by other anchor
+        transform-grid(translate(...) scale(...)
+    Rounding
+        Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
+        rounding-origin for in (toward zero) and out (toward infinity) rounding
+        inward and outward rounding based on path direction clockwise vs counterclockwise
+        Round relative another point
+        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)"
+        Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
+    Conditional details
+        Conditional visibility based on device pixels per canvas unit (PPU)
+    Minimum constraints
+        Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
+        Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
 
 Read:
     A vector format for Flutter by Google
@@ -158,6 +167,7 @@ HINSTANCE g_instanceHandle;                     // current process instance
 HWND g_windowHandle;
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
 
 enum class BitmapSizingDisplay
 {
@@ -265,14 +275,14 @@ ATOM MyRegisterClass(HINSTANCE instanceHandle)
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcex.lpfnWndProc    = &WindowProcedure;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
     wcex.hInstance      = instanceHandle;
     wcex.hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_3DFACE+1);
+    wcex.hbrBackground  = g_backgroundWindowBrush;
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = wcex.hIcon;
@@ -1087,7 +1097,8 @@ void RedrawSvg(HWND hwnd)
     durationMs /= static_cast<double>(cpuFrequency.QuadPart);
     durationMs *= 1000.0;
     wchar_t windowTitle[1000];
-    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u)", szTitle, durationMs, g_bitmap.width(), g_bitmap.height());
+    wchar_t const* filename = !g_filenameList.empty() ? g_filenameList.front().c_str() : L"";
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u, %s)", szTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
     SetWindowText(hwnd, windowTitle);
 
     RedrawSvgBackground();
@@ -1195,8 +1206,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_OPEN:
                 {
-                    std::array<wchar_t, MAX_PATH> fileName;
-                    fileName[0] = '\0';
+                    wchar_t fileNameBuffer[32768];
+                    fileNameBuffer[0] = '\0';
                     OPENFILENAME openFileName = {};
 
                     openFileName.lStructSize = sizeof(openFileName);
@@ -1205,14 +1216,32 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     openFileName.lpstrFilter = L"SVG\0" L"*.svg\0"
                                                L"All files\0" L"*\0"
                                                L"\0";
-                    openFileName.lpstrFile = fileName.data();
-                    openFileName.nMaxFile = static_cast<DWORD>(fileName.size());
-                    openFileName.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE;
+                    openFileName.lpstrFile = std::data(fileNameBuffer);
+                    openFileName.nMaxFile = static_cast<DWORD>(std::size(fileNameBuffer));
+                    openFileName.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE | OFN_ALLOWMULTISELECT;
 
-                    if (GetOpenFileName(&openFileName))
+                    if (GetOpenFileName(&openFileName) && openFileName.nFileOffset > 0)
                     {
+                        std::vector<std::wstring> filenameList;
+                        std::wstring filePath;
+
+                        // Read all filenames, in case multiple were selected.
+                        fileNameBuffer[openFileName.nFileOffset - 1] = '\\'; // Restore missing backslash.
+                        for (const wchar_t* fileName = &fileNameBuffer[openFileName.nFileOffset];
+                            *fileName && fileName < std::end(fileNameBuffer);
+                            /*increment inside loop*/)
+                        {
+                            // Concatenate the leading path with the filename for each file.
+                            size_t fileNameLength = wcslen(fileName);
+                            filePath.reserve(openFileName.nFileOffset + fileNameLength);
+                            filePath.append(std::data(fileNameBuffer), openFileName.nFileOffset);
+                            filePath.append(fileName);
+                            filenameList.push_back(std::move(filePath));
+                            fileName += fileNameLength + 1;
+                        }
+
                         RedrawSvgLater(hwnd);
-                        LoadSvgFile(fileName.data());
+                        LoadSvgFiles(std::move(filenameList));
                         RedrawSvgLater(hwnd);
                     }
                 }
@@ -1327,8 +1356,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         }
         break;
 
-    //case WM_ERASEBKGND:
-    //    return 1;
+    case WM_ERASEBKGND:
+        return 1;
 
     case WM_PAINT:
         {
@@ -1344,6 +1373,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             {
                 BITMAPV5HEADER bitmapInfo = {};
                 FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
+
+                // Erase background around drawing.
+                RECT fillRect = ps.rcPaint;
+                fillRect.left = std::max(fillRect.left, LONG(g_bitmap.width()));
+                fillRect.bottom = std::min(fillRect.bottom, LONG(g_bitmap.height()));
+                FillRect(ps.hdc, &fillRect, g_backgroundWindowBrush);
+                fillRect.left = ps.rcPaint.left;
+                fillRect.right = ps.rcPaint.right;
+                fillRect.top = fillRect.bottom;
+                fillRect.bottom = ps.rcPaint.bottom;
+                FillRect(ps.hdc, &fillRect, g_backgroundWindowBrush);
 
 #if 1
                 if (g_bitmapPixelZoom == 1)
@@ -1423,6 +1463,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             }
             else
             {
+                // Draw text informing no SVG is loaded.
+                FillRect(ps.hdc, &ps.rcPaint, g_backgroundWindowBrush);
                 HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
                 TextOut(ps.hdc, 0, 0, L"No SVG loaded", _countof(L"No SVG loaded") - 1);
                 SelectObject(ps.hdc, oldFont);
