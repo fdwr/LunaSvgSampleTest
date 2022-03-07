@@ -828,6 +828,184 @@ void LoadSvgFiles(std::vector<std::wstring>&& fileList)
 }
 
 
+struct CanvasItem
+{
+    enum class ItemType
+    {
+        Size,
+        SVG,
+    };
+    ItemType itemType;
+    uint32_t value; // Document index value for SVG or pixel value for Size.
+    uint32_t x;
+    uint32_t y;
+    uint32_t w;
+    uint32_t h;
+};
+
+
+void GenerateSvgItems(RECT const& clientRect)
+{
+    //std::vector<CanvasItem> canvasItems;
+
+#if 0
+    constexpr uint32_t maximumSmallDigitNumbers = 4;
+    const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
+
+    // Draw the image to a bitmap.
+    switch (g_bitmapSizingDisplay)
+    {
+    case BitmapSizingDisplay::SingleSize:
+        {
+            unsigned int bitmapMaximumWidth = clientRect.right / g_bitmapPixelZoom;
+
+            uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+            uint32_t currentBitmapSize = g_bitmapSizePerDocument;
+            uint32_t bitmapsPerRow = std::max(std::min(bitmapMaximumWidth / currentBitmapSize, totalDocuments), 1u);
+            uint32_t bitmapsPerColumn = (totalDocuments + bitmapsPerRow - 1) / bitmapsPerRow;
+            uint32_t totalBitmapWidth = bitmapsPerRow * currentBitmapSize;
+            uint32_t totalBitmapHeight = bitmapsPerColumn * currentBitmapSize;
+
+            uint32_t x = 0, y = 0;
+            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            {
+                lunasvg::Document& document = *g_svgDocuments[documentIndex];
+            }
+        }
+        break;
+
+    case BitmapSizingDisplay::Waterfall:
+        {
+            const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+            const bool drawNumbersLeft = totalDocuments > 1;
+            const bool drawNumbersBelow = !drawNumbersLeft;
+
+            const uint32_t startingX = drawNumbersLeft ? maximumDigitPixelsWide : 0;
+            const uint32_t separationY = drawNumbersBelow ? g_smallDigitHeight + 1 : 0;
+
+            // Determine the total bitmap size to display all sizes.
+            uint32_t totalBitmapWidth = g_waterfallBitmapWidth;
+            uint32_t totalBitmapHeight = g_waterfallBitmapHeight;
+
+            if (totalDocuments > 1)
+            {
+                totalBitmapWidth = startingX + totalDocuments * std::end(g_waterfallBitmapSizes)[-1];
+                totalBitmapHeight = 0;
+                for (uint32_t size : g_waterfallBitmapSizes)
+                {
+                    totalBitmapHeight += size + separationY;
+                }
+            }
+
+            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
+            g_bitmap.clear(backgroundColor);
+            lunasvg::Bitmap bitmap;
+
+            // Draw each size, left to right, top to bottom.
+            uint32_t x = startingX, y = 0, previousSize = 1;
+            for (uint32_t size : g_waterfallBitmapSizes)
+            {
+                for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+                {
+                    auto& document = g_svgDocuments[documentIndex];
+                    // Draw the icon into a subrect of the larger atlas texture,
+                    // adjusting the pointer offset while keeping the correct stride.
+                }
+
+                previousSize = size;
+            }
+        }
+        break;
+
+    case BitmapSizingDisplay::WindowSize:
+        {
+            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
+        }
+        break;
+
+    case BitmapSizingDisplay::Natural:
+        {
+            uint32_t documentWidth  = static_cast<uint32_t>(std::ceil(firstDocument.width()));
+            uint32_t documentHeight = static_cast<uint32_t>(std::ceil(firstDocument.height()));
+            g_bitmap.reset(documentWidth, documentHeight);
+        }
+        break;
+    }
+
+#endif
+}
+
+
+void LayoutSvgItems()
+{
+    RECT boundingRect = {};
+    //std::vector<CanvasItem> canvasItems;
+}
+
+
+void RedrawSvgItems()
+{
+    //std::vector<CanvasItem> canvasItems;
+#if 0
+    const uint32_t backgroundColor = 0x00000000u; // Transparent black
+
+    for (const auto& item : canvasItems)
+    {
+        g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
+        g_bitmap.clear(backgroundColor);
+        lunasvg::Bitmap bitmap;
+
+        // Draw each size, left to right, top to bottom.
+        switch (item.itemType)
+        {
+        case CanvasItem::ItemType::Size:
+            {
+                uint32_t pixelSize = item.value;
+
+                // Draw little digits for icon pixel size.
+                if (drawNumbersBelow || (drawNumbersLeft && x == startingX))
+                {
+                    char digits[maximumSmallDigitNumbers] = {};
+                    const auto result = std::to_chars(std::begin(digits), std::end(digits), size);
+                    const uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
+
+                    uint32_t digitX = drawNumbersLeft ?
+                        x - g_smallDigitWidth * digitCount : // left of icon
+                        x + (size - g_smallDigitWidth * digitCount) / 2; // centered horizontally across icon
+                    uint32_t digitY = drawNumbersLeft ?
+                        y + (size - g_smallDigitHeight * digitCount) / 2 : // centered vertical across icon
+                        y + size + 1; // 1 pixel under icon
+
+                    DrawSmallDigits(
+                        g_bitmap.data(),
+                        reinterpret_cast<unsigned char*>(digits),
+                        digitCount,
+                        digitX, 
+                        digitY, // y, 1 pixel under icon
+                        g_bitmap.width(),
+                        g_bitmap.height(),
+                        g_bitmap.stride()
+                    );
+                }
+            }
+        case CanvasItem::ItemType::SVG:
+            {
+                auto& document = g_svgDocuments[item.value];
+                // Draw the icon into a subrect of the larger atlas texture,
+                // adjusting the pointer offset while keeping the correct stride.
+                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
+                bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
+                bitmap.clear(backgroundColor);
+                auto matrix = GetMatrixForSize(*document, size);
+                document->render(bitmap, matrix);
+            }
+        }
+    }
+
+#endif
+}
+
+
 void RedrawSvg(RECT const& clientRect)
 {
     if (g_svgDocuments.empty() || !g_svgDocuments.front())
