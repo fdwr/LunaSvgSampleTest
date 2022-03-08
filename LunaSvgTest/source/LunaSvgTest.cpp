@@ -2,7 +2,6 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
-    - Show scroll bars
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
@@ -193,11 +192,14 @@ const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,4,8,16};
+const uint32_t g_bitmapScrollStep = 32;
 
 unsigned int g_bitmapSizePerDocument = 16; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
+uint32_t g_bitmapXOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+uint32_t g_bitmapYOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 
 // Forward declarations of functions included in this code module:
 ATOM MyRegisterClass(HINSTANCE hInstance);
@@ -302,7 +304,7 @@ BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
 {
     g_instanceHandle = instanceHandle; // Store instance handle in our global variable
 
-    HWND hWnd = CreateWindowExW(
+    HWND hwnd = CreateWindowExW(
         WS_EX_ACCEPTFILES,
         szWindowClass,
         szTitle,
@@ -317,17 +319,105 @@ BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
         nullptr
     );
 
-    if (!hWnd)
+    if (!hwnd)
     {
         return FALSE;
     }
 
-    ShowWindow(hWnd, nCmdShow);
-    UpdateWindow(hWnd);
+    ShowScrollBar(hwnd, SB_BOTH, true);
 
-    g_windowHandle = hWnd;
+    ShowWindow(hwnd, nCmdShow);
+    UpdateWindow(hwnd);
+
+    g_windowHandle = hwnd;
 
     return TRUE;
+}
+
+
+void SetScrollbars(
+    HWND hwnd,
+    uint32_t xMin,
+    uint32_t xMax,
+    uint32_t xPage,
+    uint32_t xPos,
+    uint32_t yMin,
+    uint32_t yMax,
+    uint32_t yPage,
+    uint32_t yPos
+    )
+{
+    SCROLLINFO scrollInfo =
+    {
+        sizeof(scrollInfo), // cbSize
+        SIF_DISABLENOSCROLL|SIF_PAGE|SIF_POS|SIF_RANGE, // fMask
+        int(yMin), // nMin
+        int(yMax), // nMax
+        yPage, // nPage
+        int(yPos), // nPos
+        0, // nTrackPos
+    };
+    SetScrollInfo(hwnd, SB_VERT, &scrollInfo, /*redraw*/ true);
+
+    scrollInfo.nMin = xMin;
+    scrollInfo.nMax = xMax;
+    scrollInfo.nPage = xPage;
+    scrollInfo.nPos = xPos;
+    SetScrollInfo(hwnd, SB_HORZ, &scrollInfo, /*redraw*/ true);
+}
+
+
+uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarType, int32_t lineSize)
+{
+    // Why do we have to repeat this function for something that should be built into Windows?
+    SCROLLINFO scrollInfo = {sizeof(scrollInfo), SIF_ALL};
+    GetScrollInfo(hwnd, scrollBarType, &scrollInfo);  // get information about the scroll
+    int32_t newPosition = scrollInfo.nPos;
+
+    switch (scrollBarCode)
+    {
+    case SB_BOTTOM:
+        newPosition = 0;
+        break;
+
+    case SB_LINEDOWN:
+        newPosition += lineSize;
+        break;
+
+    case SB_LINEUP:
+        newPosition -= lineSize;
+        break;
+
+    case SB_PAGEDOWN:
+        newPosition += scrollInfo.nPage;
+        break;
+
+    case SB_PAGEUP:
+        newPosition -= scrollInfo.nPage;
+        break;
+
+    case SB_THUMBTRACK:
+    case SB_THUMBPOSITION:
+        newPosition = scrollInfo.nTrackPos;
+        break;
+
+    case SB_TOP:
+        newPosition = 0;
+        break;
+
+    case SB_ENDSCROLL:
+    default:
+        return newPosition;
+    }
+
+    newPosition = std::min(newPosition, int32_t(scrollInfo.nMax - scrollInfo.nPage + 1));
+    newPosition = std::max(newPosition, 0);
+
+    scrollInfo.fMask = SIF_POS;
+    scrollInfo.nPos = newPosition;
+    SetScrollInfo(hwnd, scrollBarType, &scrollInfo,/*redraw*/ true);
+
+    return newPosition;
 }
 
 
@@ -1257,6 +1347,7 @@ void RedrawSvgLater(HWND hwnd)
     InvalidateRect(hwnd, &invalidationRect, true);
 }
 
+
 void RedrawSvg(HWND hwnd)
 {
     RECT clientRect;
@@ -1281,11 +1372,29 @@ void RedrawSvg(HWND hwnd)
 
     RedrawSvgBackground();
 
-    RECT invalidationRect = {0, 0, LONG(g_bitmap.width() * g_bitmapPixelZoom), LONG(g_bitmap.height() * g_bitmapPixelZoom)};
+    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+    RECT invalidationRect = {0, 0, LONG(effectiveBitmapWidth), LONG(effectiveBitmapHeight)};
     InvalidateRect(hwnd, &invalidationRect, true);
+
+    g_bitmapXOffset = std::min(g_bitmapXOffset, uint32_t(effectiveBitmapWidth - clientRect.right));
+    g_bitmapYOffset = std::min(g_bitmapYOffset, uint32_t(effectiveBitmapHeight - clientRect.bottom));
+
+    SetScrollbars(
+        hwnd,
+        0,
+        effectiveBitmapWidth,
+        clientRect.right,
+        g_bitmapXOffset,
+        0,
+        effectiveBitmapHeight,
+        clientRect.bottom,
+        g_bitmapYOffset
+    );
 
     g_svgNeedsRedrawing = false;
 }
+
 
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
@@ -1554,8 +1663,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                 // Erase background around drawing.
                 RECT fillRect = ps.rcPaint;
-                fillRect.left = std::max(fillRect.left, LONG(g_bitmap.width()));
-                fillRect.bottom = std::min(fillRect.bottom, LONG(g_bitmap.height()));
+                const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+                const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+                fillRect.left = std::max(fillRect.left, LONG(effectiveBitmapWidth - g_bitmapXOffset));
+                fillRect.bottom = std::min(fillRect.bottom, LONG(effectiveBitmapHeight - g_bitmapYOffset));
                 FillRect(ps.hdc, &fillRect, g_backgroundWindowBrush);
                 fillRect.left = ps.rcPaint.left;
                 fillRect.right = ps.rcPaint.right;
@@ -1568,8 +1679,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 {
                     SetDIBitsToDevice(
                         ps.hdc,
-                        0,
-                        0,
+                        -int(g_bitmapXOffset),
+                        -int(g_bitmapYOffset),
                         g_bitmap.width(),
                         g_bitmap.height(),
                         0,
@@ -1595,8 +1706,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     SelectObject(sourceHdc, bitmap);
                     StretchBlt(
                         ps.hdc,
-                        0,
-                        0,
+                        -int(g_bitmapXOffset),
+                        -int(g_bitmapYOffset),
                         g_bitmap.width() * g_bitmapPixelZoom,
                         g_bitmap.height() * g_bitmapPixelZoom,
                         sourceHdc,
@@ -1648,6 +1759,70 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 SelectObject(ps.hdc, oldFont);
             }
             EndPaint(hwnd, &ps);
+        }
+        break;
+
+    case WM_HSCROLL:
+    case WM_VSCROLL:
+        {
+            const bool isHorizontal = (message == WM_HSCROLL);
+            uint32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
+            const uint32_t previousOffset = currentOffsetRef;
+            const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
+            const uint32_t currentOffset = HandleScrollbar(hwnd, LOWORD(wParam), scrollBarType, g_bitmapScrollStep);
+
+            if (previousOffset != currentOffset)
+            {
+                currentOffsetRef = currentOffset;
+                const int32_t offsetDelta = (int32_t(previousOffset) - int32_t(currentOffset));
+                RECT updatedRect = {};
+                ScrollWindowEx(
+                    hwnd,
+                    isHorizontal ? offsetDelta : 0,
+                    isHorizontal ? 0 : offsetDelta,
+                    nullptr, // prcScroll,
+                    nullptr, // prcClip,
+                    nullptr, // hrgnUpdate,
+                    nullptr, // prcUpdate
+                    SW_ERASE | SW_INVALIDATE
+                );
+            }
+        }
+        break;
+
+    case WM_MOUSEWHEEL:
+        if (wParam & MK_CONTROL) // No need for GET_KEYSTATE_WPARAM.
+        {
+            // TODO: Adjust zoom.
+        }
+        else
+        {
+            int32_t zDelta = -GET_WHEEL_DELTA_WPARAM(wParam);
+            zDelta = zDelta * int32_t(g_bitmapScrollStep) / WHEEL_DELTA;
+
+            // TODO: Consolidate this code with WM_HSCROLL/WM_VSCROLL.
+            const bool isHorizontal = (wParam & MK_SHIFT);
+            const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
+            uint32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
+            const uint32_t previousOffset = currentOffsetRef;
+            const uint32_t currentOffset = HandleScrollbar(hwnd, SB_LINEDOWN, scrollBarType, zDelta);
+
+            if (previousOffset != currentOffset)
+            {
+                currentOffsetRef = currentOffset;
+                const int32_t offsetDelta = (int32_t(previousOffset) - int32_t(currentOffset));
+                RECT updatedRect = {};
+                ScrollWindowEx(
+                    hwnd,
+                    isHorizontal ? offsetDelta : 0,
+                    isHorizontal ? 0 : offsetDelta,
+                    nullptr, // prcScroll,
+                    nullptr, // prcClip,
+                    nullptr, // hrgnUpdate,
+                    nullptr, // prcUpdate
+                    SW_ERASE | SW_INVALIDATE
+                );
+            }
         }
         break;
 
