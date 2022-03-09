@@ -5,6 +5,9 @@ TODO:
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
+    - Add gray background color
+    - Add invert option
+    - Add grid display 1,2,4,8,16... (lines or dots or dashes?)
     - Upload to GitHub
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
@@ -593,6 +596,36 @@ void Unpremultiply3(
 #endif
 
 
+void NegateBitmap(lunasvg::Bitmap& bitmap)
+{
+    const uint32_t width = bitmap.width();
+    const uint32_t height = bitmap.height();
+    const uint32_t stride = bitmap.stride();
+    auto rowData = bitmap.data();
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        auto data = rowData;
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            auto b = data[0];
+            auto g = data[1];
+            auto r = data[2];
+            auto a = data[3];
+            b = a - b;
+            g = a - g;
+            r = a - r;
+            data[0] = b;
+            data[1] = g;
+            data[2] = r;
+            data[3] = a;
+            data += 4;
+        }
+        rowData += stride;
+    }
+}
+
+
 const uint32_t g_smallDigitHeight = 7;
 const uint32_t g_smallDigitWidth = 5;
 const uint32_t g_smallDigitAdvance = 3;
@@ -646,7 +679,7 @@ const uint8_t g_smallDigitPixels[10][g_smallDigitHeight][g_smallDigitWidth] =
     { // 5
         {0,1,1,1,0},
         {1,3,3,3,1},
-        {1,3,1,0,0},
+        {1,3,1,1,0},
         {1,3,3,1,0},
         {0,1,1,3,1},
         {1,3,3,1,0},
@@ -1371,6 +1404,7 @@ void RedrawSvg(HWND hwnd)
     SetWindowText(hwnd, windowTitle);
 
     RedrawSvgBackground();
+    //NegateBitmap(g_bitmap);
 
     const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
