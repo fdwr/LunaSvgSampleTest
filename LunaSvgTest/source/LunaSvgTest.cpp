@@ -2,13 +2,12 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
+    - KeepBitmapInClientRect
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
-    - Add gray background color
-    - Add invert option
-    - Add grid display 1,2,4,8,16... (lines or dots or dashes?)
     - Upload to GitHub
+    - Menu should display dot or check marks
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -184,6 +183,7 @@ enum class BackgroundColorMode
     TransparentBlack,
     GrayCheckerboard,
     OpaqueWhite,
+    OpaqueGray,
 };
 
 std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
@@ -195,17 +195,21 @@ const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,4,8,16};
-const uint32_t g_bitmapScrollStep = 32;
+const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
+const uint32_t g_bitmapScrollStep = 64;
 
 unsigned int g_bitmapSizePerDocument = 16; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
+uint32_t g_gridSize = 8;
 uint32_t g_bitmapXOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 uint32_t g_bitmapYOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+bool g_invertColors = false;
+bool g_gridVisible = false;
 
 // Forward declarations of functions included in this code module:
-ATOM MyRegisterClass(HINSTANCE hInstance);
+ATOM RegisterMainWindowClass(HINSTANCE hInstance);
 BOOL InitializeInstance(HINSTANCE, int);
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
@@ -234,10 +238,10 @@ int APIENTRY wWinMain(
         LocalFree(arguments);
     }
 
-    // Initialize global strings
+    // Initialize global strings.
     LoadStringW(instanceHandle, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(instanceHandle, IDC_LUNASVGTEST, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(instanceHandle);
+    RegisterMainWindowClass(instanceHandle);
 
     // Perform application initialization:
     if (!InitializeInstance(instanceHandle, nCmdShow))
@@ -270,11 +274,7 @@ int APIENTRY wWinMain(
 }
 
 
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-ATOM MyRegisterClass(HINSTANCE instanceHandle)
+ATOM RegisterMainWindowClass(HINSTANCE instanceHandle)
 {
     WNDCLASSEXW wcex;
 
@@ -335,6 +335,22 @@ BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
     g_windowHandle = hwnd;
 
     return TRUE;
+}
+
+template <typename T>
+std::tuple<bool, T> FindAdjustedValue(std::span<const T> valueList, T currentValue, size_t delta)
+{
+    assert(!valueList.empty());
+    auto it = std::lower_bound(valueList.begin(), valueList.end(), currentValue);
+    ptrdiff_t index = (it - valueList.begin()) + delta;
+    if (size_t(index) >= valueList.size())
+    {
+        return {false, currentValue};
+    }
+    else
+    {
+        return {true, valueList[index]};
+    }
 }
 
 
@@ -594,6 +610,27 @@ void Unpremultiply3(
     }
 }
 #endif
+
+
+void DrawBitmapGrid(
+    HDC hdc,
+    int32_t xOffset,
+    int32_t yOffset,
+    uint32_t width,
+    uint32_t height,
+    uint32_t xSpacing,
+    uint32_t ySpacing
+)
+{
+    for (int32_t x = xOffset; x < int32_t(width); x += xSpacing)
+    {
+        Rectangle(hdc, x, yOffset, x + 1, yOffset + height);
+    }
+    for (int32_t y = yOffset; y < int32_t(height); y += ySpacing)
+    {
+        Rectangle(hdc, xOffset, y, xOffset + width, y + 1);
+    }
+}
 
 
 void NegateBitmap(lunasvg::Bitmap& bitmap)
@@ -1352,6 +1389,7 @@ void RedrawSvgBackground()
         break;
 
     case BackgroundColorMode::OpaqueWhite:
+    case BackgroundColorMode::OpaqueGray:
         DrawBackgroundColorUnderneath(
             g_bitmap.data(),
             0,
@@ -1359,17 +1397,46 @@ void RedrawSvgBackground()
             g_bitmap.width(),
             g_bitmap.height(),
             g_bitmap.stride(),
-            0xFFFFFFFF
+            (g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0xFF808080 : /*OpaqueWhite*/ 0xFFFFFFFF
         );
         break;
     }
 }
 
 
-void RedrawSvgLater(HWND hwnd)
+void UpdateBitmapScrollbars(HWND hwnd, const RECT& clientRect)
 {
-    g_svgNeedsRedrawing = true;
+    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
 
+    SetScrollbars(
+        hwnd,
+        0,
+        effectiveBitmapWidth,
+        clientRect.right,
+        g_bitmapXOffset,
+        0,
+        effectiveBitmapHeight,
+        clientRect.bottom,
+        g_bitmapYOffset
+    );
+}
+
+
+void KeepBitmapInClientRect(HWND hwnd)
+{
+    RECT clientRect;
+    GetClientRect(hwnd, /*out*/&clientRect);
+    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+    // TODO: Implement
+    // g_bitmapXOffset = std::min(g_bitmapXOffset, uint32_t(effectiveBitmapWidth - clientRect.right));
+    // g_bitmapYOffset = std::min(g_bitmapYOffset, uint32_t(effectiveBitmapHeight - clientRect.bottom));
+}
+
+
+void RedrawBitmapLater(HWND hwnd)
+{
     RECT invalidationRect = {0, 0, LONG(g_bitmap.width() * g_bitmapPixelZoom), LONG(g_bitmap.height() * g_bitmapPixelZoom)};
     // Force at least one pixel to be invalidated so the WM_PAINT is generated.
     if (!g_bitmap.valid())
@@ -1378,6 +1445,13 @@ void RedrawSvgLater(HWND hwnd)
         invalidationRect.top = 1;
     }
     InvalidateRect(hwnd, &invalidationRect, true);
+}
+
+
+void RedrawSvgLater(HWND hwnd)
+{
+    g_svgNeedsRedrawing = true;
+    RedrawBitmapLater(hwnd);
 }
 
 
@@ -1404,27 +1478,15 @@ void RedrawSvg(HWND hwnd)
     SetWindowText(hwnd, windowTitle);
 
     RedrawSvgBackground();
-    //NegateBitmap(g_bitmap);
+    if (g_invertColors)
+    {
+        NegateBitmap(g_bitmap);
+    }
 
     const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
     RECT invalidationRect = {0, 0, LONG(effectiveBitmapWidth), LONG(effectiveBitmapHeight)};
     InvalidateRect(hwnd, &invalidationRect, true);
-
-    g_bitmapXOffset = std::min(g_bitmapXOffset, uint32_t(effectiveBitmapWidth - clientRect.right));
-    g_bitmapYOffset = std::min(g_bitmapYOffset, uint32_t(effectiveBitmapHeight - clientRect.bottom));
-
-    SetScrollbars(
-        hwnd,
-        0,
-        effectiveBitmapWidth,
-        clientRect.right,
-        g_bitmapXOffset,
-        0,
-        effectiveBitmapHeight,
-        clientRect.bottom,
-        g_bitmapYOffset
-    );
 
     g_svgNeedsRedrawing = false;
 }
@@ -1460,6 +1522,45 @@ void FillBitmapInfoFromLunaSvgBitmap(
     bitmapInfo.bV5ProfileData = 0;
     bitmapInfo.bV5ProfileSize = 0;
     bitmapInfo.bV5Reserved = 0;
+}
+
+
+void DrawRectangleAroundRectangle(
+    HDC hdc,
+    const RECT& outerRect,
+    const RECT& innerRect,
+    HBRUSH brush
+    )
+{
+    RECT fillRect = outerRect;
+
+    // Top
+    fillRect.top = outerRect.top;
+    fillRect.bottom = innerRect.top;
+    fillRect.left = outerRect.left;
+    fillRect.right = outerRect.right;
+    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
+
+    // Bottom
+    fillRect.top = innerRect.bottom;
+    fillRect.bottom = outerRect.bottom;
+    // fillRect.left = outerRect.left;
+    // fillRect.right = outerRect.right;
+    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
+
+    // Left
+    fillRect.top = innerRect.top;
+    fillRect.bottom = innerRect.bottom;
+    fillRect.left = outerRect.left;
+    fillRect.right = innerRect.right;
+    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
+
+    // Right
+    // fillRect.top = innerRect.top;
+    // fillRect.bottom = innerRect.bottom;
+    fillRect.left = innerRect.left;
+    fillRect.right = outerRect.right;
+    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
 }
 
 
@@ -1622,6 +1723,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_ZOOM4 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 RedrawSvgLater(hwnd);
                 g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
+                KeepBitmapInClientRect(hwnd);
                 break;
 
             case IDM_COPY:
@@ -1631,12 +1733,42 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_COLOR_GRAY_CHECKERBOARD:
             case IDM_COLOR_TRANSPARENT_BLACK:
             case IDM_COLOR_OPAQUE_WHITE:
-                static_assert(IDM_COLOR_GRAY_CHECKERBOARD - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard), "");
-                static_assert(IDM_COLOR_TRANSPARENT_BLACK - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack), "");
-                static_assert(IDM_COLOR_OPAQUE_WHITE - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite), "");
+            case IDM_COLOR_OPAQUE_GRAY:
+                static_assert(IDM_COLOR_GRAY_CHECKERBOARD - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard));
+                static_assert(IDM_COLOR_TRANSPARENT_BLACK - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack));
+                static_assert(IDM_COLOR_OPAQUE_WHITE - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite));
+                static_assert(IDM_COLOR_OPAQUE_GRAY - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueGray));
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
                 RedrawSvgLater(hwnd);
+                break;
+
+            case IDM_INVERT_COLORS:
+                g_invertColors = !g_invertColors;
+                RedrawSvgLater(hwnd);
+                break;
+
+            case IDM_GRID_VISIBLE:
+                g_gridVisible = !g_gridVisible;
+                RedrawBitmapLater(hwnd);
+                break;
+
+            case IDM_GRID_SIZE_1:
+            case IDM_GRID_SIZE_2:
+            case IDM_GRID_SIZE_3:
+            case IDM_GRID_SIZE_4:
+            case IDM_GRID_SIZE_5:
+            case IDM_GRID_SIZE_6:
+            case IDM_GRID_SIZE_7:
+            case IDM_GRID_SIZE_8:
+            case IDM_GRID_SIZE_12:
+            case IDM_GRID_SIZE_16:
+            case IDM_GRID_SIZE_24:
+            case IDM_GRID_SIZE_32:
+                g_gridVisible = true;
+                static_assert(IDM_GRID_SIZE_32 + 1 - IDM_GRID_SIZE_1 == _countof(g_gridSizes), "g_gridSizes is not the correct size");
+                g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_1];
+                RedrawBitmapLater(hwnd);
                 break;
 
             default:
@@ -1685,6 +1817,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             if (g_svgNeedsRedrawing)
             {
                 RedrawSvg(hwnd);
+                RECT clientRect;
+                GetClientRect(hwnd, /*out*/&clientRect);
+                UpdateBitmapScrollbars(hwnd, clientRect);
             }
 
             PAINTSTRUCT ps;
@@ -1696,19 +1831,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
 
                 // Erase background around drawing.
-                RECT fillRect = ps.rcPaint;
                 const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
                 const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-                fillRect.left = std::max(fillRect.left, LONG(effectiveBitmapWidth - g_bitmapXOffset));
-                fillRect.bottom = std::min(fillRect.bottom, LONG(effectiveBitmapHeight - g_bitmapYOffset));
-                FillRect(ps.hdc, &fillRect, g_backgroundWindowBrush);
-                fillRect.left = ps.rcPaint.left;
-                fillRect.right = ps.rcPaint.right;
-                fillRect.top = fillRect.bottom;
-                fillRect.bottom = ps.rcPaint.bottom;
-                FillRect(ps.hdc, &fillRect, g_backgroundWindowBrush);
+                RECT bitmapRect = {
+                    -LONG(g_bitmapXOffset),
+                    -LONG(g_bitmapYOffset),
+                    LONG(effectiveBitmapWidth - g_bitmapXOffset),
+                    LONG(effectiveBitmapHeight - g_bitmapYOffset)
+                };
+                DrawRectangleAroundRectangle(ps.hdc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
 
-#if 1
+                #if 1
                 if (g_bitmapPixelZoom == 1)
                 {
                     SetDIBitsToDevice(
@@ -1754,7 +1887,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     DeleteDC(sourceHdc);
                     DeleteObject(bitmap);
                 }
-#else // Why is GDI so stupidly complicated, lacking a simple DrawBitmap call?
+                #else // Why is GDI so stupidly complicated, lacking a simple DrawBitmap call?
                 HBITMAP bitmap = CreateDIBitmap(
                     hdc,
                     reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
@@ -1782,7 +1915,20 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     g_bitmap.height(),
                     blendFunction
                 );
-#endif
+                #endif
+                const int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
+                if (g_gridVisible && gridSpacing > 1)
+                {
+                    DrawBitmapGrid(
+                        ps.hdc,
+                        -int(g_bitmapXOffset),
+                        -int(g_bitmapYOffset),
+                        g_bitmap.width() * g_bitmapPixelZoom,
+                        g_bitmap.height() * g_bitmapPixelZoom,
+                        gridSpacing,
+                        gridSpacing
+                    );
+                }
             }
             else
             {
@@ -1827,7 +1973,28 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_MOUSEWHEEL:
         if (wParam & MK_CONTROL) // No need for GET_KEYSTATE_WPARAM.
         {
-            // TODO: Adjust zoom.
+            // Adjust zoom.
+            int32_t zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+            RedrawBitmapLater(hwnd);
+            auto [valueChanged, newPixelZoom] = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
+            if (valueChanged)
+            {
+                // Fix mouse coordinates to be window relative.
+                POINT mouseCoordinate = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+                ScreenToClient(hwnd, &mouseCoordinate);
+
+                // Adjust bitmap x and y appropriately based on mouse cursor.
+                const int32_t xOffset = (mouseCoordinate.x + g_bitmapXOffset) / g_bitmapPixelZoom;
+                const int32_t yOffset = (mouseCoordinate.y + g_bitmapYOffset) / g_bitmapPixelZoom;
+                g_bitmapXOffset = xOffset * newPixelZoom - mouseCoordinate.x;
+                g_bitmapYOffset = yOffset * newPixelZoom - mouseCoordinate.y;
+                g_bitmapPixelZoom = newPixelZoom;
+
+                RedrawBitmapLater(hwnd);
+                RECT clientRect;
+                GetClientRect(hwnd, /*out*/&clientRect);
+                UpdateBitmapScrollbars(hwnd, clientRect);
+            }
         }
         else
         {

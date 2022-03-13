@@ -20,6 +20,7 @@
 
 // Windows Header Files
 #include <windows.h>
+#include <windowsx.h>
 #include <commdlg.h> // GetOpenFileName
 #include <shellapi.h> // DragQueryFile
 
@@ -37,3 +38,4 @@
 #include <algorithm>
 #include <numeric>
 #include <vector>
+#include <span>
