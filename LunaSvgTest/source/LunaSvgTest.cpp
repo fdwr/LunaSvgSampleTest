@@ -8,6 +8,7 @@ TODO:
     - Cleanup RedrawSvg layout
     - Upload to GitHub
     - Menu should display dot or check marks
+    - Move these thoughts below to another file
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -216,6 +217,15 @@ INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
 void LoadSvgFile(const wchar_t* filePath);
 void RedrawSvgLater(HWND hWnd);
 void RedrawSvg(HWND hWnd);
+
+struct PixelBgra
+{
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
+    uint8_t a;
+};
+
 
 int APIENTRY wWinMain(
     _In_ HINSTANCE instanceHandle,
@@ -914,13 +924,6 @@ void DrawBackgroundColorUnderneath(
     uint32_t backgroundColor // BGRA
     )
 {
-    struct PixelBgra
-    {
-        uint8_t b;
-        uint8_t g;
-        uint8_t r;
-        uint8_t a;
-    };
     PixelBgra bgraColor = *reinterpret_cast<PixelBgra*>(&backgroundColor);
 
     //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
@@ -1437,7 +1440,13 @@ void KeepBitmapInClientRect(HWND hwnd)
 
 void RedrawBitmapLater(HWND hwnd)
 {
-    RECT invalidationRect = {0, 0, LONG(g_bitmap.width() * g_bitmapPixelZoom), LONG(g_bitmap.height() * g_bitmapPixelZoom)};
+    RECT invalidationRect = {
+        -LONG(g_bitmapXOffset),
+        -LONG(g_bitmapYOffset),
+        LONG(g_bitmap.width()  * g_bitmapPixelZoom) - LONG(g_bitmapXOffset),
+        LONG(g_bitmap.height() * g_bitmapPixelZoom) - LONG(g_bitmapYOffset)
+    };
+
     // Force at least one pixel to be invalidated so the WM_PAINT is generated.
     if (!g_bitmap.valid())
     {
@@ -1483,11 +1492,7 @@ void RedrawSvg(HWND hwnd)
         NegateBitmap(g_bitmap);
     }
 
-    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-    RECT invalidationRect = {0, 0, LONG(effectiveBitmapWidth), LONG(effectiveBitmapHeight)};
-    InvalidateRect(hwnd, &invalidationRect, true);
-
+    RedrawBitmapLater(hwnd);
     g_svgNeedsRedrawing = false;
 }
 
@@ -1798,6 +1803,22 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawSvgLater(hwnd);
                 LoadSvgFiles(std::move(filenameList));
                 RedrawSvgLater(hwnd);
+            }
+        }
+        break;
+
+    case WM_MENUSELECT:
+        {
+            uint32_t id = LOWORD(wParam);
+            auto hmenu = reinterpret_cast<HMENU>(lParam);
+            switch (id)
+            {
+            case 2:
+                CheckMenuItem(hmenu, IDM_INVERT_COLORS, MF_BYCOMMAND | (g_invertColors ? MF_CHECKED : MF_UNCHECKED));
+                break;
+            case 5:
+                CheckMenuItem(hmenu, IDM_GRID_VISIBLE, MF_BYCOMMAND | (g_gridVisible ? MF_CHECKED : MF_UNCHECKED));
+                break;
             }
         }
         break;
