@@ -59,6 +59,13 @@
 #define IDM_GRID_SIZE_16            152
 #define IDM_GRID_SIZE_24            153
 #define IDM_GRID_SIZE_32            154
+#define IDM_FILE                    155
+#define IDM_EDIT                    156
+#define IDM_COLOR                   157
+#define IDM_SIZE                    158
+#define IDM_ZOOM                    159
+#define IDM_GRID                    160
+#define IDM_HELP                    161
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

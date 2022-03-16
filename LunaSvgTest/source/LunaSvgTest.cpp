@@ -1809,9 +1809,19 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
     case WM_MENUSELECT:
         {
-            uint32_t id = LOWORD(wParam);
+            uint32_t index = LOWORD(wParam);
             auto hmenu = reinterpret_cast<HMENU>(lParam);
-            switch (id)
+            if (hmenu == nullptr || (HIWORD(wParam) & MF_SYSMENU))
+            {
+                break;
+            }
+            // Change this to be data driven, using an array mapping id to corresponding variable address.
+            // e.g. {IDM_FILE, IDM_INVERT_COLORS, 0, &g_invertColors}, // CheckMenuItem
+            //      {IDM_ZOOM, IDM_ZOOM0, IDM_ZOOM4, &g_bitmapZoom}, // CheckMenuRadioItem
+            // todo: map id to more useful id.
+            //      https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmenuitemid
+            //      https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmenu
+            switch (index)
             {
             case 2:
                 CheckMenuItem(hmenu, IDM_INVERT_COLORS, MF_BYCOMMAND | (g_invertColors ? MF_CHECKED : MF_UNCHECKED));
