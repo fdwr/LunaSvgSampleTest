@@ -632,11 +632,11 @@ void DrawBitmapGrid(
     uint32_t ySpacing
 )
 {
-    for (int32_t x = xOffset; x < int32_t(width); x += xSpacing)
+    for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
     {
         Rectangle(hdc, x, yOffset, x + 1, yOffset + height);
     }
-    for (int32_t y = yOffset; y < int32_t(height); y += ySpacing)
+    for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
     {
         Rectangle(hdc, xOffset, y, xOffset + width, y + 1);
     }
