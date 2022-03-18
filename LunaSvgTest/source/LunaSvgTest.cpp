@@ -40,6 +40,7 @@ Read:
     A vector format for Flutter by Google
     https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
     http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+    https://yqnn.github.io/svg-path-editor/
 
 Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 128	C
