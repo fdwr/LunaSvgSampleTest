@@ -33,19 +33,12 @@
 #define IDM_SIZE_WINDOW             127
 #define IDM_SIZE_WATERFALL          128
 #define IDM_SIZE_NATURAL            129
-#define IDM_COPY                    130
+#define IDM_COPY_BITMAP             130
 #define IDM_COLOR_FIRST             131
 #define IDM_COLOR_TRANSPARENT_BLACK 131
 #define IDM_COLOR_GRAY_CHECKERBOARD 132
 #define IDM_COLOR_OPAQUE_WHITE      133
 #define IDM_COLOR_OPAQUE_GRAY       134
-#define IDM_ZOOM0                   135
-#define IDM_ZOOM1                   136
-#define IDM_ZOOM2                   137
-#define IDM_ZOOM3                   138
-#define IDM_ZOOM4                   139
-#define IDM_RELOAD                  140
-#define IDM_INVERT_COLORS           141
 #define IDM_GRID_VISIBLE            142
 #define IDM_GRID_SIZE_1             143
 #define IDM_GRID_SIZE_2             144
@@ -66,6 +59,18 @@
 #define IDM_ZOOM                    159
 #define IDM_GRID                    160
 #define IDM_HELP                    161
+#define IDM_RELOAD                  162
+#define IDM_INVERT_COLORS           163
+#define IDM_ZOOM0                   170
+#define IDM_ZOOM1                   171
+#define IDM_ZOOM2                   172
+#define IDM_ZOOM3                   173
+#define IDM_ZOOM4                   174
+#define IDM_ZOOM5                   175
+#define IDM_ZOOM6                   176
+#define IDM_ZOOM7                   177
+#define IDM_ZOOM8                   178
+#define IDM_ZOOM9                   179
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

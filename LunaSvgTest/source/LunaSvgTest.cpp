@@ -2,7 +2,6 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
-    - KeepBitmapInClientRect
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
@@ -196,7 +195,7 @@ bool g_svgNeedsRedrawing = true;
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
-const uint32_t g_zoomFactors[] = {1,2,4,8,16};
+const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
 
@@ -205,8 +204,8 @@ BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
 uint32_t g_gridSize = 8;
-uint32_t g_bitmapXOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
-uint32_t g_bitmapYOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+int32_t g_bitmapXOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+int32_t g_bitmapYOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 bool g_invertColors = false;
 bool g_gridVisible = false;
 
@@ -367,14 +366,14 @@ std::tuple<bool, T> FindAdjustedValue(std::span<const T> valueList, T currentVal
 
 void SetScrollbars(
     HWND hwnd,
-    uint32_t xMin,
-    uint32_t xMax,
-    uint32_t xPage,
-    uint32_t xPos,
-    uint32_t yMin,
-    uint32_t yMax,
-    uint32_t yPage,
-    uint32_t yPos
+    int32_t xMin,
+    int32_t xMax,
+    int32_t xPage,
+    int32_t xPos,
+    int32_t yMin,
+    int32_t yMax,
+    int32_t yPage,
+    int32_t yPos
     )
 {
     SCROLLINFO scrollInfo =
@@ -383,7 +382,7 @@ void SetScrollbars(
         SIF_DISABLENOSCROLL|SIF_PAGE|SIF_POS|SIF_RANGE, // fMask
         int(yMin), // nMin
         int(yMax), // nMax
-        yPage, // nPage
+        uint32_t(yPage), // nPage
         int(yPos), // nPos
         0, // nTrackPos
     };
@@ -406,23 +405,23 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
 
     switch (scrollBarCode)
     {
-    case SB_BOTTOM:
-        newPosition = 0;
+    case SB_RIGHT:
+        newPosition = scrollInfo.nMax;
         break;
 
-    case SB_LINEDOWN:
+    case SB_LINERIGHT:
         newPosition += lineSize;
         break;
 
-    case SB_LINEUP:
+    case SB_LINELEFT:
         newPosition -= lineSize;
         break;
 
-    case SB_PAGEDOWN:
+    case SB_PAGERIGHT:
         newPosition += scrollInfo.nPage;
         break;
 
-    case SB_PAGEUP:
+    case SB_PAGELEFT:
         newPosition -= scrollInfo.nPage;
         break;
 
@@ -431,8 +430,8 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
         newPosition = scrollInfo.nTrackPos;
         break;
 
-    case SB_TOP:
-        newPosition = 0;
+    case SB_LEFT:
+        newPosition = scrollInfo.nMin;
         break;
 
     case SB_ENDSCROLL:
@@ -440,8 +439,8 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
         return newPosition;
     }
 
-    newPosition = std::min(newPosition, int32_t(scrollInfo.nMax - scrollInfo.nPage + 1));
-    newPosition = std::max(newPosition, 0);
+    newPosition = std::min(newPosition, int32_t(scrollInfo.nMax - scrollInfo.nPage));
+    newPosition = std::max(newPosition, scrollInfo.nMin);
 
     scrollInfo.fMask = SIF_POS;
     scrollInfo.nPos = newPosition;
@@ -1408,44 +1407,41 @@ void RedrawSvgBackground()
 }
 
 
-void UpdateBitmapScrollbars(HWND hwnd, const RECT& clientRect)
-{
-    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-
-    SetScrollbars(
-        hwnd,
-        0,
-        effectiveBitmapWidth,
-        clientRect.right,
-        g_bitmapXOffset,
-        0,
-        effectiveBitmapHeight,
-        clientRect.bottom,
-        g_bitmapYOffset
-    );
-}
-
-
-void KeepBitmapInClientRect(HWND hwnd)
+void UpdateBitmapScrollbars(HWND hwnd)
 {
     RECT clientRect;
     GetClientRect(hwnd, /*out*/&clientRect);
-    const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-    const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-    // TODO: Implement
-    // g_bitmapXOffset = std::min(g_bitmapXOffset, uint32_t(effectiveBitmapWidth - clientRect.right));
-    // g_bitmapYOffset = std::min(g_bitmapYOffset, uint32_t(effectiveBitmapHeight - clientRect.bottom));
+
+    const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+    const int32_t xPageSize = std::min(effectiveBitmapWidth, int32_t(clientRect.right));
+    const int32_t yPageSize = std::min(effectiveBitmapHeight, int32_t(clientRect.bottom));
+    const int32_t xMin = std::min(g_bitmapXOffset, std::min(0, effectiveBitmapWidth - int32_t(clientRect.right)));
+    const int32_t yMin = std::min(g_bitmapYOffset, std::min(0, effectiveBitmapHeight - int32_t(clientRect.bottom)));
+    const int32_t xMax = std::max(effectiveBitmapWidth, int32_t(clientRect.right) - xPageSize);
+    const int32_t yMax = std::max(effectiveBitmapHeight, int32_t(clientRect.bottom) - yPageSize);
+
+    SetScrollbars(
+        hwnd,
+        xMin,
+        xMax,
+        xPageSize,
+        g_bitmapXOffset,
+        yMin,
+        yMax,
+        yPageSize,
+        g_bitmapYOffset
+    );
 }
 
 
 void RedrawBitmapLater(HWND hwnd)
 {
     RECT invalidationRect = {
-        -LONG(g_bitmapXOffset),
-        -LONG(g_bitmapYOffset),
-        LONG(g_bitmap.width()  * g_bitmapPixelZoom) - LONG(g_bitmapXOffset),
-        LONG(g_bitmap.height() * g_bitmapPixelZoom) - LONG(g_bitmapYOffset)
+        LONG(-g_bitmapXOffset),
+        LONG(-g_bitmapYOffset),
+        LONG(g_bitmap.width()  * g_bitmapPixelZoom - LONG(g_bitmapXOffset)),
+        LONG(g_bitmap.height() * g_bitmapPixelZoom - LONG(g_bitmapYOffset))
     };
 
     // Force at least one pixel to be invalidated so the WM_PAINT is generated.
@@ -1538,35 +1534,44 @@ void DrawRectangleAroundRectangle(
     HBRUSH brush
     )
 {
-    RECT fillRect = outerRect;
+    RECT rects[4] = {
+        // Top
+        {
+            outerRect.left,
+            outerRect.top,
+            outerRect.right,
+            innerRect.top,
+        },
+        // Bottom
+        {
+            outerRect.left,
+            innerRect.bottom,
+            outerRect.right,
+            outerRect.bottom,
+        },
+        // Left
+        {
+            outerRect.left,
+            innerRect.top,
+            innerRect.left,
+            innerRect.bottom,
+        },
+        // Right
+        {
+            innerRect.right,
+            innerRect.top,
+            outerRect.right,
+            innerRect.bottom,
+        },
+    };
 
-    // Top
-    fillRect.top = outerRect.top;
-    fillRect.bottom = innerRect.top;
-    fillRect.left = outerRect.left;
-    fillRect.right = outerRect.right;
-    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
-
-    // Bottom
-    fillRect.top = innerRect.bottom;
-    fillRect.bottom = outerRect.bottom;
-    // fillRect.left = outerRect.left;
-    // fillRect.right = outerRect.right;
-    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
-
-    // Left
-    fillRect.top = innerRect.top;
-    fillRect.bottom = innerRect.bottom;
-    fillRect.left = outerRect.left;
-    fillRect.right = innerRect.right;
-    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
-
-    // Right
-    // fillRect.top = innerRect.top;
-    // fillRect.bottom = innerRect.bottom;
-    fillRect.left = innerRect.left;
-    fillRect.right = outerRect.right;
-    FillRect(hdc, &fillRect, g_backgroundWindowBrush);
+    for (auto& rect : rects)
+    {
+        if (!IsRectEmpty(&rect))
+        {
+            FillRect(hdc, &rect, brush);
+        }
+    }
 }
 
 
@@ -1726,13 +1731,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM2:
             case IDM_ZOOM3:
             case IDM_ZOOM4:
-                static_assert(IDM_ZOOM4 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM5:
+            case IDM_ZOOM6:
+            case IDM_ZOOM7:
+            case IDM_ZOOM8:
+            case IDM_ZOOM9:
+                static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 RedrawSvgLater(hwnd);
                 g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
-                KeepBitmapInClientRect(hwnd);
                 break;
 
-            case IDM_COPY:
+            case IDM_COPY_BITMAP:
                 CopySvgBitmapToClipboard(g_bitmap, hwnd);
                 break;
 
@@ -1849,9 +1858,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             if (g_svgNeedsRedrawing)
             {
                 RedrawSvg(hwnd);
-                RECT clientRect;
-                GetClientRect(hwnd, /*out*/&clientRect);
-                UpdateBitmapScrollbars(hwnd, clientRect);
+                UpdateBitmapScrollbars(hwnd);
             }
 
             PAINTSTRUCT ps;
@@ -1866,8 +1873,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
                 const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
                 RECT bitmapRect = {
-                    -LONG(g_bitmapXOffset),
-                    -LONG(g_bitmapYOffset),
+                    LONG(-g_bitmapXOffset),
+                    LONG(-g_bitmapYOffset),
                     LONG(effectiveBitmapWidth - g_bitmapXOffset),
                     LONG(effectiveBitmapHeight - g_bitmapYOffset)
                 };
@@ -1878,8 +1885,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 {
                     SetDIBitsToDevice(
                         ps.hdc,
-                        -int(g_bitmapXOffset),
-                        -int(g_bitmapYOffset),
+                        -g_bitmapXOffset,
+                        -g_bitmapYOffset,
                         g_bitmap.width(),
                         g_bitmap.height(),
                         0,
@@ -1905,8 +1912,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     SelectObject(sourceHdc, bitmap);
                     StretchBlt(
                         ps.hdc,
-                        -int(g_bitmapXOffset),
-                        -int(g_bitmapYOffset),
+                        -g_bitmapXOffset,
+                        -g_bitmapYOffset,
                         g_bitmap.width() * g_bitmapPixelZoom,
                         g_bitmap.height() * g_bitmapPixelZoom,
                         sourceHdc,
@@ -1953,8 +1960,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 {
                     DrawBitmapGrid(
                         ps.hdc,
-                        -int(g_bitmapXOffset),
-                        -int(g_bitmapYOffset),
+                        -g_bitmapXOffset,
+                        -g_bitmapYOffset,
                         g_bitmap.width() * g_bitmapPixelZoom,
                         g_bitmap.height() * g_bitmapPixelZoom,
                         gridSpacing,
@@ -1978,15 +1985,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_VSCROLL:
         {
             const bool isHorizontal = (message == WM_HSCROLL);
-            uint32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
-            const uint32_t previousOffset = currentOffsetRef;
             const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
-            const uint32_t currentOffset = HandleScrollbar(hwnd, LOWORD(wParam), scrollBarType, g_bitmapScrollStep);
+            int32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
+            const int32_t previousOffset = currentOffsetRef;
+            const int32_t currentOffset = HandleScrollbar(hwnd, LOWORD(wParam), scrollBarType, g_bitmapScrollStep);
 
             if (previousOffset != currentOffset)
             {
                 currentOffsetRef = currentOffset;
-                const int32_t offsetDelta = (int32_t(previousOffset) - int32_t(currentOffset));
+                const int32_t offsetDelta = previousOffset - currentOffset;
                 RECT updatedRect = {};
                 ScrollWindowEx(
                     hwnd,
@@ -1998,6 +2005,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     nullptr, // prcUpdate
                     SW_ERASE | SW_INVALIDATE
                 );
+                UpdateBitmapScrollbars(hwnd);
             }
         }
         break;
@@ -2007,25 +2015,30 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         {
             // Adjust zoom.
             int32_t zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-            RedrawBitmapLater(hwnd);
             auto [valueChanged, newPixelZoom] = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
             if (valueChanged)
             {
+                RedrawBitmapLater(hwnd);
+
                 // Fix mouse coordinates to be window relative.
                 POINT mouseCoordinate = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
                 ScreenToClient(hwnd, &mouseCoordinate);
+                const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+                const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+                mouseCoordinate.x = std::max(int32_t(mouseCoordinate.x), -g_bitmapXOffset);
+                mouseCoordinate.y = std::max(int32_t(mouseCoordinate.y), -g_bitmapYOffset);
+                mouseCoordinate.x = std::min(int32_t(mouseCoordinate.x), effectiveBitmapWidth - g_bitmapXOffset);
+                mouseCoordinate.y = std::min(int32_t(mouseCoordinate.y), effectiveBitmapHeight - g_bitmapYOffset);
 
-                // Adjust bitmap x and y appropriately based on mouse cursor.
-                const int32_t xOffset = (mouseCoordinate.x + g_bitmapXOffset) / g_bitmapPixelZoom;
-                const int32_t yOffset = (mouseCoordinate.y + g_bitmapYOffset) / g_bitmapPixelZoom;
+                // Compute zoom origin based on mouse cursor (not just the top/left of the current view like some apps).
+                const int32_t xOffset = (mouseCoordinate.x + g_bitmapXOffset) / int32_t(g_bitmapPixelZoom);
+                const int32_t yOffset = (mouseCoordinate.y + g_bitmapYOffset) / int32_t(g_bitmapPixelZoom);
                 g_bitmapXOffset = xOffset * newPixelZoom - mouseCoordinate.x;
                 g_bitmapYOffset = yOffset * newPixelZoom - mouseCoordinate.y;
                 g_bitmapPixelZoom = newPixelZoom;
 
                 RedrawBitmapLater(hwnd);
-                RECT clientRect;
-                GetClientRect(hwnd, /*out*/&clientRect);
-                UpdateBitmapScrollbars(hwnd, clientRect);
+                UpdateBitmapScrollbars(hwnd);
             }
         }
         else
@@ -2036,14 +2049,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             // TODO: Consolidate this code with WM_HSCROLL/WM_VSCROLL.
             const bool isHorizontal = (wParam & MK_SHIFT);
             const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
-            uint32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
-            const uint32_t previousOffset = currentOffsetRef;
-            const uint32_t currentOffset = HandleScrollbar(hwnd, SB_LINEDOWN, scrollBarType, zDelta);
+            int32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
+            const int32_t previousOffset = currentOffsetRef;
+            const int32_t currentOffset = HandleScrollbar(hwnd, SB_LINEDOWN, scrollBarType, zDelta);
 
             if (previousOffset != currentOffset)
             {
                 currentOffsetRef = currentOffset;
-                const int32_t offsetDelta = (int32_t(previousOffset) - int32_t(currentOffset));
+                const int32_t offsetDelta = previousOffset - currentOffset;
                 RECT updatedRect = {};
                 ScrollWindowEx(
                     hwnd,
@@ -2055,6 +2068,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     nullptr, // prcUpdate
                     SW_ERASE | SW_INVALIDATE
                 );
+                UpdateBitmapScrollbars(hwnd);
             }
         }
         break;
