@@ -2,6 +2,8 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
+    - Fix scrolling empty bitmap (repeats the "No svg loaded" message)
+    - Figure out why \svgs\facebook.com\News.svg looks wrong.
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
