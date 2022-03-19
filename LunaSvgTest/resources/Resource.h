@@ -13,6 +13,7 @@
 #define IDI_LUNASVGTEST             107
 #define IDI_SMALL                   108
 #define IDC_LUNASVGTEST             109
+#define IDM_SIZE_FIRST              110
 #define IDM_SIZE0                   110
 #define IDM_SIZE1                   111
 #define IDM_SIZE2                   112
@@ -30,16 +31,16 @@
 #define IDM_SIZE14                  124
 #define IDM_SIZE15                  125
 #define IDM_SIZE16                  126
-#define IDM_SIZE_WINDOW             127
-#define IDM_SIZE_WATERFALL          128
-#define IDM_SIZE_NATURAL            129
+#define IDM_SIZE_LAST               126
 #define IDM_COPY_BITMAP             130
 #define IDM_COLOR_FIRST             131
 #define IDM_COLOR_TRANSPARENT_BLACK 131
 #define IDM_COLOR_GRAY_CHECKERBOARD 132
 #define IDM_COLOR_OPAQUE_WHITE      133
 #define IDM_COLOR_OPAQUE_GRAY       134
+#define IDM_COLOR_LAST              134
 #define IDM_GRID_VISIBLE            142
+#define IDM_GRID_SIZE_FIRST         143
 #define IDM_GRID_SIZE_1             143
 #define IDM_GRID_SIZE_2             144
 #define IDM_GRID_SIZE_3             145
@@ -52,6 +53,7 @@
 #define IDM_GRID_SIZE_16            152
 #define IDM_GRID_SIZE_24            153
 #define IDM_GRID_SIZE_32            154
+#define IDM_GRID_SIZE_LAST          154
 #define IDM_FILE                    155
 #define IDM_EDIT                    156
 #define IDM_COLOR                   157
@@ -61,6 +63,7 @@
 #define IDM_HELP                    161
 #define IDM_RELOAD                  162
 #define IDM_INVERT_COLORS           163
+#define IDM_ZOOM_FIRST              170
 #define IDM_ZOOM0                   170
 #define IDM_ZOOM1                   171
 #define IDM_ZOOM2                   172
@@ -71,6 +74,13 @@
 #define IDM_ZOOM7                   177
 #define IDM_ZOOM8                   178
 #define IDM_ZOOM9                   179
+#define IDM_ZOOM_LAST               179
+#define IDM_SIZE_DISPLAY_FIRST      180
+#define IDM_SIZE_FIXED              180
+#define IDM_SIZE_WINDOW             181
+#define IDM_SIZE_WATERFALL          182
+#define IDM_SIZE_NATURAL            183
+#define IDM_SIZE_DISPLAY_LAST       183
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC
