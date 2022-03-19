@@ -7,6 +7,7 @@ TODO:
     - Cleanup RedrawSvg layout
     - Make WM_PAINT a separate function
     - Move these thoughts below to another file
+    - Avoid StretchBlt bug at large sizes by cropping to smaller region
     - Upload to GitHub
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
@@ -1783,8 +1784,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM8:
             case IDM_ZOOM9:
                 static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
-                RedrawSvgLater(hwnd);
+                RedrawBitmapLater(hwnd);
                 g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
+                RedrawBitmapLater(hwnd);
                 break;
 
             case IDM_COPY_BITMAP:
@@ -1917,37 +1919,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         }
         break;
 
-#if 0
-    case WM_MENUSELECT:
-        {
-            auto hmenu = reinterpret_cast<HMENU>(lParam);
-            if (hmenu == nullptr || (HIWORD(wParam) & MF_SYSMENU))
-            {
-                break;
-            }
-            wchar_t windowTitle[1000];
-            _snwprintf_s(windowTitle, sizeof(windowTitle), L"%d %X %X", index, uint32_t(wParam), uint32_t(hmenu));
-            SetWindowText(hwnd, windowTitle);
-
-            // Change this to be data driven, using an array mapping id to corresponding variable address.
-            // e.g. {IDM_FILE, IDM_INVERT_COLORS, 0, &g_invertColors}, // CheckMenuItem
-            //      {IDM_ZOOM, IDM_ZOOM0, IDM_ZOOM4, &g_bitmapZoom}, // CheckMenuRadioItem
-            // todo: map id to more useful id.
-            //      https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmenuitemid
-            //      https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getmenu
-            switch (index)
-            {
-            case 2:
-                CheckMenuItem(hmenu, IDM_INVERT_COLORS, MF_BYCOMMAND | (g_invertColors ? MF_CHECKED : MF_UNCHECKED));
-                break;
-            case 5:
-                CheckMenuItem(hmenu, IDM_GRID_VISIBLE, MF_BYCOMMAND | (g_gridVisible ? MF_CHECKED : MF_UNCHECKED));
-                break;
-            }
-        }
-        break;
-#endif
-
     case WM_WINDOWPOSCHANGED:
         if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE))
         {
@@ -2014,6 +1985,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     );
                     HDC sourceHdc = CreateCompatibleDC(ps.hdc);
                     SelectObject(sourceHdc, bitmap);
+                    SetStretchBltMode(ps.hdc, COLORONCOLOR);
+                    SetGraphicsMode(ps.hdc, GM_ADVANCED);
                     StretchBlt(
                         ps.hdc,
                         -g_bitmapXOffset,
