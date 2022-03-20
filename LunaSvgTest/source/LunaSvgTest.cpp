@@ -2,7 +2,6 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
-    - Constrain bitmap to client rect upon resize
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
@@ -659,16 +658,19 @@ void DrawBitmapGrid(
     uint32_t width,
     uint32_t height,
     uint32_t xSpacing,
-    uint32_t ySpacing
+    uint32_t ySpacing,
+    HBRUSH brush
 )
 {
     for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
     {
-        Rectangle(hdc, x, yOffset, x + 1, yOffset + height);
+        RECT rect = { .left = x, .top = yOffset, .right = x + 1, .bottom = int32_t(yOffset + height) };
+        FillRect(hdc, &rect, brush);
     }
     for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
     {
-        Rectangle(hdc, xOffset, y, xOffset + width, y + 1);
+        RECT rect = { .left = xOffset, .top = y, .right = int32_t(xOffset + width), .bottom = y + 1 };
+        FillRect(hdc, &rect, brush);
     }
 }
 
@@ -1888,7 +1890,8 @@ void RepaintWindow(HWND hwnd)
             g_bitmap.width() * g_bitmapPixelZoom,
             g_bitmap.height() * g_bitmapPixelZoom,
             gridSpacing,
-            gridSpacing
+            gridSpacing,
+            reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH))
         );
     }
 
