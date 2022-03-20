@@ -90,6 +90,8 @@
 #define IDM_NAVIGATE_NEXT           195
 #define IDM_NAVIGATE_HOME           196
 #define IDM_NAVIGATE_END            197
+#define IDM_ZOOM_IN                 200
+#define IDM_ZOOM_OUT                201
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

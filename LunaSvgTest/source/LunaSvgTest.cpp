@@ -199,7 +199,7 @@ const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
 
-unsigned int g_bitmapSizePerDocument = 16; // in pixels
+unsigned int g_bitmapSizePerDocument = 64; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
@@ -208,7 +208,8 @@ int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmap
 int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 bool g_invertColors = false;
 bool g_gridVisible = false;
-bool g_realignBitmap = false; // Set to true after loading new files.
+bool g_realignBitmap = false; // Set true after loading new files.
+bool g_constrainBitmapOffsets = false; // Set true after resizing.
 
 int32_t g_previousMouseX = 0;
 int32_t g_previousMouseY = 0;
@@ -366,18 +367,18 @@ size_t FindValueNearestIndex(std::span<const T> valueList, T currentValue)
 
 
 template <typename T>
-std::tuple<bool, T> FindAdjustedValue(std::span<const T> valueList, T currentValue, size_t delta)
+T FindAdjustedValue(std::span<const T> valueList, T currentValue, size_t delta)
 {
     assert(!valueList.empty());
     auto it = std::lower_bound(valueList.begin(), valueList.end(), currentValue);
     ptrdiff_t index = (it - valueList.begin()) + delta;
     if (size_t(index) >= valueList.size())
     {
-        return { false, currentValue };
+        return currentValue;
     }
     else
     {
-        return { true, valueList[index] };
+        return valueList[index];
     }
 }
 
@@ -467,9 +468,15 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
 }
 
 
-void RealignBitmapLater()
+void RealignBitmapOffsetsLater()
 {
     g_realignBitmap = true;
+}
+
+
+void ConstrainBitmapOffsetsLater()
+{
+    g_constrainBitmapOffsets = true;
 }
 
 
@@ -993,7 +1000,7 @@ void AppendSingleSvgFile(wchar_t const* fileName)
         g_svgDocuments.push_back(std::move(document));
         g_filenameList.push_back(fileName);
     }
-    RealignBitmapLater();
+    RealignBitmapOffsetsLater();
 }
 
 
@@ -1193,23 +1200,37 @@ void RedrawSvgItems()
 }
 
 
-void RealignBitmap(RECT const& clientRect)
+void RealignBitmapOffsets(RECT const& clientRect)
 {
     // Update the offsets to the new bitmap size (typically after loading a new file)
     // so the bitmap is either centered in the window or anchored at the top left.
+
     const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
     g_bitmapOffsetX = std::min((effectiveBitmapWidth - clientRect.right) / 2, 0L);
     g_bitmapOffsetY = std::min((effectiveBitmapHeight - clientRect.bottom) / 2, 0L);
     g_realignBitmap = false;
+    g_constrainBitmapOffsets = false;
 }
 
 
-void RealignBitmap(HWND hwnd)
+void ConstrainBitmapOffsets(RECT const& clientRect)
+{
+    // Constrain the bitmap offsets so they are visible (but not centered).
+    const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+    g_bitmapOffsetX = std::clamp(g_bitmapOffsetX, std::min(effectiveBitmapWidth - int32_t(clientRect.right), 0), std::max(effectiveBitmapWidth - int32_t(clientRect.right), 0));
+    g_bitmapOffsetY = std::clamp(g_bitmapOffsetY, std::min(effectiveBitmapHeight - int32_t(clientRect.bottom), 0), std::max(effectiveBitmapHeight - int32_t(clientRect.bottom), 0));
+
+    g_constrainBitmapOffsets = false;
+}
+
+
+void RealignBitmapOffsets(HWND hwnd)
 {
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
-    RealignBitmap(clientRect);
+    RealignBitmapOffsets(clientRect);
 }
 
 
@@ -1385,7 +1406,12 @@ void RedrawSvg(RECT const& clientRect)
 
     if (g_realignBitmap)
     {
-        RealignBitmap(clientRect);
+        RealignBitmapOffsets(clientRect);
+    }
+
+    if (g_constrainBitmapOffsets)
+    {
+        ConstrainBitmapOffsets(clientRect);
     }
 
     #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST // hack:::
@@ -1487,19 +1513,23 @@ void RedrawBitmapLater(HWND hwnd)
     // Enqueue the bitmap for redraw later in WM_PAINT, without redrawing the SVG
     // (such as with a pure translation or zoom).
 
-    RECT invalidationRect = {
+    RECT invalidationRect =
+    {
         LONG(-g_bitmapOffsetX),
         LONG(-g_bitmapOffsetY),
         LONG(g_bitmap.width()  * g_bitmapPixelZoom - LONG(g_bitmapOffsetX)),
         LONG(g_bitmap.height() * g_bitmapPixelZoom - LONG(g_bitmapOffsetY))
     };
 
-    // Force at least one pixel to be invalidated so the WM_PAINT is generated.
-    if (!g_bitmap.valid())
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    if (!IntersectRect(&invalidationRect, &invalidationRect, &clientRect))
     {
         invalidationRect.right = 1;
         invalidationRect.top = 1;
     }
+
+    // Force at least one pixel to be invalidated so the WM_PAINT is generated.
     InvalidateRect(hwnd, &invalidationRect, true);
 }
 
@@ -1991,8 +2021,8 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
     if (keyFlags & MK_CONTROL)
     {
         int32_t zDelta = delta;
-        auto [valueChanged, newPixelZoom] = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
-        if (valueChanged)
+        auto newPixelZoom = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
+        if (newPixelZoom != g_bitmapPixelZoom)
         {
             // Adjust mouse message coordinates from desktop to window-relative.
             POINT mouseCoordinate = { cursorX, cursorY };
@@ -2020,6 +2050,31 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
         HandleBitmapScrolling(hwnd, SB_LINEDOWN, zDelta, /*isHorizontal*/ keyFlags & MK_SHIFT);
     }
 }
+
+
+void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
+{
+    if (newBitmapPixelZoom == g_bitmapPixelZoom)
+    {
+        return;
+    }
+
+    RedrawBitmapLater(hwnd);
+
+    // Compute the centerpoint of the window.
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    uint32_t centerX = clientRect.right / 2;
+    uint32_t centerY = clientRect.bottom / 2;
+    g_bitmapOffsetX = (g_bitmapOffsetX + centerX) * newBitmapPixelZoom / g_bitmapPixelZoom - centerX;
+    g_bitmapOffsetY = (g_bitmapOffsetY + centerY) * newBitmapPixelZoom / g_bitmapPixelZoom - centerY;
+    g_bitmapPixelZoom = newBitmapPixelZoom;
+    ConstrainBitmapOffsets(clientRect);
+
+    RedrawBitmapLater(hwnd); // Enqueue another invalidated rect at the new zoom.
+    UpdateBitmapScrollbars(hwnd);
+}
+
 
 //  FUNCTION: WindowProcedure(HWND, UINT, WPARAM, LPARAM)
 //
@@ -2123,32 +2178,32 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RedrawSvgLater(hwnd);
-                RealignBitmapLater();
+                RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FIXED:
                 // Leave g_bitmapSizePerDocument as previous value.
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RedrawSvgLater(hwnd);
-                RealignBitmapLater();
+                RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
                 RedrawSvgLater(hwnd);
-                RealignBitmapLater();
+                RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
                 RedrawSvgLater(hwnd);
-                RealignBitmapLater();
+                RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_NATURAL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
                 RedrawSvgLater(hwnd);
-                RealignBitmapLater();
+                RealignBitmapOffsetsLater();
                 break;
 
             case IDM_ZOOM0:
@@ -2161,13 +2216,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM7:
             case IDM_ZOOM8:
             case IDM_ZOOM9:
-                {
-                    static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
-                    RedrawBitmapLater(hwnd);
-                    g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
-                    RealignBitmap(hwnd);
-                    RedrawBitmapLater(hwnd);
-                }
+                static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+                ChangeBitmapZoomCentered(hwnd, g_zoomFactors[wmId - IDM_ZOOM0]);
+                break;
+
+            case IDM_ZOOM_IN:
+            case IDM_ZOOM_OUT:
+                ChangeBitmapZoomCentered(hwnd, FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, wmId == IDM_ZOOM_IN ? 1 : -1));
                 break;
 
             case IDM_COPY_BITMAP:
@@ -2185,11 +2240,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
                 RedrawSvgLater(hwnd);
+                ConstrainBitmapOffsetsLater();
                 break;
 
             case IDM_INVERT_COLORS:
                 g_invertColors = !g_invertColors;
                 RedrawSvgLater(hwnd);
+                ConstrainBitmapOffsetsLater();
                 break;
 
             case IDM_GRID_VISIBLE:
@@ -2215,8 +2272,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawBitmapLater(hwnd);
                 break;
 
-            case IDM_NAVIGATE_DOWN: HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
             case IDM_NAVIGATE_UP: HandleBitmapScrolling(hwnd, SB_LINEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_DOWN: HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
             case IDM_NAVIGATE_LEFT: HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
             case IDM_NAVIGATE_RIGHT: HandleBitmapScrolling(hwnd, SB_LINERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
             case IDM_NAVIGATE_PRIOR: HandleBitmapScrolling(hwnd, SB_PAGEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
@@ -2263,6 +2320,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE))
         {
             RedrawSvgLater(hwnd);
+            ConstrainBitmapOffsetsLater();
         }
         break;
 
