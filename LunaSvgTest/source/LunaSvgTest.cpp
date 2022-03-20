@@ -1678,6 +1678,11 @@ void CopySvgBitmapToClipboard(
             BITMAPV5HEADER bitmapInfo;
             FillBitmapInfoFromLunaSvgBitmap(bitmap, /*out*/bitmapInfo);
             uint32_t totalBytes = sizeof(BITMAPINFO) + bitmapInfo.bV5SizeImage;
+            // Although DIB sections understand negative height just fine (the standard top-down image layout used by
+            // most image formats), other programs sometimes choke when seeing it. IrfanView display the image upside
+            // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
+            // appear on Windows 10 understand upside down images just fine.
+            bitmapInfo.bV5Height = -bitmapInfo.bV5Height;
 
             HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
             if (memory != nullptr)
@@ -1685,11 +1690,28 @@ void CopySvgBitmapToClipboard(
                 void* lockedMemory= GlobalLock(memory);
                 if (lockedMemory != nullptr)
                 {
+                    assert(bitmapInfo.bV5Planes == 1);
+                    assert(bitmapInfo.bV5BitCount == 32);
+
+                    // Copy the older bitmapinfo header (not v5) for greater compatibility with other
+                    // applications reading the clipboard data.
                     BITMAPINFO& clipboardBitmapInfo = *reinterpret_cast<BITMAPINFO*>(lockedMemory);
                     memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
                     clipboardBitmapInfo.bmiHeader.biSize = sizeof(clipboardBitmapInfo.bmiHeader);
+
+                    // Point to the beginning of the pixel data.
                     uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo.bmiHeader);
-                    memcpy(clipboardPixels, bitmap.data(), bitmapInfo.bV5SizeImage);
+                    uint32_t bytesPerRow = (bitmapInfo.bV5Width * bitmapInfo.bV5BitCount) / 8u; // Already 32-bit aligned.
+                    assert(bitmapInfo.bV5Height * bytesPerRow = bitmapInfo.bV5SizeImage);
+
+                    // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
+                    uint8_t* bitmapData = bitmap.data() + bitmap.stride() * bitmap.height();
+                    for (uint32_t y = 0; y < uint32_t(bitmapInfo.bV5Height); ++y)
+                    {
+                        bitmapData -= bytesPerRow;
+                        memcpy(clipboardPixels, bitmapData, bytesPerRow);
+                        clipboardPixels += bytesPerRow;
+                    }
                 }
                 GlobalUnlock(memory);
 
