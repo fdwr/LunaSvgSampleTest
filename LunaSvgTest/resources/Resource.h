@@ -9,7 +9,7 @@
 #define IDD_ABOUTBOX                103
 #define IDM_ABOUT                   104
 #define IDM_EXIT                    105
-#define IDM_OPEN                    106
+#define IDM_OPEN_FILE               106
 #define IDI_LUNASVGTEST             107
 #define IDI_SMALL                   108
 #define IDC_LUNASVGTEST             109
@@ -61,8 +61,9 @@
 #define IDM_ZOOM                    159
 #define IDM_GRID                    160
 #define IDM_HELP                    161
-#define IDM_RELOAD                  162
-#define IDM_INVERT_COLORS           163
+#define IDM_FILE_RELOAD             162
+#define IDM_FILE_UNLOAD             163
+#define IDM_INVERT_COLORS           164
 #define IDM_ZOOM_FIRST              170
 #define IDM_ZOOM0                   170
 #define IDM_ZOOM1                   171
@@ -81,6 +82,14 @@
 #define IDM_SIZE_WATERFALL          182
 #define IDM_SIZE_NATURAL            183
 #define IDM_SIZE_DISPLAY_LAST       183
+#define IDM_NAVIGATE_DOWN           190
+#define IDM_NAVIGATE_UP             191
+#define IDM_NAVIGATE_LEFT           192
+#define IDM_NAVIGATE_RIGHT          193
+#define IDM_NAVIGATE_PRIOR          194
+#define IDM_NAVIGATE_NEXT           195
+#define IDM_NAVIGATE_HOME           196
+#define IDM_NAVIGATE_END            197
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

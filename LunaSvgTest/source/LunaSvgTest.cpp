@@ -2,12 +2,11 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
+    - Constrain bitmap to client rect upon resize
     - Wrap waterfall to window width
     - Allow multiple icons at natural size
     - Cleanup RedrawSvg layout
-    - Make WM_PAINT a separate function
     - Move these thoughts below to another file
-    - Avoid StretchBlt bug at large sizes by cropping to smaller region
     - Upload to GitHub
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
@@ -205,11 +204,14 @@ BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapPixelZoom = 1;
 uint32_t g_gridSize = 8;
-int32_t g_bitmapXOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
-int32_t g_bitmapYOffset = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
+int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 bool g_invertColors = false;
 bool g_gridVisible = false;
-bool g_recenterBitmap = false; // Set to true after loading new files.
+bool g_realignBitmap = false; // Set to true after loading new files.
+
+int32_t g_previousMouseX = 0;
+int32_t g_previousMouseY = 0;
 
 // Forward declarations of functions included in this code module:
 ATOM RegisterMainWindowClass(HINSTANCE hInstance);
@@ -455,14 +457,19 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
         return newPosition;
     }
 
-    newPosition = std::min(newPosition, int32_t(scrollInfo.nMax - scrollInfo.nPage));
-    newPosition = std::max(newPosition, scrollInfo.nMin);
+    newPosition = std::clamp(newPosition, scrollInfo.nMin, int32_t(scrollInfo.nMax - scrollInfo.nPage));
 
     scrollInfo.fMask = SIF_POS;
     scrollInfo.nPos = newPosition;
     SetScrollInfo(hwnd, scrollBarType, &scrollInfo,/*redraw*/ true);
 
     return newPosition;
+}
+
+
+void RealignBitmapLater()
+{
+    g_realignBitmap = true;
 }
 
 
@@ -986,7 +993,7 @@ void AppendSingleSvgFile(wchar_t const* fileName)
         g_svgDocuments.push_back(std::move(document));
         g_filenameList.push_back(fileName);
     }
-    g_recenterBitmap = true;
+    RealignBitmapLater();
 }
 
 
@@ -1186,6 +1193,26 @@ void RedrawSvgItems()
 }
 
 
+void RealignBitmap(RECT const& clientRect)
+{
+    // Update the offsets to the new bitmap size (typically after loading a new file)
+    // so the bitmap is either centered in the window or anchored at the top left.
+    const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+    const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+    g_bitmapOffsetX = std::min((effectiveBitmapWidth - clientRect.right) / 2, 0L);
+    g_bitmapOffsetY = std::min((effectiveBitmapHeight - clientRect.bottom) / 2, 0L);
+    g_realignBitmap = false;
+}
+
+
+void RealignBitmap(HWND hwnd)
+{
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    RealignBitmap(clientRect);
+}
+
+
 void RedrawSvg(RECT const& clientRect)
 {
     if (g_svgDocuments.empty() || !g_svgDocuments.front())
@@ -1356,13 +1383,9 @@ void RedrawSvg(RECT const& clientRect)
         break;
     }
 
-    if (g_recenterBitmap)
+    if (g_realignBitmap)
     {
-        const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-        const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-        g_bitmapXOffset = (effectiveBitmapWidth - clientRect.right) / 2;
-        g_bitmapYOffset = (effectiveBitmapHeight - clientRect.bottom) / 2;
-        g_recenterBitmap = false;
+        RealignBitmap(clientRect);
     }
 
     #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST // hack:::
@@ -1435,55 +1458,40 @@ void RedrawSvgBackground()
 
 void UpdateBitmapScrollbars(HWND hwnd)
 {
+    // Show disabled scroll bars for empty bitmap.
     if (!g_bitmap.valid())
     {
-        SetScrollbars(
-            hwnd,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0
-        );
+        SetScrollbars(hwnd, 0, 0, 0, 0, 0, 0, 0, 0);
         return;
     }
 
     RECT clientRect;
     GetClientRect(hwnd, /*out*/&clientRect);
 
-    const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-    const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-    const int32_t xPageSize = std::min(effectiveBitmapWidth, int32_t(clientRect.right));
-    const int32_t yPageSize = std::min(effectiveBitmapHeight, int32_t(clientRect.bottom));
-    const int32_t xMin = std::min(g_bitmapXOffset, std::min(0, effectiveBitmapWidth - int32_t(clientRect.right)));
-    const int32_t yMin = std::min(g_bitmapYOffset, std::min(0, effectiveBitmapHeight - int32_t(clientRect.bottom)));
-    const int32_t xMax = std::max(g_bitmapXOffset + xPageSize, effectiveBitmapWidth);
-    const int32_t yMax = std::max(g_bitmapYOffset + yPageSize, effectiveBitmapHeight);
+    auto getRange = [](int32_t offset, int32_t bitmapSize, int32_t windowSize)
+    {
+        const int32_t pageSize = std::min(bitmapSize, windowSize);
+        const int32_t minValue = std::min(offset, std::min(0, bitmapSize - windowSize));
+        const int32_t maxValue = std::max(offset + pageSize, bitmapSize);
+        return std::tuple<int32_t, int32_t, int32_t>(pageSize, minValue, maxValue);
+    };
 
-    SetScrollbars(
-        hwnd,
-        xMin,
-        xMax,
-        xPageSize,
-        g_bitmapXOffset,
-        yMin,
-        yMax,
-        yPageSize,
-        g_bitmapYOffset
-    );
+    const auto [xPageSize, xMin, xMax] = getRange(g_bitmapOffsetX, g_bitmap.width()  * g_bitmapPixelZoom, int32_t(clientRect.right));
+    const auto [yPageSize, yMin, yMax] = getRange(g_bitmapOffsetY, g_bitmap.height() * g_bitmapPixelZoom, int32_t(clientRect.bottom));
+    SetScrollbars(hwnd, xMin, xMax, xPageSize, g_bitmapOffsetX, yMin, yMax, yPageSize, g_bitmapOffsetY);
 }
 
 
 void RedrawBitmapLater(HWND hwnd)
 {
+    // Enqueue the bitmap for redraw later in WM_PAINT, without redrawing the SVG
+    // (such as with a pure translation or zoom).
+
     RECT invalidationRect = {
-        LONG(-g_bitmapXOffset),
-        LONG(-g_bitmapYOffset),
-        LONG(g_bitmap.width()  * g_bitmapPixelZoom - LONG(g_bitmapXOffset)),
-        LONG(g_bitmap.height() * g_bitmapPixelZoom - LONG(g_bitmapYOffset))
+        LONG(-g_bitmapOffsetX),
+        LONG(-g_bitmapOffsetY),
+        LONG(g_bitmap.width()  * g_bitmapPixelZoom - LONG(g_bitmapOffsetX)),
+        LONG(g_bitmap.height() * g_bitmapPixelZoom - LONG(g_bitmapOffsetY))
     };
 
     // Force at least one pixel to be invalidated so the WM_PAINT is generated.
@@ -1498,6 +1506,7 @@ void RedrawBitmapLater(HWND hwnd)
 
 void RedrawSvgLater(HWND hwnd)
 {
+    // Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
     g_svgNeedsRedrawing = true;
     InvalidateRect(hwnd, nullptr, true);
 }
@@ -1505,6 +1514,8 @@ void RedrawSvgLater(HWND hwnd)
 
 void RedrawSvg(HWND hwnd)
 {
+    // Redraw the SVG document(s) into the bitmap, computing the new bitmap size.
+
     RECT clientRect;
     GetClientRect(hwnd, /*out*/&clientRect);
 
@@ -1576,6 +1587,10 @@ void DrawRectangleAroundRectangle(
     HBRUSH brush
     )
 {
+    // Fill the frame around the inner rect.
+    // This 4-piece drawing eliminates the flicker would otherwise happen from
+    // filling the entire background followed by the image atop.
+
     RECT rects[4] = {
         // Top
         {
@@ -1654,6 +1669,358 @@ void CopySvgBitmapToClipboard(
 }
 
 
+BOOL StretchBltFixed(
+    HDC hdcDest,
+    int destX,
+    int destY,
+    int destW,
+    int destH,
+    HDC hdcSrc,
+    int srcX,
+    int srcY,
+    int srcW,
+    int srcH,
+    DWORD rop,
+    RECT const& clipRect
+)
+{
+    // StretchBlt has a bug with larger scales where the aspect ratio becomes distorted
+    // if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale).
+    // So this wrapper just virtually clips the stretch by adjusting the offsets and
+    // size according to the clip rect. Windows *should* just do this itself :/.
+
+    if (srcW < 0 || srcH < 0 || destW < 0 || destH < 0)
+    {
+        return true; // No division by zero (would be an empty drawing anyway).
+    }
+    if (clipRect.right < clipRect.left || clipRect.bottom < clipRect.top)
+    {
+        return true; // No empty drawing.
+    }
+
+    auto adjustRangeToClip = [](
+        int clipLeft,
+        int clipRight,
+        int& srcX,
+        int& destX,
+        int& srcW,
+        int& destW
+        )
+    {
+        if (destX < clipLeft)
+        {
+            int destOffsetX = clipLeft - destX;
+            int srcOffsetX = destOffsetX * srcW / destW;
+            destOffsetX = srcOffsetX * destW / srcW;
+            destX += destOffsetX;
+            destW -= destOffsetX;
+            srcX += srcOffsetX;
+            srcW -= srcOffsetX;
+        }
+        if (destX + destW > clipRight)
+        {
+            int destOffsetX = clipRight - destX;
+            int srcOffsetX = (destOffsetX * srcW + destW - 1) / destW;
+            //destOffsetX = (srcOffsetX * destW + srcW - 1) / srcW;
+            destOffsetX = srcOffsetX * destW / srcW;
+            destW = destOffsetX;
+            srcW = srcOffsetX;
+        }
+    };
+
+    adjustRangeToClip(clipRect.left, clipRect.right, srcX, destX, srcW, destW);
+    adjustRangeToClip(clipRect.top, clipRect.bottom, srcY, destY, srcH, destH);
+
+    return StretchBlt(
+        hdcDest,
+        destX,
+        destY,
+        destW,
+        destH,
+        hdcSrc,
+        srcX,
+        srcY,
+        srcW,
+        srcH,
+        rop
+    );
+}
+
+
+void RepaintWindow(HWND hwnd)
+{
+    if (g_svgNeedsRedrawing)
+    {
+        RedrawSvg(hwnd);
+        UpdateBitmapScrollbars(hwnd);
+    }
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+
+    // Display message if no SVG document loaded.
+    if (!g_bitmap.valid())
+    {
+        FillRect(ps.hdc, &clientRect, g_backgroundWindowBrush);
+        HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
+        std::wstring_view message =
+            L"No SVG loaded\r\n"
+            L"\r\n"
+            L"Use File/Open or drag&drop filenames to load SVG documents.\r\n"
+            L"\r\n"
+            L"mouse wheel = pan vertically\r\n"
+            L"mouse wheel + shift = pan horizontally\r\n"
+            L"mouse wheel + ctrl = zoom\r\n"
+            L"middle mouse drag = pan\r\n"
+            L"arrow keys/home/end/pgup/pgdn = pan";
+        DrawText(ps.hdc, message.data(), int(message.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
+        SelectObject(ps.hdc, oldFont);
+    }
+    else
+    {
+        BITMAPV5HEADER bitmapInfo = {};
+        FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
+
+        // Erase background around drawing.
+        const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+        const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+        RECT bitmapRect = {
+            LONG(-g_bitmapOffsetX),
+            LONG(-g_bitmapOffsetY),
+            LONG(effectiveBitmapWidth - g_bitmapOffsetX),
+            LONG(effectiveBitmapHeight - g_bitmapOffsetY)
+        };
+        DrawRectangleAroundRectangle(ps.hdc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
+
+        // Draw the SVG bitmap.
+        if (g_bitmapPixelZoom == 1)
+        {
+            SetDIBitsToDevice(
+                ps.hdc,
+                -g_bitmapOffsetX,
+                -g_bitmapOffsetY,
+                g_bitmap.width(),
+                g_bitmap.height(),
+                0,
+                0,
+                0,
+                g_bitmap.height(),
+                g_bitmap.data(),
+                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                0 // colorUse
+            );
+        }
+        else // Scale
+        {
+            // This would be faster if cached, but... it's fast enough.
+            HBITMAP bitmap = CreateDIBitmap(
+                hdc,
+                reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
+                CBM_INIT,
+                g_bitmap.data(),
+                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                DIB_RGB_COLORS
+            );
+            HDC sourceHdc = CreateCompatibleDC(ps.hdc);
+            SelectObject(sourceHdc, bitmap);
+            SetStretchBltMode(ps.hdc, COLORONCOLOR);
+            SetGraphicsMode(ps.hdc, GM_ADVANCED);
+            StretchBltFixed(
+                ps.hdc,
+                -g_bitmapOffsetX,
+                -g_bitmapOffsetY,
+                g_bitmap.width() * g_bitmapPixelZoom,
+                g_bitmap.height() * g_bitmapPixelZoom,
+                sourceHdc,
+                0,
+                0,
+                g_bitmap.width(),
+                g_bitmap.height(),
+                SRCCOPY,
+                clientRect
+            );
+            DeleteDC(sourceHdc);
+            DeleteObject(bitmap);
+        }
+    }
+
+    // Draw the grid.
+    const int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
+    if (g_gridVisible && gridSpacing > 1)
+    {
+        DrawBitmapGrid(
+            ps.hdc,
+            -g_bitmapOffsetX,
+            -g_bitmapOffsetY,
+            g_bitmap.width() * g_bitmapPixelZoom,
+            g_bitmap.height() * g_bitmapPixelZoom,
+            gridSpacing,
+            gridSpacing
+        );
+    }
+
+    EndPaint(hwnd, &ps);
+}
+
+
+void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
+{
+    MENUITEMINFO menuItemInfo =
+    {
+        .cbSize = sizeof(menuItemInfo),
+        .fMask = MIIM_ID,
+    };
+
+    // GetMenuItemID should work but it's useless because it doesn't return the id of menu
+    // items that open submenus (face palm, win32 API). So use GetMenuItemInfo instead.
+    if (!GetMenuItemInfo(GetMenu(hwnd), indexInTopLevelMenu, true, &menuItemInfo))
+    {
+        return;
+    }
+    uint32_t parentMenuId = menuItemInfo.wID;
+
+    struct MenuItemData
+    {
+        uint32_t parentMenuId;
+        uint32_t menuItemIdFirst;
+        uint32_t menuItemIdLast;
+        uint32_t(*valueGetter)();
+    };
+    const MenuItemData menuItemData[] =
+    {
+        {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
+        {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
+        {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
+        {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueNearestIndex<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
+        {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
+        {IDM_ZOOM, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
+        {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_gridSizes, g_gridSize)); }},
+    };
+
+    for (auto& menuItem : menuItemData)
+    {
+        if (parentMenuId == menuItem.parentMenuId)
+        {
+            uint32_t value = menuItem.valueGetter();
+            // If the id is a range, select the given option.
+            // Otherwise treat it as a checkbox.
+            if (menuItem.menuItemIdLast >= menuItem.menuItemIdFirst)
+            {
+                CheckMenuRadioItem(hmenu, menuItem.menuItemIdFirst, menuItem.menuItemIdLast, menuItem.menuItemIdFirst + value, MF_BYCOMMAND);
+            }
+            else
+            {
+                CheckMenuItem(hmenu, menuItem.menuItemIdFirst, MF_BYCOMMAND | (value ? MF_CHECKED : MF_UNCHECKED));
+            }
+        }
+    }
+}
+
+
+void HandleBitmapScrolling(HWND hwnd, uint32_t scrollBarCode, int32_t delta, bool isHorizontal)
+{
+    const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
+    int32_t& currentOffsetRef = isHorizontal ? g_bitmapOffsetX : g_bitmapOffsetY;
+    const int32_t previousOffset = currentOffsetRef;
+    const int32_t currentOffset = HandleScrollbar(hwnd, scrollBarCode, scrollBarType, delta);
+
+    if (previousOffset != currentOffset)
+    {
+        currentOffsetRef = currentOffset;
+        const int32_t offsetDelta = previousOffset - currentOffset;
+        ScrollWindowEx(
+            hwnd,
+            isHorizontal ? offsetDelta : 0,
+            isHorizontal ? 0 : offsetDelta,
+            nullptr, // prcScroll,
+            nullptr, // prcClip,
+            nullptr, // hrgnUpdate,
+            nullptr, // prcUpdate
+            SW_ERASE | SW_INVALIDATE
+        );
+        UpdateBitmapScrollbars(hwnd);
+    }
+}
+
+
+// 2D offsets.
+void HandleBitmapScrolling(HWND hwnd, int32_t deltaX, int32_t deltaY)
+{
+    if (deltaX == 0 && deltaY == 0)
+    {
+        return;
+    }
+
+    // Clamp the adjustments to the new bitmap offset.
+    auto updateOffset = [](HWND hwnd, uint32_t scrollBarType, int32_t previousOffset, int32_t delta) -> int32_t
+    {
+        SCROLLINFO scrollInfo = { sizeof(scrollInfo), SIF_ALL };
+        GetScrollInfo(hwnd, scrollBarType, &scrollInfo);
+        return std::clamp(previousOffset + delta, scrollInfo.nMin, int32_t(scrollInfo.nMax - scrollInfo.nPage));
+    };
+    int32_t newBitmapOffsetX = updateOffset(hwnd, SB_HORZ, g_bitmapOffsetX, deltaX);
+    int32_t newBitmapOffsetY = updateOffset(hwnd, SB_VERT, g_bitmapOffsetY, deltaY);
+    deltaX = g_bitmapOffsetX - newBitmapOffsetX;
+    deltaY = g_bitmapOffsetY - newBitmapOffsetY;
+
+    if (deltaX != 0 || deltaY != 0)
+    {
+        g_bitmapOffsetX = newBitmapOffsetX;
+        g_bitmapOffsetY = newBitmapOffsetY;
+        ScrollWindowEx(
+            hwnd,
+            deltaX,
+            deltaY,
+            nullptr, // prcScroll,
+            nullptr, // prcClip,
+            nullptr, // hrgnUpdate,
+            nullptr, // prcUpdate
+            SW_ERASE | SW_INVALIDATE
+        );
+        UpdateBitmapScrollbars(hwnd);
+    }
+}
+
+
+void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, uint32_t keyFlags)
+{
+    // Adjust zoom.
+    if (keyFlags & MK_CONTROL)
+    {
+        int32_t zDelta = delta;
+        auto [valueChanged, newPixelZoom] = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
+        if (valueChanged)
+        {
+            // Adjust mouse message coordinates from desktop to window-relative.
+            POINT mouseCoordinate = { cursorX, cursorY };
+            ScreenToClient(hwnd, &mouseCoordinate);
+
+            // Clamp the zoom origin to the actual bitmap size.
+            const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+            const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
+            mouseCoordinate.x = std::clamp(int32_t(mouseCoordinate.x), -g_bitmapOffsetX, effectiveBitmapWidth - g_bitmapOffsetX);
+            mouseCoordinate.y = std::clamp(int32_t(mouseCoordinate.y), -g_bitmapOffsetY, effectiveBitmapHeight - g_bitmapOffsetY);
+
+            // Compute zoom origin based on mouse cursor (not just the top/left of the current view like some apps).
+            RedrawBitmapLater(hwnd);
+            g_bitmapOffsetX = (g_bitmapOffsetX + mouseCoordinate.x) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.x;
+            g_bitmapOffsetY = (g_bitmapOffsetY + mouseCoordinate.y) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.y;
+            g_bitmapPixelZoom = newPixelZoom;
+            RedrawBitmapLater(hwnd);
+            UpdateBitmapScrollbars(hwnd);
+        }
+    }
+    // Normal mouse wheel, vertical or horizontal.
+    else
+    {
+        int32_t zDelta = -delta * int32_t(g_bitmapScrollStep) / WHEEL_DELTA;
+        HandleBitmapScrolling(hwnd, SB_LINEDOWN, zDelta, /*isHorizontal*/ keyFlags & MK_SHIFT);
+    }
+}
+
 //  FUNCTION: WindowProcedure(HWND, UINT, WPARAM, LPARAM)
 //
 //  PURPOSE: Processes messages for the main window.
@@ -1679,21 +2046,22 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 DestroyWindow(hwnd);
                 break;
 
-            case IDM_OPEN:
+            case IDM_OPEN_FILE:
                 {
                     wchar_t fileNameBuffer[32768];
                     fileNameBuffer[0] = '\0';
-                    OPENFILENAME openFileName = {};
-
-                    openFileName.lStructSize = sizeof(openFileName);
-                    openFileName.hwndOwner = hwnd;
-                    openFileName.hInstance = g_instanceHandle;
-                    openFileName.lpstrFilter = L"SVG\0" L"*.svg\0"
-                                               L"All files\0" L"*\0"
-                                               L"\0";
-                    openFileName.lpstrFile = std::data(fileNameBuffer);
-                    openFileName.nMaxFile = static_cast<DWORD>(std::size(fileNameBuffer));
-                    openFileName.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE | OFN_ALLOWMULTISELECT;
+                    OPENFILENAME openFileName =
+                    {
+                        .lStructSize = sizeof(openFileName),
+                        .hwndOwner = hwnd,
+                        .hInstance = g_instanceHandle,
+                        .lpstrFilter = L"SVG\0" L"*.svg\0"
+                                       L"All files\0" L"*\0"
+                                       L"\0",
+                        .lpstrFile = std::data(fileNameBuffer),
+                        .nMaxFile = static_cast<DWORD>(std::size(fileNameBuffer)),
+                        .Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE | OFN_ALLOWMULTISELECT,
+                    };
 
                     if (GetOpenFileName(&openFileName) && openFileName.nFileOffset > 0)
                     {
@@ -1721,12 +2089,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 }
                 break;
 
-            case IDM_RELOAD:
+            case IDM_FILE_RELOAD:
                 if (!g_filenameList.empty())
                 {
                     LoadSvgFiles(std::move(g_filenameList));
                     RedrawSvgLater(hwnd);
                 }
+                break;
+
+            case IDM_FILE_UNLOAD:
+                ClearSvgList();
+                RedrawSvgLater(hwnd);
                 break;
 
             case IDM_SIZE0:
@@ -1750,27 +2123,32 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RedrawSvgLater(hwnd);
+                RealignBitmapLater();
                 break;
 
             case IDM_SIZE_FIXED:
                 // Leave g_bitmapSizePerDocument as previous value.
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RedrawSvgLater(hwnd);
+                RealignBitmapLater();
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
                 RedrawSvgLater(hwnd);
+                RealignBitmapLater();
                 break;
 
             case IDM_SIZE_WATERFALL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
                 RedrawSvgLater(hwnd);
+                RealignBitmapLater();
                 break;
 
             case IDM_SIZE_NATURAL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
                 RedrawSvgLater(hwnd);
+                RealignBitmapLater();
                 break;
 
             case IDM_ZOOM0:
@@ -1783,10 +2161,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM7:
             case IDM_ZOOM8:
             case IDM_ZOOM9:
-                static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
-                RedrawBitmapLater(hwnd);
-                g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
-                RedrawBitmapLater(hwnd);
+                {
+                    static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+                    RedrawBitmapLater(hwnd);
+                    g_bitmapPixelZoom = g_zoomFactors[wmId - IDM_ZOOM0];
+                    RealignBitmap(hwnd);
+                    RedrawBitmapLater(hwnd);
+                }
                 break;
 
             case IDM_COPY_BITMAP:
@@ -1834,6 +2215,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawBitmapLater(hwnd);
                 break;
 
+            case IDM_NAVIGATE_DOWN: HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_UP: HandleBitmapScrolling(hwnd, SB_LINEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_LEFT: HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_RIGHT: HandleBitmapScrolling(hwnd, SB_LINERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_PRIOR: HandleBitmapScrolling(hwnd, SB_PAGEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_NEXT: HandleBitmapScrolling(hwnd, SB_PAGEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_HOME: HandleBitmapScrolling(hwnd, SB_PAGELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_END: HandleBitmapScrolling(hwnd, SB_PAGERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+
             default:
                 return DefWindowProc(hwnd, message, wParam, lParam);
             }
@@ -1866,57 +2256,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         break;
 
     case WM_INITMENUPOPUP:
-        {
-            HMENU hmenu = reinterpret_cast<HMENU>(wParam);
-            const uint32_t indexInTopLevelMenu = LOWORD(lParam);
-            // GetMenuItemID is useless because it doesn't return the id
-            // of menu items that open submenus (face palm, win32 API).
-            // const uint32_t parentMenuId = GetMenuItemID(GetMenu(hwnd), indexInTopLevelMenu);
-            MENUITEMINFO menuItemInfo = {};
-            menuItemInfo.cbSize = sizeof(menuItemInfo);
-            menuItemInfo.fMask = MIIM_ID;
-
-            if (!GetMenuItemInfo(GetMenu(hwnd), indexInTopLevelMenu, true, &menuItemInfo))
-            {
-                return DefWindowProc(hwnd, message, wParam, lParam);
-            }
-            uint32_t parentMenuId = menuItemInfo.wID;
-
-            struct MenuItemData
-            {
-                uint32_t parentMenuId;
-                uint32_t menuItemIdFirst;
-                uint32_t menuItemIdLast;
-                uint32_t (*valueGetter)();
-            };
-            const MenuItemData menuItemData[] = {
-                {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
-                {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
-                {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
-                {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueNearestIndex<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
-                {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
-                {IDM_ZOOM, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
-                {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_gridSizes, g_gridSize)); }},
-            };
-
-            for (auto& menuItem : menuItemData)
-            {
-                if (parentMenuId == menuItem.parentMenuId)
-                {
-                    uint32_t value = menuItem.valueGetter();
-                    // If the id is a range, select the given option.
-                    // Otherwise treat it as a checkbox.
-                    if (menuItem.menuItemIdLast >= menuItem.menuItemIdFirst)
-                    {
-                        CheckMenuRadioItem(hmenu, menuItem.menuItemIdFirst, menuItem.menuItemIdLast, menuItem.menuItemIdFirst + value, MF_BYCOMMAND);
-                    }
-                    else
-                    {
-                        CheckMenuItem(hmenu, menuItem.menuItemIdFirst, MF_BYCOMMAND | (value ? MF_CHECKED : MF_UNCHECKED));
-                    }
-                }
-            }
-        }
+        InitializePopMenu(hwnd, reinterpret_cast<HMENU>(wParam), LOWORD(lParam));
         break;
 
     case WM_WINDOWPOSCHANGED:
@@ -1930,200 +2270,31 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         return 1;
 
     case WM_PAINT:
-        {
-            if (g_svgNeedsRedrawing)
-            {
-                RedrawSvg(hwnd);
-                UpdateBitmapScrollbars(hwnd);
-            }
-
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-            if (g_bitmap.valid())
-            {
-                BITMAPV5HEADER bitmapInfo = {};
-                FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
-
-                // Erase background around drawing.
-                const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-                const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-                RECT bitmapRect = {
-                    LONG(-g_bitmapXOffset),
-                    LONG(-g_bitmapYOffset),
-                    LONG(effectiveBitmapWidth - g_bitmapXOffset),
-                    LONG(effectiveBitmapHeight - g_bitmapYOffset)
-                };
-                DrawRectangleAroundRectangle(ps.hdc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
-
-                if (g_bitmapPixelZoom == 1)
-                {
-                    SetDIBitsToDevice(
-                        ps.hdc,
-                        -g_bitmapXOffset,
-                        -g_bitmapYOffset,
-                        g_bitmap.width(),
-                        g_bitmap.height(),
-                        0,
-                        0,
-                        0,
-                        g_bitmap.height(),
-                        g_bitmap.data(),
-                        reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
-                        0 // colorUse
-                    );
-                }
-                else // Scale
-                {
-                    HBITMAP bitmap = CreateDIBitmap(
-                        hdc,
-                        reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
-                        CBM_INIT,
-                        g_bitmap.data(),
-                        reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
-                        DIB_RGB_COLORS
-                    );
-                    HDC sourceHdc = CreateCompatibleDC(ps.hdc);
-                    SelectObject(sourceHdc, bitmap);
-                    SetStretchBltMode(ps.hdc, COLORONCOLOR);
-                    SetGraphicsMode(ps.hdc, GM_ADVANCED);
-                    StretchBlt(
-                        ps.hdc,
-                        -g_bitmapXOffset,
-                        -g_bitmapYOffset,
-                        g_bitmap.width() * g_bitmapPixelZoom,
-                        g_bitmap.height() * g_bitmapPixelZoom,
-                        sourceHdc,
-                        0,
-                        0,
-                        g_bitmap.width(),
-                        g_bitmap.height(),
-                        SRCCOPY
-                    );
-                    DeleteDC(sourceHdc);
-                    DeleteObject(bitmap);
-                }
-                const int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
-                if (g_gridVisible && gridSpacing > 1)
-                {
-                    DrawBitmapGrid(
-                        ps.hdc,
-                        -g_bitmapXOffset,
-                        -g_bitmapYOffset,
-                        g_bitmap.width() * g_bitmapPixelZoom,
-                        g_bitmap.height() * g_bitmapPixelZoom,
-                        gridSpacing,
-                        gridSpacing
-                    );
-                }
-            }
-            else
-            {
-                // Draw text informing no SVG is loaded.
-                RECT clientRect;
-                GetClientRect(hwnd, &clientRect);
-                FillRect(ps.hdc, &clientRect, g_backgroundWindowBrush);
-                HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
-                std::wstring_view message = L"No SVG loaded\r\n\r\n"
-                                            L"Use File/Open or drag&drop a filename to load it.\r\n"
-                                            L"Use Ctrl+mouse wheel to zoom.";
-                DrawText(ps.hdc, message.data(), int(message.size()), &clientRect, DT_NOCLIP|DT_NOPREFIX|DT_WORDBREAK);
-                SelectObject(ps.hdc, oldFont);
-            }
-            EndPaint(hwnd, &ps);
-        }
+        RepaintWindow(hwnd);
         break;
 
     case WM_HSCROLL:
     case WM_VSCROLL:
-        {
-            const bool isHorizontal = (message == WM_HSCROLL);
-            const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
-            int32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
-            const int32_t previousOffset = currentOffsetRef;
-            const int32_t currentOffset = HandleScrollbar(hwnd, LOWORD(wParam), scrollBarType, g_bitmapScrollStep);
-
-            if (previousOffset != currentOffset)
-            {
-                currentOffsetRef = currentOffset;
-                const int32_t offsetDelta = previousOffset - currentOffset;
-                RECT updatedRect = {};
-                ScrollWindowEx(
-                    hwnd,
-                    isHorizontal ? offsetDelta : 0,
-                    isHorizontal ? 0 : offsetDelta,
-                    nullptr, // prcScroll,
-                    nullptr, // prcClip,
-                    nullptr, // hrgnUpdate,
-                    nullptr, // prcUpdate
-                    SW_ERASE | SW_INVALIDATE
-                );
-                UpdateBitmapScrollbars(hwnd);
-            }
-        }
+        HandleBitmapScrolling(hwnd, LOWORD(wParam), g_bitmapScrollStep, /*isHorizontal*/ message == WM_HSCROLL);
         break;
 
     case WM_MOUSEWHEEL:
-        if (wParam & MK_CONTROL) // No need for GET_KEYSTATE_WPARAM.
+        OnMouseWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), GET_WHEEL_DELTA_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam));
+        break;
+
+    case WM_MBUTTONDOWN:
+        g_previousMouseX = LOWORD(lParam);
+        g_previousMouseY = HIWORD(lParam);
+        break;
+
+    case WM_MOUSEMOVE:
+        if (wParam & MK_MBUTTON)
         {
-            // Adjust zoom.
-            int32_t zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-            auto [valueChanged, newPixelZoom] = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
-            if (valueChanged)
-            {
-                // Fix mouse coordinates to be window relative.
-                POINT mouseCoordinate = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-                ScreenToClient(hwnd, &mouseCoordinate);
-
-                // Clamp the zoom origin to the actual bitmap size.
-                const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
-                const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-                mouseCoordinate.x = std::max(int32_t(mouseCoordinate.x), -g_bitmapXOffset);
-                mouseCoordinate.y = std::max(int32_t(mouseCoordinate.y), -g_bitmapYOffset);
-                mouseCoordinate.x = std::min(int32_t(mouseCoordinate.x), effectiveBitmapWidth - g_bitmapXOffset);
-                mouseCoordinate.y = std::min(int32_t(mouseCoordinate.y), effectiveBitmapHeight - g_bitmapYOffset);
-
-                // Compute zoom origin based on mouse cursor (not just the top/left of the current view like some apps).
-                const int32_t xOffset = (mouseCoordinate.x + g_bitmapXOffset) / int32_t(g_bitmapPixelZoom);
-                const int32_t yOffset = (mouseCoordinate.y + g_bitmapYOffset) / int32_t(g_bitmapPixelZoom);
-
-                RedrawBitmapLater(hwnd);
-                g_bitmapXOffset = xOffset * newPixelZoom - mouseCoordinate.x;
-                g_bitmapYOffset = yOffset * newPixelZoom - mouseCoordinate.y;
-                g_bitmapPixelZoom = newPixelZoom;
-                RedrawBitmapLater(hwnd);
-                UpdateBitmapScrollbars(hwnd);
-            }
-        }
-        else
-        {
-            int32_t zDelta = -GET_WHEEL_DELTA_WPARAM(wParam);
-            zDelta = zDelta * int32_t(g_bitmapScrollStep) / WHEEL_DELTA;
-
-            // TODO: Consolidate this code with WM_HSCROLL/WM_VSCROLL.
-            const bool isHorizontal = (wParam & MK_SHIFT);
-            const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
-            int32_t& currentOffsetRef = isHorizontal ? g_bitmapXOffset : g_bitmapYOffset;
-            const int32_t previousOffset = currentOffsetRef;
-            const int32_t currentOffset = HandleScrollbar(hwnd, SB_LINEDOWN, scrollBarType, zDelta);
-
-            if (previousOffset != currentOffset)
-            {
-                currentOffsetRef = currentOffset;
-                const int32_t offsetDelta = previousOffset - currentOffset;
-                RECT updatedRect = {};
-                ScrollWindowEx(
-                    hwnd,
-                    isHorizontal ? offsetDelta : 0,
-                    isHorizontal ? 0 : offsetDelta,
-                    nullptr, // prcScroll,
-                    nullptr, // prcClip,
-                    nullptr, // hrgnUpdate,
-                    nullptr, // prcUpdate
-                    SW_ERASE | SW_INVALIDATE
-                );
-                UpdateBitmapScrollbars(hwnd);
-            }
+            int32_t x = LOWORD(lParam);
+            int32_t y = HIWORD(lParam);
+            HandleBitmapScrolling(hwnd, g_previousMouseX - x, g_previousMouseY - y);
+            g_previousMouseX = x;
+            g_previousMouseY = y;
         }
         break;
 
