@@ -1,0 +1,142 @@
+Random thoughts for the future:
+
+Gridfitting prototype - add extended SVG attributes for gridfitting
+    Anchor points
+    Grid fitting
+        Align group of objects to adjusted/aligned point
+        Translate anchor and entire grouped object and then stretch by other anchor
+        transform-grid(translate(...) scale(...)
+    Rounding
+        Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
+        rounding-origin for in (toward zero) and out (toward infinity) rounding
+        inward and outward rounding based on path direction clockwise vs counterclockwise
+        Round relative another point
+        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)"
+        Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
+    Conditional details
+        Conditional visibility based on device pixels per canvas unit (PPU)
+    Minimum constraints
+        Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
+        Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
+
+Read:
+    A vector format for Flutter by Google
+    https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
+    http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+    https://yqnn.github.io/svg-path-editor/
+
+Investigate callstack for pixel coordinate rounding / grid-fitting:
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 128	C
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
+    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 111	C++
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
+
+    lunasvgtest.exe!lunasvg::to_plutovg_path(plutovg * pluto, const lunasvg::Path & path) Line 293	C++
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 106	C++
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
+
+    lunasvgtest.exe!plutovg_matrix_map_point(const plutovg_matrix_t * matrix, const plutovg_point_t * src, plutovg_point_t * dst) Line 128	C
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 108	C
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
+    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
+
+Elements:
+    anchor
+
+Attribute:
+    grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
+    grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
+    grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
+    grid-offset - adjustment in device pixels, such as shifting to a half pixel.
+    grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
+    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
+    anchors - list of relative anchors for a path
+
+Example:
+    Grid alignment cannot be part of transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" ignores the translate).
+
+        <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+        <g grid-align="plusSignTopLeftCorner">
+            <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
+            <g grid-align="plusSignCenter">
+                <circle cx="38" cy="38" r="10"/>
+                <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
+                <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
+
+                ...
+                <!-- 3 anchors are used in the path for displacement.
+                     Multiple anchors can apply to multiple points,
+                     such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
+                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+            </g>
+        </g>
+
+    One anchor can be defined relative to another one.
+    Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
+    todo: second anchor is relative to the rounded location rather than user coordinates, right?
+    todo: should I use an explicit attribute like grid-minimum="1px" instead of rounding, that way nearest can be used?
+    todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
+    todo: what about 45 degree angles, so that two octagons keep the same distance from each other? It's okay if the corners
+    todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
+          are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
+          A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
+
+        <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
+        <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
+        <path id="topComponent" anchors="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor -->
+        <path id="bottomComponent" anchors="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
+
+    todo: Can you just declare values inline with shorthand, rather than require anchor?
+
+        <g grid-align="37.5 37.5 halves-up fraction-left">
+
+    Referring to the same anchor twice in a nested group will be a nop, since the outer group
+    already aligned the anchor.
+
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+        <g grid-align="plusSignTopLeftCorner">
+            <g grid-align="plusSignTopLeftCorner"><!-- nop since already pixel aligned -->
+                <path d="m 10 10 h20 v20 z"/>
+            </g>
+        </g>
+
+    You should be able to stretch components too between the bounds, which translates to a tranform scale and translate:
+
+        <anchor id="topLeftCorner" x="40" y="40" grid-rounding="up left">
+        <anchor id="bottomRightCorner" x="60" y="60" grid-rounding="down right">
+        <g grid-fit="topLeftCorner bottomRightCorner">
+            <circle cx="50" cy="50" r="10"/>
+        </g>
+
+    Minimum stroke:
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
+
+Related:
+    WPF SnapsToDevicePixels and UseLayoutRounding. https://blog.benoitblanchon.fr/wpf-blurry-images/
+    WPF GuidelineSets https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
+    Images and Icons for Visual Studio https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
+    
+    Microsoft W3C rep for SVG https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
+    SVG specification https://github.com/w3c/svgwg/tree/master
+    TrueType hinting is overkill https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
+
+    For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
+      Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+      Possibly use eigen vector?
+      Possibly just check x and y after rotating the transform back to axis alignment?

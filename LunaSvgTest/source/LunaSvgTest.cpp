@@ -2,9 +2,11 @@
 LunaSvgTest.cpp: Main application.
 
 TODO:
-    - Wrap waterfall to window width
-    - Allow multiple icons at natural size
-    - Cleanup RedrawSvg layout
+    - Honor SetIndent in waterfall (so icons on next line are right of the labels)
+    - Support waterfall along size first, then document
+    - Support vertical flow for fixed size and waterfall
+    - Add size wrap option
+    - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
     - Move these thoughts below to another file
     - Upload to GitHub
 
@@ -186,7 +188,46 @@ enum class BackgroundColorMode
     OpaqueGray,
 };
 
+struct CanvasItem
+{
+    enum class ItemType : uint8_t
+    {
+        SizeLabel,
+        SvgDocument,
+    };
+    enum class Flags : uint8_t
+    {
+        Default = 0, // Default
+        Hidden = 1, // Do not draw this item.
+        NewLine = 2, // Wrap this item to a new row/column (depending on flow direction)
+        SetIndent = 4, // This items sets an indent for wrapped items
+    };
+    enum class FlowDirection
+    {
+        RightDown,
+        DownRight,
+        Total,
+    };
+    ItemType itemType;
+    Flags flags;
+    uint8_t padding1;
+    uint8_t padding2;
+    union
+    {
+        uint32_t labelSize;
+        uint32_t svgDocumentIndex;
+    } value;
+    uint32_t x;
+    uint32_t y;
+    uint32_t w;
+    uint32_t h;
+};
+
+DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
+
+
 std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
+std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap;
 bool g_svgNeedsRedrawing = true;
@@ -201,7 +242,7 @@ const uint32_t g_bitmapScrollStep = 64;
 unsigned int g_bitmapSizePerDocument = 64; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
-uint32_t g_bitmapPixelZoom = 1;
+uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
 uint32_t g_gridSize = 8;
 int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
 int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
@@ -808,12 +849,12 @@ void DrawSmallDigits(
     uint32_t digitCount,
     uint32_t x,
     uint32_t y,
-    uint32_t width,
-    uint32_t height,
-    uint32_t byteStridePerRow
+    uint32_t bitmapWidth,
+    uint32_t bitmapHeight,
+    uint32_t bitmapByteStridePerRow
     )
 {
-    if (y + g_smallDigitHeight > height)
+    if (y < 0 || y + g_smallDigitHeight > bitmapHeight) // Cheap clipping (whole clip, not partial)
     {
         return;
     }
@@ -821,12 +862,12 @@ void DrawSmallDigits(
     // transparent, black, gray, white.
     const uint32_t digitPixelColors[4] = { 0x00000000, 0xFF000000, 0xFFC0C0C0, 0xFFFFFFFF };
 
-    pixels += y * byteStridePerRow;
-    const uint32_t rowByteDelta = byteStridePerRow - (g_smallDigitWidth * sizeof(uint32_t));
+    pixels += y * bitmapByteStridePerRow;
+    const uint32_t rowByteDelta = bitmapByteStridePerRow - (g_smallDigitWidth * sizeof(uint32_t));
 
     for (uint32_t digitIndex = 0; digitIndex < digitCount; ++digitIndex)
     {
-        if (x + g_smallDigitWidth > width)
+        if (x < 0 || x + g_smallDigitWidth > bitmapWidth)
         {
             return;
         }
@@ -900,24 +941,15 @@ lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t minimumSi
 }
 
 
-void DrawCheckerboardBackgroundUnderneath(
-    uint8_t* pixels, // BGRA
+void DrawCheckerboardBackground(
+    uint8_t* pixels, // B,G,R,A
     uint32_t x,
     uint32_t y,
     uint32_t width,
     uint32_t height,
     uint32_t byteStridePerRow
-    )
+)
 {
-    struct PixelBgra
-    {
-        uint8_t b;
-        uint8_t g;
-        uint8_t r;
-        uint8_t a;
-    };
-
-    //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
     const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
     uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
 
@@ -925,20 +957,9 @@ void DrawCheckerboardBackgroundUnderneath(
     {
         for (uint32_t i = 0; i < width; ++i)
         {
-            const PixelBgra backgroundColor = ((i & 8) ^ (j & 8)) ? PixelBgra{0x20, 0x20, 0x20, 0xFF} : PixelBgra{0x40, 0x40, 0x40, 0xFF};
-            const PixelBgra bitmapColor = *reinterpret_cast<PixelBgra const*>(pixel);
-            const uint32_t bitmapAlpha = bitmapColor.a;
-            const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
-            
-            uint32_t blue  = (inverseBitmapAlpha * backgroundColor.b / 255) + bitmapColor.b;
-            uint32_t green = (inverseBitmapAlpha * backgroundColor.g / 255) + bitmapColor.g;
-            uint32_t red   = (inverseBitmapAlpha * backgroundColor.r / 255) + bitmapColor.r;
-            uint32_t alpha = (inverseBitmapAlpha * backgroundColor.a / 255) + bitmapColor.a;
-            uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
-            
-            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
+            const uint32_t backgroundColor = ((i & 8) ^ (j & 8)) ? 0xFF202020 : 0xFF404040;
             assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
-            *reinterpret_cast<uint32_t*>(pixel) = pixelValue;
+            *reinterpret_cast<uint32_t*>(pixel) = backgroundColor;
             pixel += sizeof(uint32_t);
         }
         pixel += rowByteDelta;
@@ -946,6 +967,7 @@ void DrawCheckerboardBackgroundUnderneath(
 }
 
 
+// Draws a color underneath the already existing image, as if the color had been drawn first and then the image later.
 void DrawBackgroundColorUnderneath(
     uint8_t* pixels, // BGRA
     uint32_t x,
@@ -1024,188 +1046,251 @@ void LoadSvgFiles(std::vector<std::wstring>&& fileList)
 }
 
 
-struct CanvasItem
+// Helper to generate 1:1 canvas item per SVG document.
+void AppendCanvasItemsGivenSize(std::vector<CanvasItem>& canvasItems, uint32_t documentPixelSize)
 {
-    enum class ItemType
+    const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+
+    for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
     {
-        Size,
-        SVG,
-    };
-    ItemType itemType;
-    uint32_t value; // Document index value for SVG or pixel value for Size.
-    uint32_t x;
-    uint32_t y;
-    uint32_t w;
-    uint32_t h;
-};
+        CanvasItem canvasItem =
+        {
+            .itemType = CanvasItem::ItemType::SvgDocument,
+            .flags = CanvasItem::Flags::Default,
+            .value = {.svgDocumentIndex = documentIndex},
+            .w = documentPixelSize,
+            .h = documentPixelSize,
+        };
+        canvasItems.push_back(std::move(canvasItem));
+    }
+}
 
 
-void GenerateSvgItems(RECT const& clientRect)
+void GenerateCanvasItems(
+    RECT const& clientRect,
+    CanvasItem::FlowDirection flowDirection,
+    std::vector<CanvasItem>& canvasItems
+    )
 {
-    //std::vector<CanvasItem> canvasItems;
+    canvasItems.clear();
 
-#if 0
     constexpr uint32_t maximumSmallDigitNumbers = 4;
     const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
+    const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+    const bool isHorizontalLayout = (flowDirection == CanvasItem::FlowDirection::RightDown);
+    static_assert(uint32_t(CanvasItem::FlowDirection::Total) == 2);
 
     // Draw the image to a bitmap.
     switch (g_bitmapSizingDisplay)
     {
     case BitmapSizingDisplay::FixedSize:
-        {
-            unsigned int bitmapMaximumWidth = clientRect.right / g_bitmapPixelZoom;
-
-            uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
-            uint32_t currentBitmapSize = g_bitmapSizePerDocument;
-            uint32_t bitmapsPerRow = std::max(std::min(bitmapMaximumWidth / currentBitmapSize, totalDocuments), 1u);
-            uint32_t bitmapsPerColumn = (totalDocuments + bitmapsPerRow - 1) / bitmapsPerRow;
-            uint32_t totalBitmapWidth = bitmapsPerRow * currentBitmapSize;
-            uint32_t totalBitmapHeight = bitmapsPerColumn * currentBitmapSize;
-
-            uint32_t x = 0, y = 0;
-            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
-            {
-                lunasvg::Document& document = *g_svgDocuments[documentIndex];
-            }
-        }
+        AppendCanvasItemsGivenSize(canvasItems, g_bitmapSizePerDocument);
         break;
 
     case BitmapSizingDisplay::Waterfall:
         {
-            const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
-            const bool drawNumbersLeft = totalDocuments > 1;
-            const bool drawNumbersBelow = !drawNumbersLeft;
-
-            const uint32_t startingX = drawNumbersLeft ? maximumDigitPixelsWide : 0;
-            const uint32_t separationY = drawNumbersBelow ? g_smallDigitHeight + 1 : 0;
-
-            // Determine the total bitmap size to display all sizes.
-            uint32_t totalBitmapWidth = g_waterfallBitmapWidth;
-            uint32_t totalBitmapHeight = g_waterfallBitmapHeight;
-
-            if (totalDocuments > 1)
+            for (uint32_t bitmapSize : g_waterfallBitmapSizes)
             {
-                totalBitmapWidth = startingX + totalDocuments * std::end(g_waterfallBitmapSizes)[-1];
-                totalBitmapHeight = 0;
-                for (uint32_t size : g_waterfallBitmapSizes)
+                // Add a label.
+                CanvasItem labelCanvasItem =
                 {
-                    totalBitmapHeight += size + separationY;
-                }
-            }
+                    .itemType = CanvasItem::ItemType::SizeLabel,
+                    .flags = CanvasItem::Flags::NewLine,
+                    .value = {.labelSize = bitmapSize},
+                    .w = isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
+                    .h = isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
+                };
+                canvasItems.push_back(std::move(labelCanvasItem));
 
-            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
-            g_bitmap.clear(backgroundColor);
-            lunasvg::Bitmap bitmap;
-
-            // Draw each size, left to right, top to bottom.
-            uint32_t x = startingX, y = 0, previousSize = 1;
-            for (uint32_t size : g_waterfallBitmapSizes)
-            {
                 for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
                 {
                     auto& document = g_svgDocuments[documentIndex];
-                    // Draw the icon into a subrect of the larger atlas texture,
-                    // adjusting the pointer offset while keeping the correct stride.
+                    CanvasItem svgCanvasItem =
+                    {
+                        .itemType = CanvasItem::ItemType::SvgDocument,
+                        .flags = CanvasItem::Flags::Default,
+                        .value = {.svgDocumentIndex = documentIndex},
+                        .w = bitmapSize,
+                        .h = bitmapSize,
+                    };
+                    canvasItems.push_back(std::move(svgCanvasItem));
                 }
-
-                previousSize = size;
             }
         }
         break;
 
     case BitmapSizingDisplay::WindowSize:
         {
-            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
+            const uint32_t bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
+            AppendCanvasItemsGivenSize(canvasItems, bitmapMaximumSize);
         }
         break;
 
     case BitmapSizingDisplay::Natural:
         {
-            uint32_t documentWidth  = static_cast<uint32_t>(std::ceil(firstDocument.width()));
-            uint32_t documentHeight = static_cast<uint32_t>(std::ceil(firstDocument.height()));
-            g_bitmap.reset(documentWidth, documentHeight);
+            AppendCanvasItemsGivenSize(canvasItems, /*documentPixelSize*/ 0);
+            // Set the height and width each of canvas item.
+            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            {
+                auto& canvasItem = canvasItems[documentIndex];
+                auto& document = *g_svgDocuments[documentIndex];
+                canvasItem.w = static_cast<uint32_t>(std::ceil(document.width()));
+                canvasItem.h = static_cast<uint32_t>(std::ceil(document.height()));
+            }
         }
         break;
     }
-
-#endif
 }
 
 
-void LayoutSvgItems()
+void LayoutCanvasItems(
+    RECT const& boundingRect,
+    CanvasItem::FlowDirection flowDirection,
+    /*inout*/ std::span<CanvasItem> canvasItems
+    )
 {
-    RECT boundingRect = {};
-    //std::vector<CanvasItem> canvasItems;
-}
+    // Lay all the canvas item positions by flow direction.
 
+    RECT lineRect = {}; // Accumulated rect of current line (row or column until next wrap).
+    unsigned int bitmapMaximumVisibleWidth = boundingRect.right / g_bitmapPixelZoom;
+    unsigned int bitmapMaximumVisibleHeight = boundingRect.bottom / g_bitmapPixelZoom;
+    uint32_t x = 0, y = 0;
 
-void RedrawSvgItems()
-{
-    //std::vector<CanvasItem> canvasItems;
-#if 0
-    const uint32_t backgroundColor = 0x00000000u; // Transparent black
-
-    for (const auto& item : canvasItems)
+    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
     {
-        g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
-        g_bitmap.clear(backgroundColor);
-        lunasvg::Bitmap bitmap;
-
-        // Draw each size, left to right, top to bottom.
-        switch (item.itemType)
+        auto& canvasItem = canvasItems[canvasItemIndex];
+        uint32_t nextX = x, nextY = y;
+        switch (flowDirection)
         {
-        case CanvasItem::ItemType::Size:
+        case CanvasItem::FlowDirection::RightDown:
+            if (x + canvasItem.w > bitmapMaximumVisibleWidth || bool(canvasItem.flags & CanvasItem::Flags::NewLine))
             {
-                uint32_t pixelSize = item.value;
-
-                // Draw little digits for icon pixel size.
-                if (drawNumbersBelow || (drawNumbersLeft && x == startingX))
+                if (lineRect.right > 0)
                 {
-                    char digits[maximumSmallDigitNumbers] = {};
-                    const auto result = std::to_chars(std::begin(digits), std::end(digits), size);
-                    const uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
-
-                    uint32_t digitX = drawNumbersLeft ?
-                        x - g_smallDigitWidth * digitCount : // left of icon
-                        x + (size - g_smallDigitWidth * digitCount) / 2; // centered horizontally across icon
-                    uint32_t digitY = drawNumbersLeft ?
-                        y + (size - g_smallDigitHeight * digitCount) / 2 : // centered vertical across icon
-                        y + size + 1; // 1 pixel under icon
-
-                    DrawSmallDigits(
-                        g_bitmap.data(),
-                        reinterpret_cast<unsigned char*>(digits),
-                        digitCount,
-                        digitX, 
-                        digitY, // y, 1 pixel under icon
-                        g_bitmap.width(),
-                        g_bitmap.height(),
-                        g_bitmap.stride()
-                    );
+                    x = 0;
+                    y = lineRect.bottom;
+                    nextY = y;
+                    lineRect = {};
                 }
             }
-        case CanvasItem::ItemType::SVG:
+            nextX = x + canvasItem.w;
+            break;
+
+        case CanvasItem::FlowDirection::DownRight:
+            if (y + canvasItem.h > bitmapMaximumVisibleHeight || bool(canvasItem.flags & CanvasItem::Flags::NewLine))
             {
-                auto& document = g_svgDocuments[item.value];
+                if (lineRect.bottom > 0)
+                {
+                    y = 0;
+                    x = lineRect.right;
+                    nextX = x;
+                    lineRect = {};
+                }
+            }
+            nextY = y + canvasItem.h;
+            break;
+        };
+
+        // Update the item position.
+        canvasItem.x = x;
+        canvasItem.y = y;
+
+        // Accumulate the current line bounds with the item.
+        RECT currentRect =
+        {
+            .left = LONG(x),
+            .top = LONG(y),
+            .right = LONG(x + canvasItem.w),
+            .bottom = LONG(y + canvasItem.h),
+        };
+        UnionRect(/*out*/&lineRect, &lineRect, &currentRect);
+
+        // Update the coordinates for the next item.
+        x = nextX;
+        y = nextY;
+    }
+}
+
+
+RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
+{
+    RECT boundingRect = {};
+    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
+    {
+        auto& canvasItem = canvasItems[canvasItemIndex];
+        RECT currentRect =
+        {
+            .left = LONG(canvasItem.x),
+            .top = LONG(canvasItem.y),
+            .right = LONG(canvasItem.x + canvasItem.w),
+            .bottom = LONG(canvasItem.y + canvasItem.h),
+        };
+        UnionRect(/*out*/&boundingRect, &boundingRect, &currentRect);
+    }
+    return boundingRect;
+}
+
+
+void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap& bitmap)
+{
+    constexpr uint32_t maximumSmallDigitNumbers = 4;
+    lunasvg::Bitmap subbitmap;
+
+    for (const auto& canvasItem : canvasItems)
+    {
+        // Draw each size, left to right, top to bottom.
+        switch (canvasItem.itemType)
+        {
+        case CanvasItem::ItemType::SizeLabel:
+            {
+                uint32_t pixelSize = canvasItem.value.labelSize;
+
+                char digits[maximumSmallDigitNumbers] = {};
+                const auto result = std::to_chars(std::begin(digits), std::end(digits), pixelSize);
+                const uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
+
+                // Label is centered horizontally and vertically within canvas item box.
+                uint32_t digitX = canvasItem.x + (canvasItem.w - g_smallDigitWidth * digitCount) / 2;
+                uint32_t digitY = canvasItem.y + (canvasItem.h - g_smallDigitHeight) / 2;
+
+                DrawSmallDigits(
+                    bitmap.data(),
+                    reinterpret_cast<unsigned char*>(digits),
+                    digitCount,
+                    digitX,
+                    digitY,
+                    bitmap.width(),
+                    bitmap.height(),
+                    bitmap.stride()
+                );
+            }
+            break;
+
+        case CanvasItem::ItemType::SvgDocument:
+            {
+                assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
+                auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
+
                 // Draw the icon into a subrect of the larger atlas texture,
                 // adjusting the pointer offset while keeping the correct stride.
-                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
-                bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
-                bitmap.clear(backgroundColor);
-                auto matrix = GetMatrixForSize(*document, size);
-                document->render(bitmap, matrix);
+                uint32_t pixelOffset = canvasItem.y * g_bitmap.stride() + canvasItem.x * sizeof(uint32_t);
+                subbitmap.reset(bitmap.data() + pixelOffset, canvasItem.w, canvasItem.h, bitmap.stride());
+
+                uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
+                auto matrix = GetMatrixForSize(*document, pixelSize);
+                document->render(subbitmap, matrix);
             }
+            break;
         }
     }
-
-#endif
 }
 
 
 void RealignBitmapOffsets(RECT const& clientRect)
 {
-    // Update the offsets to the new bitmap size (typically after loading a new file)
-    // so the bitmap is either centered in the window or anchored at the top left.
+    // Realign the offsets to the new bitmap size (typically after loading a new file)
+    // so the bitmap is either centered in the window or anchored at the top left,
+    // rather than randomly wherever it was last.
 
     const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
@@ -1218,7 +1303,8 @@ void RealignBitmapOffsets(RECT const& clientRect)
 
 void ConstrainBitmapOffsets(RECT const& clientRect)
 {
-    // Constrain the bitmap offsets so they are visible (but not centered).
+    // Constrain the bitmap offsets so they are visible (not recentered like RealignBitmapOffsets).
+
     const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
     g_bitmapOffsetX = std::clamp(g_bitmapOffsetX, std::min(effectiveBitmapWidth - int32_t(clientRect.right), 0), std::max(effectiveBitmapWidth - int32_t(clientRect.right), 0));
@@ -1236,6 +1322,35 @@ void RealignBitmapOffsets(HWND hwnd)
 }
 
 
+void RedrawSvgBackground()
+{
+    switch (g_backgroundColorMode)
+    {
+    case BackgroundColorMode::TransparentBlack:
+        g_bitmap.clear(0x00000000);
+        break;
+
+    case BackgroundColorMode::GrayCheckerboard:
+        DrawCheckerboardBackground(
+            g_bitmap.data(),
+            0,
+            0,
+            g_bitmap.width(),
+            g_bitmap.height(),
+            g_bitmap.stride()
+        );
+        break;
+
+    case BackgroundColorMode::OpaqueWhite:
+    case BackgroundColorMode::OpaqueGray:
+        // Beware LunaSvg uses backwards alpha (RGBA rather than ARGB) whereas
+        // typically most pixel formats put the alpha in the *top* byte.
+        g_bitmap.clear((g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0x808080FF : /*OpaqueWhite*/ 0xFFFFFFFF);
+        break;
+    }
+}
+
+
 void RedrawSvg(RECT const& clientRect)
 {
     if (g_svgDocuments.empty() || !g_svgDocuments.front())
@@ -1243,168 +1358,12 @@ void RedrawSvg(RECT const& clientRect)
         return;
     }
 
-    lunasvg::Document& firstDocument = *g_svgDocuments.front();
-
-    const uint32_t backgroundColor = 0x00000000u; // Transparent black
-
-    constexpr uint32_t maximumSmallDigitNumbers = 4;
-    const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
-
-    // Draw the image to a bitmap.
-    switch (g_bitmapSizingDisplay)
-    {
-    case BitmapSizingDisplay::FixedSize:
-        {
-            unsigned int bitmapMaximumWidth = clientRect.right / g_bitmapPixelZoom;
-
-            uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
-            uint32_t currentBitmapSize = g_bitmapSizePerDocument;
-            uint32_t bitmapsPerRow = std::max(std::min(bitmapMaximumWidth / currentBitmapSize, totalDocuments), 1u);
-            uint32_t bitmapsPerColumn = (totalDocuments + bitmapsPerRow - 1) / bitmapsPerRow;
-            uint32_t totalBitmapWidth = bitmapsPerRow * currentBitmapSize;
-            uint32_t totalBitmapHeight = bitmapsPerColumn * currentBitmapSize;
-            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
-            g_bitmap.clear(backgroundColor);
-            lunasvg::Bitmap bitmap;
-
-            uint32_t x = 0, y = 0;
-            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
-            {
-                if (x + currentBitmapSize > totalBitmapWidth)
-                {
-                    y += currentBitmapSize;
-                    x = 0;
-                }
-                if (y + currentBitmapSize > totalBitmapHeight)
-                {
-                    break;
-                }
-
-                lunasvg::Document& document = *g_svgDocuments[documentIndex];
-                auto matrix = GetMatrixForSize(document, currentBitmapSize);
-
-                // Don't call renderToBitmap() directly because it distorts
-                // the aspect ratio, unless the viewport is exactly square.
-                //
-                // g_bitmap = document.renderToBitmap(bitmapMaximumSize, bitmapMaximumSize, backgroundColor);
-                //
-                // Compute the matrix ourselves instead, and use that:
-                uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
-                bitmap.reset(g_bitmap.data() + pixelOffset, currentBitmapSize, currentBitmapSize, g_bitmap.stride());
-                document.render(bitmap, matrix);
-
-                x += currentBitmapSize;
-            }
-        }
-        break;
-
-    case BitmapSizingDisplay::Waterfall:
-        {
-            const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
-            const bool drawNumbersLeft = totalDocuments > 1;
-            const bool drawNumbersBelow = !drawNumbersLeft;
-
-            const uint32_t startingX = drawNumbersLeft ? maximumDigitPixelsWide : 0;
-            const uint32_t separationY = drawNumbersBelow ? g_smallDigitHeight + 1 : 0;
-
-            // Determine the total bitmap size to display all sizes.
-            uint32_t totalBitmapWidth = g_waterfallBitmapWidth;
-            uint32_t totalBitmapHeight = g_waterfallBitmapHeight;
-
-            if (totalDocuments > 1)
-            {
-                totalBitmapWidth = startingX + totalDocuments * std::end(g_waterfallBitmapSizes)[-1];
-                totalBitmapHeight = 0;
-                for (uint32_t size : g_waterfallBitmapSizes)
-                {
-                    totalBitmapHeight += size + separationY;
-                }
-            }
-
-            g_bitmap.reset(totalBitmapWidth, totalBitmapHeight);
-            g_bitmap.clear(backgroundColor);
-            lunasvg::Bitmap bitmap;
-
-            // Draw each size, left to right, top to bottom.
-            uint32_t x = startingX, y = 0, previousSize = 1;
-            for (uint32_t size : g_waterfallBitmapSizes)
-            {
-                if (x + size > totalBitmapWidth || (totalDocuments > 1 && x > startingX))
-                {
-                    y += previousSize + separationY;
-                    x = startingX;
-                }
-                if (y + size + separationY > totalBitmapHeight)
-                {
-                    break;
-                }
-
-                for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
-                {
-                    auto& document = g_svgDocuments[documentIndex];
-                    // Draw the icon into a subrect of the larger atlas texture,
-                    // adjusting the pointer offset while keeping the correct stride.
-                    uint32_t pixelOffset = y * g_bitmap.stride() + x * sizeof(uint32_t);
-                    bitmap.reset(g_bitmap.data() + pixelOffset, size, size, g_bitmap.stride());
-                    bitmap.clear(backgroundColor);
-                    auto matrix = GetMatrixForSize(*document, size);
-                    document->render(bitmap, matrix);
-
-                    // Draw little digits for icon pixel size.
-                    if (drawNumbersBelow || (drawNumbersLeft && x == startingX))
-                    {
-                        char digits[maximumSmallDigitNumbers] = {};
-                        const auto result = std::to_chars(std::begin(digits), std::end(digits), size);
-                        const uint32_t digitCount = static_cast<uint32_t>(result.ptr - std::begin(digits));
-
-                        uint32_t digitX = drawNumbersLeft ?
-                            x - g_smallDigitWidth * digitCount : // left of icon
-                            x + (size - g_smallDigitWidth * digitCount) / 2; // centered horizontally across icon
-                        uint32_t digitY = drawNumbersLeft ?
-                            y + (size - g_smallDigitHeight * digitCount) / 2 : // centered vertical across icon
-                            y + size + 1; // 1 pixel under icon
-
-                        DrawSmallDigits(
-                            g_bitmap.data(),
-                            reinterpret_cast<unsigned char*>(digits),
-                            digitCount,
-                            digitX, 
-                            digitY, // y, 1 pixel under icon
-                            g_bitmap.width(),
-                            g_bitmap.height(),
-                            g_bitmap.stride()
-                        );
-                    }
-
-                    x += size;
-                }
-
-                previousSize = size;
-            }
-        }
-        break;
-
-    case BitmapSizingDisplay::WindowSize:
-        {
-            unsigned int bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
-            g_bitmap.reset(bitmapMaximumSize, bitmapMaximumSize);
-            g_bitmap.clear(backgroundColor);
-            auto matrix = GetMatrixForSize(firstDocument, bitmapMaximumSize);
-            firstDocument.render(g_bitmap, matrix);
-        }
-        break;
-
-    case BitmapSizingDisplay::Natural:
-        {
-            lunasvg::Matrix matrix; // Defaults to identity.
-            uint32_t documentWidth  = static_cast<uint32_t>(std::ceil(firstDocument.width()));
-            uint32_t documentHeight = static_cast<uint32_t>(std::ceil(firstDocument.height()));
-            g_bitmap.reset(documentWidth, documentHeight);
-            g_bitmap.clear(backgroundColor);
-            firstDocument.render(g_bitmap, matrix);
-        }
-        break;
-    }
+    GenerateCanvasItems(clientRect, CanvasItem::FlowDirection::RightDown, /*inout*/g_canvasItems);
+    LayoutCanvasItems(clientRect, CanvasItem::FlowDirection::RightDown, /*inout*/g_canvasItems);
+    RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
+    g_bitmap.reset(boundingRect.right, boundingRect.bottom);
+    RedrawSvgBackground();
+    RedrawCanvasItems(g_canvasItems, g_bitmap);
 
     if (g_realignBitmap)
     {
@@ -1448,41 +1407,6 @@ void RedrawSvg(RECT const& clientRect)
     SetWindowText(hwnd, windowTitle);
     #endif
 }
-
-void RedrawSvgBackground()
-{
-    switch (g_backgroundColorMode)
-    {
-    case BackgroundColorMode::TransparentBlack:
-        // Nothing to do since they were already drawn atop transparent black.
-        break;
-
-    case BackgroundColorMode::GrayCheckerboard:
-        DrawCheckerboardBackgroundUnderneath(
-            g_bitmap.data(),
-            0,
-            0,
-            g_bitmap.width(),
-            g_bitmap.height(),
-            g_bitmap.stride()
-        );
-        break;
-
-    case BackgroundColorMode::OpaqueWhite:
-    case BackgroundColorMode::OpaqueGray:
-        DrawBackgroundColorUnderneath(
-            g_bitmap.data(),
-            0,
-            0,
-            g_bitmap.width(),
-            g_bitmap.height(),
-            g_bitmap.stride(),
-            (g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0xFF808080 : /*OpaqueWhite*/ 0xFFFFFFFF
-        );
-        break;
-    }
-}
-
 
 void UpdateBitmapScrollbars(HWND hwnd)
 {
@@ -1568,7 +1492,6 @@ void RedrawSvg(HWND hwnd)
     _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u, %s)", szTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
     SetWindowText(hwnd, windowTitle);
 
-    RedrawSvgBackground();
     if (g_invertColors)
     {
         NegateBitmap(g_bitmap);
@@ -1702,7 +1625,7 @@ void CopySvgBitmapToClipboard(
                     // Point to the beginning of the pixel data.
                     uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo.bmiHeader);
                     uint32_t bytesPerRow = (bitmapInfo.bV5Width * bitmapInfo.bV5BitCount) / 8u; // Already 32-bit aligned.
-                    assert(bitmapInfo.bV5Height * bytesPerRow = bitmapInfo.bV5SizeImage);
+                    assert(bitmapInfo.bV5Height * bytesPerRow == bitmapInfo.bV5SizeImage);
 
                     // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
                     uint8_t* bitmapData = bitmap.data() + bitmap.stride() * bitmap.height();
@@ -1739,7 +1662,8 @@ BOOL StretchBltFixed(
 )
 {
     // StretchBlt has a bug with larger scales where the aspect ratio becomes distorted
-    // if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale).
+    // if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale),
+    // even if 95% of the content is clipped/off screen.
     // So this wrapper just virtually clips the stretch by adjusting the offsets and
     // size according to the clip rect. Windows *should* just do this itself :/.
 
@@ -1775,7 +1699,6 @@ BOOL StretchBltFixed(
         {
             int destOffsetX = clipRight - destX;
             int srcOffsetX = (destOffsetX * srcW + destW - 1) / destW;
-            //destOffsetX = (srcOffsetX * destW + srcW - 1) / srcW;
             destOffsetX = srcOffsetX * destW / srcW;
             destW = destOffsetX;
             srcW = srcOffsetX;
