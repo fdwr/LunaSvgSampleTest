@@ -232,7 +232,7 @@ std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap;
 bool g_svgNeedsRedrawing = true;
 
-const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,80,96,112,128,160,192,224,256};
+const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
 const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
@@ -269,6 +269,54 @@ struct PixelBgra
     uint8_t g;
     uint8_t r;
     uint8_t a;
+};
+
+// What moron decided to essentially use inheritance with the BITMAPINFOHEADER but also rename
+// all the struct fields, needlessly prefixing everything with {bi, bc, bv5} so that generic
+// code could not work with different versions of the structs? (face palm)
+struct BITMAPHEADERv2 // BITMAPCOREHEADER
+{
+    DWORD        size;
+    WORD         width;
+    WORD         height;
+    WORD         planes;
+    WORD         bitCount;
+};
+
+struct BITMAPHEADERv3 // BITMAPINFOHEADER (not v3 is not backwards compatible with v2, as the width/height are LONG)
+{
+    DWORD        size;
+    LONG         width;
+    LONG         height;
+    WORD         planes;
+    WORD         bitCount;
+    DWORD        compression;
+    DWORD        sizeImage;
+    LONG         xPelsPerMeter;
+    LONG         yPelsPerMeter;
+    DWORD        clrImportant;
+    DWORD        clrUsed;
+};
+
+struct BITMAPHEADERv4 : BITMAPHEADERv3 // BITMAPV4HEADER
+{
+    DWORD        redMask;
+    DWORD        greenMask;
+    DWORD        blueMask;
+    DWORD        alphaMask;
+    DWORD        csType;
+    CIEXYZTRIPLE endpoints;
+    DWORD        gammaRed;
+    DWORD        gammaGreen;
+    DWORD        gammaBlue;
+};
+
+struct BITMAPHEADERv5 : BITMAPHEADERv4 // BITMAPV5HEADER
+{
+    DWORD        intent;
+    DWORD        profileData;
+    DWORD        profileSize;
+    DWORD        reserved;
 };
 
 
@@ -1504,34 +1552,34 @@ void RedrawSvg(HWND hwnd)
 
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
-    /*out*/ BITMAPV5HEADER& bitmapInfo
+    /*out*/ BITMAPHEADERv5& bitmapInfo
     )
 {
-    bitmapInfo.bV5Size = sizeof(bitmapInfo);
-    bitmapInfo.bV5Width = bitmap.width();
-    bitmapInfo.bV5Height = -LONG(bitmap.height());
-    bitmapInfo.bV5Planes = 1;
-    bitmapInfo.bV5BitCount = 32;
-    bitmapInfo.bV5Compression = BI_RGB; // BI_BITFIELDS
-    bitmapInfo.bV5SizeImage = g_bitmap.stride() * g_bitmap.height();
-    bitmapInfo.bV5XPelsPerMeter = 3780;
-    bitmapInfo.bV5YPelsPerMeter = 3780;
-    bitmapInfo.bV5ClrUsed = 0;
-    bitmapInfo.bV5ClrImportant = 0;
+    bitmapInfo.size = sizeof(bitmapInfo);
+    bitmapInfo.width = bitmap.width();
+    bitmapInfo.height = -LONG(bitmap.height());
+    bitmapInfo.planes = 1;
+    bitmapInfo.bitCount = 32;
+    bitmapInfo.compression = BI_BITFIELDS;
+    bitmapInfo.sizeImage = bitmap.stride() * bitmap.height();
+    bitmapInfo.xPelsPerMeter = 3780;
+    bitmapInfo.yPelsPerMeter = 3780;
+    bitmapInfo.clrUsed = 0;
+    bitmapInfo.clrImportant = 0;
 
-    bitmapInfo.bV5RedMask = 0x00FF0000;
-    bitmapInfo.bV5GreenMask = 0x0000FF00;
-    bitmapInfo.bV5BlueMask = 0x000000FF;
-    bitmapInfo.bV5AlphaMask = 0xFF000000;
-    bitmapInfo.bV5CSType = 0;// LCS_sRGB;
-    bitmapInfo.bV5Endpoints = {};
-    bitmapInfo.bV5GammaRed = 0;
-    bitmapInfo.bV5GammaGreen = 0;
-    bitmapInfo.bV5GammaBlue = 0;
-    bitmapInfo.bV5Intent = 0;// LCS_GM_IMAGES;
-    bitmapInfo.bV5ProfileData = 0;
-    bitmapInfo.bV5ProfileSize = 0;
-    bitmapInfo.bV5Reserved = 0;
+    bitmapInfo.redMask = 0x00FF0000;
+    bitmapInfo.greenMask = 0x0000FF00;
+    bitmapInfo.blueMask = 0x000000FF;
+    bitmapInfo.alphaMask = 0xFF000000;
+    bitmapInfo.csType = LCS_WINDOWS_COLOR_SPACE;// LCS_sRGB;
+    bitmapInfo.endpoints = {};
+    bitmapInfo.gammaRed = 0; // Ignored unless csType == LCS_CALIBRATED_RGB.
+    bitmapInfo.gammaGreen = 0; // Ignored unless csType == LCS_CALIBRATED_RGB.
+    bitmapInfo.gammaBlue = 0; // Ignored unless csType == LCS_CALIBRATED_RGB.
+    bitmapInfo.intent = LCS_GM_IMAGES;
+    bitmapInfo.profileData = 0; // Ignored csType == PROFILE_LINKED or PROFILE_EMBEDDED.
+    bitmapInfo.profileSize = 0;
+    bitmapInfo.reserved = 0;
 }
 
 
@@ -1598,14 +1646,24 @@ void CopySvgBitmapToClipboard(
         {
             EmptyClipboard();
 
-            BITMAPV5HEADER bitmapInfo;
+            BITMAPHEADERv5 bitmapInfo;
             FillBitmapInfoFromLunaSvgBitmap(bitmap, /*out*/bitmapInfo);
-            uint32_t totalBytes = sizeof(BITMAPINFO) + bitmapInfo.bV5SizeImage;
+
+            uint32_t totalBytes = sizeof(bitmapInfo) + bitmapInfo.sizeImage;
+
             // Although DIB sections understand negative height just fine (the standard top-down image layout used by
             // most image formats), other programs sometimes choke when seeing it. IrfanView display the image upside
             // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
             // appear on Windows 10 understand upside down images just fine.
-            bitmapInfo.bV5Height = -bitmapInfo.bV5Height;
+            bitmapInfo.height = abs(bitmapInfo.height);
+
+            // InkScape does not recognize transparency anymore when setting BI_BITFIELDS
+            // (even though it is identical to BI_RGB for 32-bit BGRA). So set it for compat.
+            // If Word/Outlook/PowerPoint recognized transparency on BI_BITFIELDS, then I'd be
+            // tempted to keep it anyway, but they always just display black pixels instead
+            // (likely because they can't be sure whether to use premultiplied or not)
+            // XnView recognizes transparency via BI_RGB or BI_BITFIELDS.
+            bitmapInfo.compression = BI_RGB;
 
             HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
             if (memory != nullptr)
@@ -1613,23 +1671,23 @@ void CopySvgBitmapToClipboard(
                 void* lockedMemory= GlobalLock(memory);
                 if (lockedMemory != nullptr)
                 {
-                    assert(bitmapInfo.bV5Planes == 1);
-                    assert(bitmapInfo.bV5BitCount == 32);
+                    assert(bitmapInfo.planes == 1);
+                    assert(bitmapInfo.bitCount == 32);
 
                     // Copy the older bitmapinfo header (not v5) for greater compatibility with other
                     // applications reading the clipboard data.
-                    BITMAPINFO& clipboardBitmapInfo = *reinterpret_cast<BITMAPINFO*>(lockedMemory);
+                    auto& clipboardBitmapInfo = *reinterpret_cast<std::remove_reference_t<decltype(bitmapInfo)>*>(lockedMemory);
                     memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
-                    clipboardBitmapInfo.bmiHeader.biSize = sizeof(clipboardBitmapInfo.bmiHeader);
+                    clipboardBitmapInfo.size = sizeof(clipboardBitmapInfo);
 
                     // Point to the beginning of the pixel data.
-                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo.bmiHeader);
-                    uint32_t bytesPerRow = (bitmapInfo.bV5Width * bitmapInfo.bV5BitCount) / 8u; // Already 32-bit aligned.
-                    assert(bitmapInfo.bV5Height * bytesPerRow == bitmapInfo.bV5SizeImage);
+                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
+                    uint32_t bytesPerRow = (bitmapInfo.width * bitmapInfo.bitCount) / 8u; // Already 32-bit aligned.
+                    assert(bitmapInfo.height * bytesPerRow == bitmapInfo.sizeImage);
 
                     // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
                     uint8_t* bitmapData = bitmap.data() + bitmap.stride() * bitmap.height();
-                    for (uint32_t y = 0; y < uint32_t(bitmapInfo.bV5Height); ++y)
+                    for (uint32_t y = 0; y < uint32_t(bitmapInfo.height); ++y)
                     {
                         bitmapData -= bytesPerRow;
                         memcpy(clipboardPixels, bitmapData, bytesPerRow);
@@ -1638,7 +1696,7 @@ void CopySvgBitmapToClipboard(
                 }
                 GlobalUnlock(memory);
 
-                SetClipboardData(CF_DIB, memory);
+                SetClipboardData(CF_DIBV5, memory);
             }
             CloseClipboard();
         }
@@ -1758,7 +1816,7 @@ void RepaintWindow(HWND hwnd)
     }
     else
     {
-        BITMAPV5HEADER bitmapInfo = {};
+        BITMAPHEADERv5 bitmapInfo = {};
         FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
 
         // Erase background around drawing.
@@ -2122,7 +2180,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE14:
             case IDM_SIZE15:
             case IDM_SIZE16:
-                static_assert(IDM_SIZE16 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes), "g_waterfallBitmapSizes is not the correct size");
+            case IDM_SIZE17:
+                static_assert(IDM_SIZE17 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
+                static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RedrawSvgLater(hwnd);

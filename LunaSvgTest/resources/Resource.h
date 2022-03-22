@@ -31,7 +31,8 @@
 #define IDM_SIZE14                  124
 #define IDM_SIZE15                  125
 #define IDM_SIZE16                  126
-#define IDM_SIZE_LAST               126
+#define IDM_SIZE17                  127
+#define IDM_SIZE_LAST               127
 #define IDM_COPY_BITMAP             130
 #define IDM_COLOR_FIRST             131
 #define IDM_COLOR_TRANSPARENT_BLACK 131
