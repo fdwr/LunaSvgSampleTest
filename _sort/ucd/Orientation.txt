@@ -1,0 +1,1801 @@
+﻿# Orientations.txt
+# Date: 2010-09-15, 17:00:00 PST, dwayner
+#
+# DirectWrite Character Database
+# This is not official Unicode data, but designed to be compatible with
+# other similar data files.
+
+# ================================================
+
+# Property: Orientation
+
+#  All code points not explicitly listed for Orientation
+#  have the value Unknown (Unknown).
+
+# @missing: 0000..10FFFF; Unknown
+
+# ================================================
+# This file supplies per-codepoint orientation information for supporting
+# various text layout directionalities, particularly to resolve the
+# occurrences of horizontal within vertical text.
+#
+# GDI and GDI+ only have two classes for orientation:
+#
+# 1. Characters that remain upright.
+# 2. Characters that follow the baseline.
+#
+# For supporting stacked text or the other proposed UAX #9 approaches,
+# two classes is insufficient. Though, for the simpler clients who only
+# wants the two possible rotations, all the classes below can be mapped
+# to just upright or rotated.
+#
+# In addition to rotation, the class data contains enough information
+# to distinguish mirroring characters and scripts too. Most mirrorable
+# characters (notably common punctuation) already have a substitution
+# available via character translation; but a handful of scripts also
+# mirror based on direction, and these are unlikely to ever receive
+# (nor should they) mirror codepoints. Instead, these may be mirrored
+# via a graphic transform or font feature, such as rtlm. The data does
+# not mandate the approach that should be used, just that it is valid
+# for the given script character to behave so.
+#
+# Attributes:
+# D  - discrete (generally freely rotatable and stackable)
+# C  - cursive/connected (not stackable, as it would look broken)
+# S  - stackable
+# R  - rotatable
+# RF - rotatable, typically via font (the 'vert' or 'vrt2' feature)
+# M  - mirrorable (via graphic transform or font feature 'ltrm'/'rtlm')
+# MP - mirrorable via character substitution mirror pair (such as { } < >}
+# I  - inherits orientation from previous (combining marks and variation selectors)
+# 
+# Classes:
+# DS    - discrete stackable (ideographic upright, stacked, never rotated or mirrored, like Chinese)
+# DSR   - rotatable and stackable discrete (Thai/Hebrew/most punctuation)
+# DSRM  - rotable/stackable/historically mirrorable and in certain context (Greek/Latin)
+# DRU   - discrete rotating/can rotate upside-down 180 (Rongo Rongo)
+# DSM   - discrete stackable and mirrorable (Egyptian hieroglyphs/Mayan/Runic/(rarely)Orkhon)
+# DRMP  - rotated punctuation/symbol (rotated in stacked TTB, such as "(", not via a vert feature)
+# DRFMP - full width rotating punctuation with mirror pairs (typically stay upright and rotate via a 'vert' feature)
+# DRF   - full width rotating punctuation (typically stay upright and rotate via a 'vert' feature)
+# CR    - connected rotating (Devanagari/Arabic/Ogham)
+# CRU   - connected rotating/can fully rotate even upside-down 180 (Mongolian/Rongo Rongo)
+# CSR   - connected rotatable/stackable (Devanagari can actually be stacked on signs, though very rare)
+# ADS   - standard arrows (maintain orientation regardless of text direction, unlike half-width)
+# ADSR  - half-width arrows that rotate U+FFE9
+# BOX   - Box drawing shapes (special class)
+# BLK   - Block elements (special class)
+# ANY   - neutral orientation
+# CI    - connected to previous character, inheriting orientation
+#
+# The unknown codepoints are advised to recieve treatment like CR, to play it
+# safe and not break new cursive scripts. Though, DSR will likely be fine too
+# for most new scripts being added (as many older scripts are discrete).
+
+  0000..001F    ; DR    # Control characters
+  0020..0027    ; DSR   # Basic Latin
+  0028          ; DRMP  # LEFT PARENTHESIS
+  0029          ; DRMP  # RIGHT PARENTHESIS
+  002A..002F    ; DSR   # ASTERISK..SOLIDUS
+  0030..0039    ; DSR   # Numbers
+  003A..003B    ; DSR   # COLON..SEMICOLON
+  003C          ; DRMP  # LESS-THAN SIGN
+  003D          ; DSR   # EQUALS SIGN
+  003E          ; DRMP  # GREATER-THAN SIGN
+  003F..0040    ; DSR   # QUESTION MARK..COMMERCIAL AT
+  0041..005A    ; DSRM  # Basic Latin A..Z
+  005B          ; DRMP  # LEFT SQUARE BRACKET
+  005C          ; DSR   # REVERSE SOLIDUS
+  005D          ; DRMP  # RIGHT SQUARE BRACKET
+  005E          ; DSR   # CIRCUMFLEX ACCENT
+  005F          ; DR    # LOW LINE
+  0060          ; DSR   # GRAVE ACCENT
+  0061..007A    ; DSRM  # Basic Latin a..z
+  007B          ; DRMP  # LEFT CURLY BRACKET
+  007C          ; DSR   # VERTICAL LINE
+  007D          ; DRMP  # RIGHT CURLY BRACKET
+  007E          ; DSR   # TILDE
+  007F..009F    ; DR    # Control
+  00A0..00A8    ; DSR   # NO-BREAK SPACE..DIAERESIS
+  00A9          ; DS    # COPYRIGHT SIGN
+  00AA          ; DSRM  # FEMININE ORDINAL INDICATOR
+  00AB          ; DR
+  00AC          ; DSR
+  00AD          ; DR
+  00AE          ; DSR
+  00AF          ; DS
+  00B0..00B1    ; DSR
+  00B2..00B4    ; DS
+  00B5          ; DSRM  # MICRO SIGN
+  00B6..00B7    ; DSR
+  00B8..00B9    ; DS
+  00BA          ; DSRM  # MASCULINE ORDINAL INDICATOR
+  00BB          ; DR
+  00BC..00BE    ; DS
+  00BF          ; DSR
+  00C0..00D6    ; DSRM  # LATIN CAPITAL LETTER A WITH GRAVE..LATIN CAPITAL LETTER O WITH DIAERESIS
+  00D7          ; DSR
+  00D8..00F6    ; DSRM  # LATIN CAPITAL LETTER O WITH STROKE..LATIN SMALL LETTER O WITH DIAERESIS
+  00F7          ; DSR
+  00F8..01BA    ; DSRM  # LATIN SMALL LETTER O WITH STROKE..LATIN SMALL LETTER EZH WITH TAIL
+  01BB          ; DSRM  # LATIN LETTER TWO WITH STROKE
+  01BC..01BF    ; DSRM  # LATIN CAPITAL LETTER TONE FIVE..LATIN LETTER WYNN
+  01C0..01C3    ; DSRM  # LATIN LETTER DENTAL CLICK..LATIN LETTER RETROFLEX CLICK
+  01C4..0293    ; DSRM  # LATIN CAPITAL LETTER DZ WITH CARON..LATIN SMALL LETTER EZH WITH CURL
+  0294          ; DSRM  # LATIN LETTER GLOTTAL STOP
+  0295..02AF    ; DSRM  # LATIN LETTER PHARYNGEAL VOICED FRICATIVE..LATIN SMALL LETTER TURNED H WITH FISHHOOK AND TAIL
+  02B0..02B8    ; DSRM  # MODIFIER LETTER SMALL H..MODIFIER LETTER SMALL Y
+  02B9..02BA    ; DS
+  02BB..02C1    ; DSRM  # MODIFIER LETTER TURNED COMMA..MODIFIER LETTER REVERSED GLOTTAL STOP
+  02C2..02CF    ; DS
+  02D0..02D1    ; DSRM  # MODIFIER LETTER TRIANGULAR COLON..MODIFIER LETTER HALF TRIANGULAR COLON
+  02D2..02DF    ; DS
+  02E0..02E4    ; DSRM  # MODIFIER LETTER SMALL GAMMA..MODIFIER LETTER SMALL REVERSED GLOTTAL STOP
+  02E5..02ED    ; DS
+  02EE          ; DSRM  # MODIFIER LETTER DOUBLE APOSTROPHE
+  02EF..02FF    ; DS
+  0300..036F    ; CI    # COMBINING GRAVE ACCENT..COMBINING LATIN SMALL LETTER X
+  0370..0373    ; DSRM  # GREEK CAPITAL LETTER HETA..GREEK SMALL LETTER ARCHAIC SAMPI
+  0374          ; DS
+  0375          ; DSRM
+  0376..0377    ; DSRM  # GREEK CAPITAL LETTER PAMPHYLIAN DIGAMMA..GREEK SMALL LETTER PAMPHYLIAN DIGAMMA
+  037A          ; DSRM  # GREEK YPOGEGRAMMENI
+  037B..037D    ; DSRM  # GREEK SMALL REVERSED LUNATE SIGMA SYMBOL..GREEK SMALL REVERSED DOTTED LUNATE SIGMA SYMBOL
+  037E          ; DSR
+  0384          ; DSRM
+  0385          ; DS
+  0386          ; DSRM  # GREEK CAPITAL LETTER ALPHA WITH TONOS
+  0387          ; DSR
+  0388..038A    ; DSRM  # GREEK CAPITAL LETTER EPSILON WITH TONOS..GREEK CAPITAL LETTER IOTA WITH TONOS
+  038C          ; DSRM  # GREEK CAPITAL LETTER OMICRON WITH TONOS
+  038E..03A1    ; DSRM  # GREEK CAPITAL LETTER UPSILON WITH TONOS..GREEK CAPITAL LETTER RHO
+  03A3..03F5    ; DSRM  # GREEK CAPITAL LETTER SIGMA..GREEK LUNATE EPSILON SYMBOL
+  03F6          ; DSR
+  03F7..0481    ; DSRM  # GREEK CAPITAL LETTER SHO..CYRILLIC SMALL LETTER KOPPA
+  0482          ; DSR   # CYRILLIC THOUSANDS SIGN
+  0483..0487    ; CI    # COMBINING CYRILLIC TITLO..COMBINING CYRILLIC POKRYTIE
+  0488..0489    ; DR
+  048A..0525    ; DSRM  # L& [156] CYRILLIC CAPITAL LETTER SHORT I WITH TAIL..CYRILLIC SMALL LETTER PE WITH DESCENDER
+  0526..0527    ; DSRM
+  0531..0556    ; DSR
+  0559..055F    ; DSR
+  0561..0587    ; DSR
+  0589          ; DSR
+  058A          ; DR
+  0591..05BF    ; CI    # HEBREW ACCENT ETNAHTA..HEBREW POINT RAFE
+  05C0          ; DSR
+  05C1..05C2    ; CI    # HEBREW POINT SHIN DOT..HEBREW POINT SIN DOT
+  05C3          ; DSR
+  05C4..05C5    ; CI    # HEBREW MARK UPPER DOT..HEBREW MARK LOWER DOT
+  05C6          ; DSR
+  05C7          ; CI    # HEBREW POINT QAMATS QATAN
+  05D0..05EA    ; DSR
+  05F0..05F4    ; DSR
+  0600..0603    ; DR
+  0606..0607    ; DSR
+  0608          ; CR    # U+0608 ARABIC RAY
+  0609..060B    ; DSR
+  060C          ; DSR
+  060D..060F    ; CSR
+  0610..061A    ; CI    # ARABIC SIGN SALLALLAHOU ALAYHE WASSALLAM..ARABIC SMALL KASRA
+  061B          ; DSR
+  061E          ; DSR
+  061F          ; DSR
+  0620..063F    ; CR
+  0640          ; DS
+  0641..064A    ; CR
+  064B..065F    ; CI    # ARABIC FATHATAN..ARABIC WAVY HAMZA BELOW
+  0660..0669    ; DSR
+  066A..066D    ; DSR
+  066E..066F    ; CR
+  0670          ; CI    # ARABIC LETTER SUPERSCRIPT ALEF
+  0671..06D3    ; CR
+  06D4          ; DSR
+  06D5          ; CR
+  06D6..06DC    ; CI    # ARABIC SMALL HIGH LIGATURE SAD WITH LAM WITH ALEF MAKSURA..ARABIC SMALL HIGH SEEN
+  06DD..06DE    ; DR
+  06DF          ; CI    # ARABIC SMALL HIGH ROUNDED ZERO
+  06E0..06E4    ; CI    # ARABIC SMALL HIGH UPRIGHT RECTANGULAR ZERO..ARABIC SMALL HIGH MADDA
+  06E5..06E6    ; CR
+  06E7..06E8    ; CI    # ARABIC SMALL HIGH YEH..ARABIC SMALL HIGH NOON
+  06E9          ; DSR
+  06EA..06ED    ; CI    # ARABIC EMPTY CENTRE LOW STOP..ARABIC SMALL LOW MEEM
+  06EE..06EF    ; CR
+  06F0..06F9    ; DSR
+  06FA..06FC    ; CR
+  06FD..06FE    ; CR
+  06FF          ; CR
+  0700..070D    ; DSR
+  070F          ; DR
+  0710          ; CR
+  0711          ; CI    # SYRIAC LETTER SUPERSCRIPT ALAPH
+  0712..072F    ; CR
+  0730..074A    ; CI    # SYRIAC PTHAHA ABOVE..SYRIAC BARREKH
+  074D..077F    ; CR
+  0780..07A5    ; DSR
+  07A6..07B0    ; CI    # THAANA ABAFILI..THAANA SUKUN
+  07B1          ; DSR
+  07C0..07C9    ; DSR   # NKO DIGITS
+  07CA..07EA    ; CR
+  07EB..07F3    ; CI    # NKO COMBINING SHORT HIGH TONE..NKO COMBINING DOUBLE DOT ABOVE
+  07F4..07FA    ; DSR
+  0800..0815    ; DSR
+  0816..0819    ; CI    # SAMARITAN MARK IN..SAMARITAN MARK DAGESH
+  081A          ; DSR
+  081B..0823    ; CI    # SAMARITAN MARK EPENTHETIC YUT..SAMARITAN VOWEL SIGN A
+  0824          ; DSR
+  0825..0827    ; CI    # SAMARITAN VOWEL SIGN SHORT A..SAMARITAN VOWEL SIGN U
+  0828          ; DSR
+  0829..082D    ; CI    # SAMARITAN VOWEL SIGN LONG I..SAMARITAN MARK NEQUDAA
+  0830..083E    ; DSR
+  0840..0858    ; CR
+  0859..085B    ; CI    # MANDAIC AFFRICATION MARK..MANDAIC GEMINATION MARK
+  085E          ; CSR
+  0900..0902    ; CI    # DEVANAGARI SIGN INVERTED CANDRABINDU..DEVANAGARI SIGN ANUSVARA
+  0903          ; CI    # DEVANAGARI SIGN VISARGA
+  0904..0939    ; CSR
+  093A          ; CI    # DEVANAGARI VOWEL SIGN OE
+  093B          ; CI    # DEVANAGARI VOWEL SIGN OOE
+  093C          ; CI    # DEVANAGARI SIGN NUKTA
+  093D          ; CSR
+  093E          ; CI    # DEVANAGARI VOWEL SIGN AA
+  093F          ; CI    # DEVANAGARI VOWEL SIGN I
+  0940          ; CI    # DEVANAGARI VOWEL SIGN II
+  0941..0948    ; CI    # DEVANAGARI VOWEL SIGN U..DEVANAGARI VOWEL SIGN AI
+  0949          ; CI    # DEVANAGARI VOWEL SIGN CANDRA O
+  094A          ; CI    # DEVANAGARI VOWEL SIGN SHORT O
+  094B          ; CI    # DEVANAGARI VOWEL SIGN O
+  094C          ; CI    # DEVANAGARI VOWEL SIGN AU
+  094D          ; CI    # DEVANAGARI SIGN VIRAMA
+  094E          ; CI    # DEVANAGARI VOWEL SIGN PRISHTHAMATRA E
+  094F          ; CI    # DEVANAGARI VOWEL SIGN AW
+  0950          ; CSR
+  0951..0957    ; CI    # DEVANAGARI STRESS SIGN UDATTA..DEVANAGARI VOWEL SIGN UUE
+  0958..0961    ; CSR
+  0962..0963    ; CI    # DEVANAGARI VOWEL SIGN VOCALIC L..DEVANAGARI VOWEL SIGN VOCALIC LL
+  0964..0965    ; DSR
+  0966..096F    ; DSR   # DEVANAGARI DIGITS
+  0970          ; DSR
+  0971..0972    ; CSR
+  0973..0977    ; CSR
+  0979..097A    ; CSR
+  097B..097F    ; CSR
+  0981          ; CI    # BENGALI SIGN CANDRABINDU
+  0982          ; CI    # BENGALI SIGN ANUSVARA
+  0983          ; CI    # BENGALI SIGN VISARGA
+  0985..098C    ; CSR
+  098F..0990    ; CSR
+  0993..09A8    ; CSR
+  09AA..09B0    ; CSR
+  09B2          ; CSR
+  09B6..09B9    ; CSR
+  09BC          ; CI    # BENGALI SIGN NUKTA
+  09BD          ; CSR
+  09BE          ; CI    # BENGALI VOWEL SIGN AA
+  09BF          ; CI    # BENGALI VOWEL SIGN I
+  09C0          ; CI    # BENGALI VOWEL SIGN II
+  09C1..09C4    ; CI    # BENGALI VOWEL SIGN U..BENGALI VOWEL SIGN VOCALIC RR
+  09C7          ; CI    # BENGALI VOWEL SIGN E
+  09C8          ; CI    # BENGALI VOWEL SIGN AI
+  09CB          ; CI    # BENGALI VOWEL SIGN O
+  09CC          ; CI    # BENGALI VOWEL SIGN AU
+  09CD          ; CI    # BENGALI SIGN VIRAMA
+  09CE          ; CSR
+  09D7          ; CI    # BENGALI AU LENGTH MARK
+  09DC..09DD    ; CSR
+  09DF..09E1    ; CSR
+  09E2..09E3    ; CI    # BENGALI VOWEL SIGN VOCALIC L..BENGALI VOWEL SIGN VOCALIC LL
+  09E6..09FB    ; CSR
+  0A01..0A02    ; CI    # GURMUKHI SIGN ADAK BINDI..GURMUKHI SIGN BINDI
+  0A03          ; CI    # GURMUKHI SIGN VISARGA
+  0A05..0A0A    ; CSR
+  0A0F..0A10    ; CSR
+  0A13..0A28    ; CSR
+  0A2A..0A30    ; CSR
+  0A32..0A33    ; CSR
+  0A35..0A36    ; CSR
+  0A38..0A39    ; CSR
+  0A3C          ; CI    # GURMUKHI SIGN NUKTA
+  0A3E          ; CI    # GURMUKHI VOWEL SIGN AA
+  0A3F          ; CI    # GURMUKHI VOWEL SIGN I
+  0A40          ; CI    # GURMUKHI VOWEL SIGN II
+  0A41..0A42    ; CI    # GURMUKHI VOWEL SIGN U..GURMUKHI VOWEL SIGN UU
+  0A47..0A48    ; CI    # GURMUKHI VOWEL SIGN EE..GURMUKHI VOWEL SIGN AI
+  0A4B..0A4D    ; CI    # GURMUKHI VOWEL SIGN OO..GURMUKHI SIGN VIRAMA
+  0A51          ; CI    # GURMUKHI SIGN UDAAT
+  0A59..0A5C    ; CSR
+  0A5E          ; CSR
+  0A66..0A6F    ; DSR   # GURMUKHI DIGITS
+  0A70..0A71    ; CI    # GURMUKHI TIPPI..GURMUKHI ADDAK
+  0A72..0A74    ; CSR
+  0A75          ; CI    # GURMUKHI SIGN YAKASH
+  0A81          ; CI    # GUJARATI SIGN CANDRABINDU
+  0A82          ; CI    # GUJARATI SIGN ANUSVARA
+  0A83          ; CI    # GUJARATI SIGN VISARGA
+  0A85..0A8D    ; DSR
+  0A8F..0A91    ; DSR
+  0A93..0AA8    ; DSR
+  0AAA..0AB0    ; DSR
+  0AB2..0AB3    ; DSR
+  0AB5..0AB9    ; DSR
+  0ABC          ; CI    # GUJARATI SIGN NUKTA
+  0ABD          ; DSR
+  0ABE          ; CI    # GUJARATI VOWEL SIGN AA
+  0ABF          ; CI    # GUJARATI VOWEL SIGN I
+  0AC0          ; CI    # GUJARATI VOWEL SIGN II
+  0AC1          ; CI    # GUJARATI VOWEL SIGN U
+  0AC2          ; CI    # GUJARATI VOWEL SIGN UU
+  0AC3          ; CI    # GUJARATI VOWEL SIGN VOCALIC R
+  0AC4          ; CI    # GUJARATI VOWEL SIGN VOCALIC RR
+  0AC5          ; CI    # GUJARATI VOWEL SIGN CANDRA E
+  0AC7          ; CI    # GUJARATI VOWEL SIGN E
+  0AC8          ; CI    # GUJARATI VOWEL SIGN AI
+  0AC9          ; CI    # GUJARATI VOWEL SIGN CANDRA O
+  0ACB          ; CI    # GUJARATI VOWEL SIGN O
+  0ACC          ; CI    # GUJARATI VOWEL SIGN AU
+  0ACD          ; CI    # GUJARATI SIGN VIRAMA
+  0AD0          ; DSR
+  0AE0..0AE1    ; DSR
+  0AE2          ; CI    # GUJARATI VOWEL SIGN VOCALIC L
+  0AE3          ; CI    # GUJARATI VOWEL SIGN VOCALIC LL
+  0AE6..0AEF    ; DSR
+  0AF1          ; DSR
+  0B01          ; CI    # ORIYA SIGN CANDRABINDU
+  0B02          ; CI    # ORIYA SIGN ANUSVARA
+  0B03          ; CI    # ORIYA SIGN VISARGA
+  0B05..0B0C    ; DR
+  0B0F..0B10    ; DR
+  0B13..0B28    ; DR
+  0B2A..0B30    ; DR
+  0B32..0B33    ; DR
+  0B35..0B39    ; DR
+  0B3C          ; CI    # ORIYA SIGN NUKTA
+  0B3D          ; DR
+  0B3E          ; CI    # ORIYA VOWEL SIGN AA
+  0B3F          ; CI    # ORIYA VOWEL SIGN I
+  0B40          ; CI    # ORIYA VOWEL SIGN II
+  0B41          ; CI    # ORIYA VOWEL SIGN U
+  0B42          ; CI    # ORIYA VOWEL SIGN UU
+  0B43          ; CI    # ORIYA VOWEL SIGN VOCALIC R
+  0B44          ; CI    # ORIYA VOWEL SIGN VOCALIC RR
+  0B47          ; CI    # ORIYA VOWEL SIGN E
+  0B48          ; CI    # ORIYA VOWEL SIGN AI
+  0B4B          ; CI    # ORIYA VOWEL SIGN O
+  0B4C          ; CI    # ORIYA VOWEL SIGN AU
+  0B4D          ; CI    # ORIYA SIGN VIRAMA
+  0B56          ; CI    # ORIYA AI LENGTH MARK
+  0B57          ; CI    # ORIYA AU LENGTH MARK
+  0B5C..0B5D    ; DR
+  0B5F..0B61    ; DR
+  0B62          ; CI    # ORIYA VOWEL SIGN VOCALIC L
+  0B63          ; CI    # ORIYA VOWEL SIGN VOCALIC LL
+  0B66..0B6F    ; DSR   # ORIYA DIGITS
+  0B70          ; DSR
+  0B71          ; DR
+  0B72..0B77    ; DSR   # ORIYA FRACTION ONE QUARTER..THREE SIXTEENTHS
+  0B82          ; CI    # TAMIL SIGN ANUSVARA
+  0B83          ; DR
+  0B85..0B8A    ; DR
+  0B8E..0B90    ; DR
+  0B92..0B95    ; DR
+  0B99..0B9A    ; DR
+  0B9C          ; DR
+  0B9E..0B9F    ; DR
+  0BA3..0BA4    ; DR
+  0BA8..0BAA    ; DR
+  0BAE..0BB9    ; DR
+  0BBE          ; CI    # TAMIL VOWEL SIGN AA
+  0BBF          ; CI    # TAMIL VOWEL SIGN I
+  0BC0          ; CI    # TAMIL VOWEL SIGN II
+  0BC1          ; CI    # TAMIL VOWEL SIGN U
+  0BC2          ; CI    # TAMIL VOWEL SIGN UU
+  0BC6          ; CI    # TAMIL VOWEL SIGN E
+  0BC7          ; CI    # TAMIL VOWEL SIGN EE
+  0BC8          ; CI    # TAMIL VOWEL SIGN AI
+  0BCA          ; CI    # TAMIL VOWEL SIGN O
+  0BCB          ; CI    # TAMIL VOWEL SIGN OO
+  0BCC          ; CI    # TAMIL VOWEL SIGN AU
+  0BCD          ; CI    # TAMIL SIGN VIRAMA
+  0BD0          ; DR
+  0BD7          ; CI    # TAMIL AU LENGTH MARK
+  0BE6..0BF2    ; DR
+  0BF3..0BFA    ; DSR   # TAMIL DAY SIGN..TAMIL NUMBER SIGN
+  0C01          ; CI    # TELUGU SIGN CANDRABINDU
+  0C02          ; CI    # TELUGU SIGN ANUSVARA
+  0C03          ; CI    # TELUGU SIGN VISARGA
+  0C05..0C0C    ; DR
+  0C0E..0C10    ; DR
+  0C12..0C28    ; DR
+  0C2A..0C33    ; DR
+  0C35..0C39    ; DR
+  0C3D          ; DR
+  0C3E          ; CI    # TELUGU VOWEL SIGN AA
+  0C3F          ; CI    # TELUGU VOWEL SIGN I
+  0C40          ; CI    # TELUGU VOWEL SIGN II
+  0C41          ; CI    # TELUGU VOWEL SIGN U
+  0C42          ; CI    # TELUGU VOWEL SIGN UU
+  0C43          ; CI    # TELUGU VOWEL SIGN VOCALIC R
+  0C44          ; CI    # TELUGU VOWEL SIGN VOCALIC RR
+  0C46          ; CI    # TELUGU VOWEL SIGN E
+  0C47          ; CI    # TELUGU VOWEL SIGN EE
+  0C48          ; CI    # TELUGU VOWEL SIGN AI
+  0C4A          ; CI    # TELUGU VOWEL SIGN O
+  0C4B          ; CI    # TELUGU VOWEL SIGN OO
+  0C4C          ; CI    # TELUGU VOWEL SIGN AU
+  0C4D          ; CI    # TELUGU SIGN VIRAMA
+  0C55          ; CI    # TELUGU LENGTH MARK
+  0C56          ; CI    # TELUGU AI LENGTH MARK
+  0C58..0C59    ; DR
+  0C60..0C61    ; DR
+  0C62          ; CI    # TELUGU VOWEL SIGN VOCALIC L
+  0C63          ; CI    # TELUGU VOWEL SIGN VOCALIC LL
+  0C66..0C6F    ; DR
+  0C78..0C7E    ; DR
+  0C7F          ; DSR
+  0C82          ; CI    # KANNADA SIGN ANUSVARA
+  0C83          ; CI    # KANNADA SIGN VISARGA
+  0C85..0C8C    ; DR
+  0C8E..0C90    ; DR
+  0C92..0CA8    ; DR
+  0CAA..0CB3    ; DR
+  0CB5..0CB9    ; DR
+  0CBC          ; CI    # KANNADA SIGN NUKTA
+  0CBD          ; DR
+  0CBE          ; CI    # KANNADA VOWEL SIGN AA
+  0CBF          ; CI    # KANNADA VOWEL SIGN I
+  0CC0          ; CI    # KANNADA VOWEL SIGN II
+  0CC1          ; CI    # KANNADA VOWEL SIGN U
+  0CC2          ; CI    # KANNADA VOWEL SIGN UU
+  0CC3          ; CI    # KANNADA VOWEL SIGN VOCALIC R
+  0CC4          ; CI    # KANNADA VOWEL SIGN VOCALIC RR
+  0CC6          ; CI    # KANNADA VOWEL SIGN E
+  0CC7          ; CI    # KANNADA VOWEL SIGN EE
+  0CC8          ; CI    # KANNADA VOWEL SIGN AI
+  0CCA          ; CI    # KANNADA VOWEL SIGN O
+  0CCB          ; CI    # KANNADA VOWEL SIGN OO
+  0CCC          ; CI    # KANNADA VOWEL SIGN AU
+  0CCD          ; CI    # KANNADA SIGN VIRAMA
+  0CD5          ; CI    # KANNADA LENGTH MARK
+  0CD6          ; CI    # KANNADA AI LENGTH MARK
+  0CDE          ; DR
+  0CE0..0CE1    ; DR
+  0CE2          ; CI    # KANNADA VOWEL SIGN VOCALIC L
+  0CE3          ; CI    # KANNADA VOWEL SIGN VOCALIC LL
+  0CE6..0CEF    ; DR
+  0CF1..0CF2    ; DSR
+  0D02          ; CI    # MALAYALAM SIGN ANUSVARA
+  0D03          ; CI    # MALAYALAM SIGN VISARGA
+  0D05..0D0C    ; DR
+  0D0E..0D10    ; DR
+  0D12..0D3A    ; DR
+  0D3D          ; DR
+  0D3E          ; CI    # MALAYALAM VOWEL SIGN AA
+  0D3F          ; CI    # MALAYALAM VOWEL SIGN I
+  0D40          ; CI    # MALAYALAM VOWEL SIGN II
+  0D41          ; CI    # MALAYALAM VOWEL SIGN U
+  0D42          ; CI    # MALAYALAM VOWEL SIGN UU
+  0D43          ; CI    # MALAYALAM VOWEL SIGN VOCALIC R
+  0D44          ; CI    # MALAYALAM VOWEL SIGN VOCALIC RR
+  0D46          ; CI    # MALAYALAM VOWEL SIGN E
+  0D47          ; CI    # MALAYALAM VOWEL SIGN EE
+  0D48          ; CI    # MALAYALAM VOWEL SIGN AI
+  0D4A          ; CI    # MALAYALAM VOWEL SIGN O
+  0D4B          ; CI    # MALAYALAM VOWEL SIGN OO
+  0D4C          ; CI    # MALAYALAM VOWEL SIGN AU
+  0D4D          ; CI    # MALAYALAM SIGN VIRAMA
+  0D4E          ; DR    # MALAYALAM LETTER DOT REPH
+  0D57          ; CI    # MALAYALAM AU LENGTH MARK
+  0D60..0D61    ; DR
+  0D62          ; CI    # MALAYALAM VOWEL SIGN VOCALIC L
+  0D63          ; CI    # MALAYALAM VOWEL SIGN VOCALIC LL
+  0D66..0D75    ; DR
+  0D79          ; DSR
+  0D7A..0D7F    ; DR
+  0D82          ; CI    # SINHALA SIGN ANUSVARAYA
+  0D83          ; CI    # SINHALA SIGN VISARGAYA
+  0D85..0D96    ; DR
+  0D9A..0DB1    ; DR
+  0DB3..0DBB    ; DR
+  0DBD          ; DR
+  0DC0..0DC6    ; DR
+  0DCA          ; CI    # SINHALA SIGN AL-LAKUNA
+  0DCF          ; CI    # SINHALA VOWEL SIGN AELA-PILLA
+  0DD0          ; CI    # SINHALA VOWEL SIGN KETTI AEDA-PILLA
+  0DD1          ; CI    # SINHALA VOWEL SIGN DIGA AEDA-PILLA
+  0DD2          ; CI    # SINHALA VOWEL SIGN KETTI IS-PILLA
+  0DD3          ; CI    # SINHALA VOWEL SIGN DIGA IS-PILLA
+  0DD4          ; CI    # SINHALA VOWEL SIGN KETTI PAA-PILLA
+  0DD6          ; CI    # SINHALA VOWEL SIGN DIGA PAA-PILLA
+  0DD8          ; CI    # SINHALA VOWEL SIGN GAETTA-PILLA
+  0DD9          ; CI    # SINHALA VOWEL SIGN KOMBUVA
+  0DDA          ; CI    # SINHALA VOWEL SIGN DIGA KOMBUVA
+  0DDB          ; CI    # SINHALA VOWEL SIGN KOMBU DEKA
+  0DDC          ; CI    # SINHALA VOWEL SIGN KOMBUVA HAA AELA-PILLA
+  0DDD          ; CI    # SINHALA VOWEL SIGN KOMBUVA HAA DIGA AELA-PILLA
+  0DDE          ; CI    # SINHALA VOWEL SIGN KOMBUVA HAA GAYANUKITTA
+  0DDF          ; CI    # SINHALA VOWEL SIGN GAYANUKITTA
+  0DF2          ; CI    # SINHALA VOWEL SIGN DIGA GAETTA-PILLA
+  0DF3          ; CI    # SINHALA VOWEL SIGN DIGA GAYANUKITTA
+  0DF4          ; DSR
+  0E01..0E30    ; DSR
+  0E31          ; CI    # THAI CHARACTER MAI HAN-AKAT
+  0E32..0E33    ; DSR
+  0E34          ; CI    # THAI CHARACTER SARA I
+  0E35          ; CI    # THAI CHARACTER SARA II
+  0E36          ; CI    # THAI CHARACTER SARA UE
+  0E37          ; CI    # THAI CHARACTER SARA UEE
+  0E38          ; CI    # THAI CHARACTER SARA U
+  0E39          ; CI    # THAI CHARACTER SARA UU
+  0E3A          ; CI    # THAI CHARACTER PHINTHU
+  0E3F..0E46    ; DSR
+  0E47          ; CI    # THAI CHARACTER MAITAIKHU
+  0E48          ; CI    # THAI CHARACTER MAI EK
+  0E49          ; CI    # THAI CHARACTER MAI THO
+  0E4A          ; CI    # THAI CHARACTER MAI TRI
+  0E4B          ; CI    # THAI CHARACTER MAI CHATTAWA
+  0E4C          ; CI    # THAI CHARACTER THANTHAKHAT
+  0E4D          ; CI    # THAI CHARACTER NIKHAHIT
+  0E4E          ; CI    # THAI CHARACTER YAMAKKAN
+  0E4F..0E5B    ; DSR
+  0E81..0E82    ; DSR
+  0E84          ; DSR
+  0E87..0E88    ; DSR
+  0E8A          ; DSR
+  0E8D          ; DSR
+  0E94..0E97    ; DSR
+  0E99..0E9F    ; DSR
+  0EA1..0EA3    ; DSR
+  0EA5          ; DSR
+  0EA7          ; DSR
+  0EAA..0EAB    ; DSR
+  0EAD..0EB0    ; DSR
+  0EB1          ; CI    # LAO VOWEL SIGN MAI KAN
+  0EB2..0EB3    ; DSR
+  0EB4          ; CI    # LAO VOWEL SIGN I
+  0EB5          ; CI    # LAO VOWEL SIGN II
+  0EB6          ; CI    # LAO VOWEL SIGN Y
+  0EB7          ; CI    # LAO VOWEL SIGN YY
+  0EB8          ; CI    # LAO VOWEL SIGN U
+  0EB9          ; CI    # LAO VOWEL SIGN UU
+  0EBB          ; CI    # LAO VOWEL SIGN MAI KON
+  0EBC          ; CI    # LAO SEMIVOWEL SIGN LO
+  0EBD          ; DSR
+  0EC0..0EC4    ; DSR
+  0EC6          ; DSR
+  0EC8          ; CI    # LAO TONE MAI EK
+  0EC9          ; CI    # LAO TONE MAI THO
+  0ECA          ; CI    # LAO TONE MAI TI
+  0ECB          ; CI    # LAO TONE MAI CATAWA
+  0ECC          ; CI    # LAO CANCELLATION MARK
+  0ECD          ; CI    # LAO NIGGAHITA
+  0ED0..0ED9    ; DSR
+  0EDC..0EDD    ; DSR
+  0F00..0F17    ; DSR
+  0F18          ; CI    # TIBETAN ASTROLOGICAL SIGN -KHYUD PA
+  0F19          ; CI    # TIBETAN ASTROLOGICAL SIGN SDONG TSHUGS
+  0F1A..0F34    ; DSR
+  0F35          ; CI    # TIBETAN MARK NGAS BZUNG NYI ZLA
+  0F36          ; DSR
+  0F37          ; CI    # TIBETAN MARK NGAS BZUNG SGOR RTAGS
+  0F38          ; DSR
+  0F39          ; CI    # TIBETAN MARK TSA -PHRU
+  0F3A..0F3D    ; DR
+  0F3E          ; CI    # TIBETAN SIGN YAR TSHES
+  0F3F          ; CI    # TIBETAN SIGN MAR TSHES
+  0F40..0F47    ; DSR
+  0F49..0F6C    ; DSR
+  0F71          ; CI    # TIBETAN VOWEL SIGN AA
+  0F72          ; CI    # TIBETAN VOWEL SIGN I
+  0F73          ; CI    # TIBETAN VOWEL SIGN II
+  0F74          ; CI    # TIBETAN VOWEL SIGN U
+  0F75          ; CI    # TIBETAN VOWEL SIGN UU
+  0F76          ; CI    # TIBETAN VOWEL SIGN VOCALIC R
+  0F77          ; CI    # TIBETAN VOWEL SIGN VOCALIC RR
+  0F78          ; CI    # TIBETAN VOWEL SIGN VOCALIC L
+  0F79          ; CI    # TIBETAN VOWEL SIGN VOCALIC LL
+  0F7A          ; CI    # TIBETAN VOWEL SIGN E
+  0F7B          ; CI    # TIBETAN VOWEL SIGN EE
+  0F7C          ; CI    # TIBETAN VOWEL SIGN O
+  0F7D          ; CI    # TIBETAN VOWEL SIGN OO
+  0F7E          ; CI    # TIBETAN SIGN RJES SU NGA RO
+  0F7F          ; CI    # TIBETAN SIGN RNAM BCAD
+  0F80          ; CI    # TIBETAN VOWEL SIGN REVERSED I
+  0F81          ; CI    # TIBETAN VOWEL SIGN REVERSED II
+  0F82          ; CI    # TIBETAN SIGN NYI ZLA NAA DA
+  0F83          ; CI    # TIBETAN SIGN SNA LDAN
+  0F84          ; CI    # TIBETAN MARK HALANTA
+  0F85          ; DSR
+  0F86          ; CI    # TIBETAN SIGN LCI RTAGS
+  0F87          ; CI    # TIBETAN SIGN YANG RTAGS
+  0F88..0F8C    ; DSR
+  0F8D          ; CI    # TIBETAN SUBJOINED SIGN LCE TSA CAN
+  0F8E          ; CI    # TIBETAN SUBJOINED SIGN MCHU CAN
+  0F8F          ; CI    # TIBETAN SUBJOINED SIGN INVERTED MCHU CAN
+  0F90          ; CI    # TIBETAN SUBJOINED LETTER KA
+  0F91          ; CI    # TIBETAN SUBJOINED LETTER KHA
+  0F92          ; CI    # TIBETAN SUBJOINED LETTER GA
+  0F93          ; CI    # TIBETAN SUBJOINED LETTER GHA
+  0F94          ; CI    # TIBETAN SUBJOINED LETTER NGA
+  0F95          ; CI    # TIBETAN SUBJOINED LETTER CA
+  0F96          ; CI    # TIBETAN SUBJOINED LETTER CHA
+  0F97          ; CI    # TIBETAN SUBJOINED LETTER JA
+  0F99          ; CI    # TIBETAN SUBJOINED LETTER NYA
+  0F9A          ; CI    # TIBETAN SUBJOINED LETTER TTA
+  0F9B          ; CI    # TIBETAN SUBJOINED LETTER TTHA
+  0F9C          ; CI    # TIBETAN SUBJOINED LETTER DDA
+  0F9D          ; CI    # TIBETAN SUBJOINED LETTER DDHA
+  0F9E          ; CI    # TIBETAN SUBJOINED LETTER NNA
+  0F9F          ; CI    # TIBETAN SUBJOINED LETTER TA
+  0FA0          ; CI    # TIBETAN SUBJOINED LETTER THA
+  0FA1          ; CI    # TIBETAN SUBJOINED LETTER DA
+  0FA2          ; CI    # TIBETAN SUBJOINED LETTER DHA
+  0FA3          ; CI    # TIBETAN SUBJOINED LETTER NA
+  0FA4          ; CI    # TIBETAN SUBJOINED LETTER PA
+  0FA5          ; CI    # TIBETAN SUBJOINED LETTER PHA
+  0FA6          ; CI    # TIBETAN SUBJOINED LETTER BA
+  0FA7          ; CI    # TIBETAN SUBJOINED LETTER BHA
+  0FA8          ; CI    # TIBETAN SUBJOINED LETTER MA
+  0FA9          ; CI    # TIBETAN SUBJOINED LETTER TSA
+  0FAA          ; CI    # TIBETAN SUBJOINED LETTER TSHA
+  0FAB          ; CI    # TIBETAN SUBJOINED LETTER DZA
+  0FAC          ; CI    # TIBETAN SUBJOINED LETTER DZHA
+  0FAD          ; CI    # TIBETAN SUBJOINED LETTER WA
+  0FAE          ; CI    # TIBETAN SUBJOINED LETTER ZHA
+  0FAF          ; CI    # TIBETAN SUBJOINED LETTER ZA
+  0FB0          ; CI    # TIBETAN SUBJOINED LETTER -A
+  0FB1          ; CI    # TIBETAN SUBJOINED LETTER YA
+  0FB2          ; CI    # TIBETAN SUBJOINED LETTER RA
+  0FB3          ; CI    # TIBETAN SUBJOINED LETTER LA
+  0FB4          ; CI    # TIBETAN SUBJOINED LETTER SHA
+  0FB5          ; CI    # TIBETAN SUBJOINED LETTER SSA
+  0FB6          ; CI    # TIBETAN SUBJOINED LETTER SA
+  0FB7          ; CI    # TIBETAN SUBJOINED LETTER HA
+  0FB8          ; CI    # TIBETAN SUBJOINED LETTER A
+  0FB9          ; CI    # TIBETAN SUBJOINED LETTER KSSA
+  0FBA          ; CI    # TIBETAN SUBJOINED LETTER FIXED-FORM WA
+  0FBB          ; CI    # TIBETAN SUBJOINED LETTER FIXED-FORM YA
+  0FBC          ; CI    # TIBETAN SUBJOINED LETTER FIXED-FORM RA
+  0FBE..0FC5    ; DSR
+  0FC6          ; CI    # TIBETAN SYMBOL PADMA GDAN
+  0FC7..0FCC    ; DSR   # TIBETAN SYMBOL RDO RJE RGYA GRAM..TIBETAN SYMBOL NOR BU BZHI -KHYIL
+  0FCE..0FDA    ; DSR   # TIBETAN SIGN RDEL NAG RDEL DKAR..TIBETAN MARK TRAILING MCHAN RTAGS
+  1000..102A    ; DR
+  102B          ; CI    # MYANMAR VOWEL SIGN TALL AA
+  102C          ; CI    # MYANMAR VOWEL SIGN AA
+  102D          ; CI    # MYANMAR VOWEL SIGN I
+  102E          ; CI    # MYANMAR VOWEL SIGN II
+  102F          ; CI    # MYANMAR VOWEL SIGN U
+  1030          ; CI    # MYANMAR VOWEL SIGN UU
+  1031          ; CI    # MYANMAR VOWEL SIGN E
+  1032          ; CI    # MYANMAR VOWEL SIGN AI
+  1033          ; CI    # MYANMAR VOWEL SIGN MON II
+  1034          ; CI    # MYANMAR VOWEL SIGN MON O
+  1035          ; CI    # MYANMAR VOWEL SIGN E ABOVE
+  1036          ; CI    # MYANMAR SIGN ANUSVARA
+  1037          ; CI    # MYANMAR SIGN DOT BELOW
+  1038          ; CI    # MYANMAR SIGN VISARGA
+  1039          ; CI    # MYANMAR SIGN VIRAMA
+  103A          ; CI    # MYANMAR SIGN ASAT
+  103B          ; CI    # MYANMAR CONSONANT SIGN MEDIAL YA
+  103C          ; CI    # MYANMAR CONSONANT SIGN MEDIAL RA
+  103D          ; CI    # MYANMAR CONSONANT SIGN MEDIAL WA
+  103E          ; CI    # MYANMAR CONSONANT SIGN MEDIAL HA
+  103F..1049    ; DR
+  104A..104F    ; DSR
+  1050..1055    ; DR
+  1056          ; CI    # MYANMAR VOWEL SIGN VOCALIC R
+  1057          ; CI    # MYANMAR VOWEL SIGN VOCALIC RR
+  1058          ; CI    # MYANMAR VOWEL SIGN VOCALIC L
+  1059          ; CI    # MYANMAR VOWEL SIGN VOCALIC LL
+  105A..105D    ; DR
+  105E          ; CI    # MYANMAR CONSONANT SIGN MON MEDIAL NA
+  105F          ; CI    # MYANMAR CONSONANT SIGN MON MEDIAL MA
+  1060          ; CI    # MYANMAR CONSONANT SIGN MON MEDIAL LA
+  1061          ; DR
+  1062          ; CI    # MYANMAR VOWEL SIGN SGAW KAREN EU
+  1063          ; CI    # MYANMAR TONE MARK SGAW KAREN HATHI
+  1064          ; CI    # MYANMAR TONE MARK SGAW KAREN KE PHO
+  1065..1066    ; DR
+  1067          ; CI    # MYANMAR VOWEL SIGN WESTERN PWO KAREN EU
+  1068          ; CI    # MYANMAR VOWEL SIGN WESTERN PWO KAREN UE
+  1069          ; CI    # MYANMAR SIGN WESTERN PWO KAREN TONE-1
+  106A          ; CI    # MYANMAR SIGN WESTERN PWO KAREN TONE-2
+  106B          ; CI    # MYANMAR SIGN WESTERN PWO KAREN TONE-3
+  106C          ; CI    # MYANMAR SIGN WESTERN PWO KAREN TONE-4
+  106D          ; CI    # MYANMAR SIGN WESTERN PWO KAREN TONE-5
+  106E..1070    ; DR
+  1071          ; CI    # MYANMAR VOWEL SIGN GEBA KAREN I
+  1072          ; CI    # MYANMAR VOWEL SIGN KAYAH OE
+  1073          ; CI    # MYANMAR VOWEL SIGN KAYAH U
+  1074          ; CI    # MYANMAR VOWEL SIGN KAYAH EE
+  1075..1081    ; DR
+  1082          ; CI    # MYANMAR CONSONANT SIGN SHAN MEDIAL WA
+  1083          ; CI    # MYANMAR VOWEL SIGN SHAN AA
+  1084          ; CI    # MYANMAR VOWEL SIGN SHAN E
+  1085          ; CI    # MYANMAR VOWEL SIGN SHAN E ABOVE
+  1086          ; CI    # MYANMAR VOWEL SIGN SHAN FINAL Y
+  1087          ; CI    # MYANMAR SIGN SHAN TONE-2
+  1088          ; CI    # MYANMAR SIGN SHAN TONE-3
+  1089          ; CI    # MYANMAR SIGN SHAN TONE-5
+  108A          ; CI    # MYANMAR SIGN SHAN TONE-6
+  108B          ; CI    # MYANMAR SIGN SHAN COUNCIL TONE-2
+  108C          ; CI    # MYANMAR SIGN SHAN COUNCIL TONE-3
+  108D          ; CI    # MYANMAR SIGN SHAN COUNCIL EMPHATIC TONE
+  108E          ; DR
+  108F          ; CI    # MYANMAR SIGN RUMAI PALAUNG TONE-5
+  1090..1099    ; DR
+  109A          ; CI    # MYANMAR SIGN KHAMTI TONE-1
+  109B          ; CI    # MYANMAR SIGN KHAMTI TONE-3
+  109C          ; CI    # MYANMAR VOWEL SIGN AITON A
+  109D          ; CI    # MYANMAR VOWEL SIGN AITON AI
+  109E..10C5    ; DSR
+  10D0..10FC    ; DSR
+  1100..11FF    ; DS    # Hangul Jamo (Hangul)
+  1200..1248    ; DSR
+  124A..124D    ; DSR
+  1250..1256    ; DSR
+  1258          ; DSR
+  125A..125D    ; DSR
+  1260..1288    ; DSR
+  128A..128D    ; DSR
+  1290..12B0    ; DSR
+  12B2..12B5    ; DSR
+  12B8..12BE    ; DSR
+  12C0          ; DSR
+  12C2..12C5    ; DSR
+  12C8..12D6    ; DSR
+  12D8..1310    ; DSR
+  1312..1315    ; DSR
+  1318..135A    ; DSR
+  135D          ; CI    # ETHIOPIC COMBINING GEMINATION AND VOWEL LENGTH MARK
+  135E          ; CI    # ETHIOPIC COMBINING VOWEL LENGTH MARK
+  135F          ; CI    # ETHIOPIC COMBINING GEMINATION MARK
+  1360..1368    ; DSR
+  1369..137C    ; CSR
+  1380..1399    ; DSR
+  13A0..13F4    ; DSRM
+  1400          ; DR
+  1401..166C    ; DS
+  166D..166E    ; DSR
+  166F..167F    ; DS
+  1680..169C    ; CRU
+  16A0..16FF    ; DSRM  # Runic (no strong vertical directionality, as shown on the Stentoften Stone, but LTR)
+  1700..170C    ; DSR
+  170E..1711    ; DSR
+  1712          ; CI    # TAGALOG VOWEL SIGN I
+  1713          ; CI    # TAGALOG VOWEL SIGN U
+  1714          ; CI    # TAGALOG SIGN VIRAMA
+  1720..1731    ; DSR
+  1732          ; CI    # HANUNOO VOWEL SIGN I
+  1733          ; CI    # HANUNOO VOWEL SIGN U
+  1734          ; CI    # HANUNOO SIGN PAMUDPOD
+  1735..1736    ; DSR
+  1740..1751    ; DSR
+  1752          ; CI    # BUHID VOWEL SIGN I
+  1753          ; CI    # BUHID VOWEL SIGN U
+  1760..176C    ; DSR
+  176E..1770    ; DSR
+  1772          ; CI    # TAGBANWA VOWEL SIGN I
+  1773          ; CI    # TAGBANWA VOWEL SIGN U
+  1780..17B5    ; DR
+  17B6          ; CI    # KHMER VOWEL SIGN AA
+  17B7          ; CI    # KHMER VOWEL SIGN I
+  17B8          ; CI    # KHMER VOWEL SIGN II
+  17B9          ; CI    # KHMER VOWEL SIGN Y
+  17BA          ; CI    # KHMER VOWEL SIGN YY
+  17BB          ; CI    # KHMER VOWEL SIGN U
+  17BC          ; CI    # KHMER VOWEL SIGN UU
+  17BD          ; CI    # KHMER VOWEL SIGN UA
+  17BE          ; CI    # KHMER VOWEL SIGN OE
+  17BF          ; CI    # KHMER VOWEL SIGN YA
+  17C0          ; CI    # KHMER VOWEL SIGN IE
+  17C1          ; CI    # KHMER VOWEL SIGN E
+  17C2          ; CI    # KHMER VOWEL SIGN AE
+  17C3          ; CI    # KHMER VOWEL SIGN AI
+  17C4          ; CI    # KHMER VOWEL SIGN OO
+  17C5          ; CI    # KHMER VOWEL SIGN AU
+  17C6          ; CI    # KHMER SIGN NIKAHIT
+  17C7          ; CI    # KHMER SIGN REAHMUK
+  17C8          ; CI    # KHMER SIGN YUUKALEAPINTU
+  17C9          ; CI    # KHMER SIGN MUUSIKATOAN
+  17CA          ; CI    # KHMER SIGN TRIISAP
+  17CB          ; CI    # KHMER SIGN BANTOC
+  17CC          ; CI    # KHMER SIGN ROBAT
+  17CD          ; CI    # KHMER SIGN TOANDAKHIAT
+  17CE          ; CI    # KHMER SIGN KAKABAT
+  17CF          ; CI    # KHMER SIGN AHSDA
+  17D0          ; CI    # KHMER SIGN SAMYOK SANNYA
+  17D1          ; CI    # KHMER SIGN VIRIAM
+  17D2          ; CI    # KHMER SIGN COENG
+  17D3          ; CI    # KHMER SIGN BATHAMASAT
+  17D4..17D6    ; DSR
+  17D7          ; DR
+  17D8..17DB    ; DSR
+  17DC          ; DR
+  17DD          ; CI    # KHMER SIGN ATTHACAN
+  17E0..17E9    ; DR
+  17F0..17F9    ; DR
+  1800..180A    ; CRU   # Mongolian block
+  180B..180D    ; CI    # MONGOLIAN FREE VARIATION SELECTOR ONE..THREE
+  180E..18A8    ; CRU   # Mongolian block
+  18A9          ; CI    # MONGOLIAN LETTER ALI GALI DAGALGA
+  18AA..18AF    ; CRU   # Mongolian block
+  18B0..18F5    ; DS
+  1900..191C    ; DSR
+  1920          ; CI    # LIMBU VOWEL SIGN A
+  1921          ; CI    # LIMBU VOWEL SIGN I
+  1922          ; CI    # LIMBU VOWEL SIGN U
+  1923          ; CI    # LIMBU VOWEL SIGN EE
+  1924          ; CI    # LIMBU VOWEL SIGN AI
+  1925          ; CI    # LIMBU VOWEL SIGN OO
+  1926          ; CI    # LIMBU VOWEL SIGN AU
+  1927          ; CI    # LIMBU VOWEL SIGN E
+  1928          ; CI    # LIMBU VOWEL SIGN O
+  1929          ; CI    # LIMBU SUBJOINED LETTER YA
+  192A          ; CI    # LIMBU SUBJOINED LETTER RA
+  192B          ; CI    # LIMBU SUBJOINED LETTER WA
+  1930          ; CI    # LIMBU SMALL LETTER KA
+  1931          ; CI    # LIMBU SMALL LETTER NGA
+  1932          ; CI    # LIMBU SMALL LETTER ANUSVARA
+  1933          ; CI    # LIMBU SMALL LETTER TA
+  1934          ; CI    # LIMBU SMALL LETTER NA
+  1935          ; CI    # LIMBU SMALL LETTER PA
+  1936          ; CI    # LIMBU SMALL LETTER MA
+  1937          ; CI    # LIMBU SMALL LETTER RA
+  1938          ; CI    # LIMBU SMALL LETTER LA
+  1939          ; CI    # LIMBU SIGN MUKPHRENG
+  193A          ; CI    # LIMBU SIGN KEMPHRENG
+  193B          ; CI    # LIMBU SIGN SA-I
+  1940          ; DSR
+  1944..196D    ; DSR
+  1970..1974    ; DSR
+  1980..19AB    ; DSR
+  19B0          ; CI    # NEW TAI LUE VOWEL SIGN VOWEL SHORTENER
+  19B1          ; CI    # NEW TAI LUE VOWEL SIGN AA
+  19B2          ; CI    # NEW TAI LUE VOWEL SIGN II
+  19B3          ; CI    # NEW TAI LUE VOWEL SIGN U
+  19B4          ; CI    # NEW TAI LUE VOWEL SIGN UU
+  19B5          ; CI    # NEW TAI LUE VOWEL SIGN E
+  19B6          ; CI    # NEW TAI LUE VOWEL SIGN AE
+  19B7          ; CI    # NEW TAI LUE VOWEL SIGN O
+  19B8          ; CI    # NEW TAI LUE VOWEL SIGN OA
+  19B9          ; CI    # NEW TAI LUE VOWEL SIGN UE
+  19BA          ; CI    # NEW TAI LUE VOWEL SIGN AY
+  19BB          ; CI    # NEW TAI LUE VOWEL SIGN AAY
+  19BC          ; CI    # NEW TAI LUE VOWEL SIGN UY
+  19BD          ; CI    # NEW TAI LUE VOWEL SIGN OY
+  19BE          ; CI    # NEW TAI LUE VOWEL SIGN OAY
+  19BF          ; CI    # NEW TAI LUE VOWEL SIGN UEY
+  19C0          ; CI    # NEW TAI LUE VOWEL SIGN IY
+  19C1..19C7    ; DSR
+  19C8          ; CI    # NEW TAI LUE TONE MARK-1
+  19C9          ; CI    # NEW TAI LUE TONE MARK-2
+  19D0..19D9    ; DSR
+  19DA          ; DSR   # NEW TAI LUE THAM DIGIT ONE
+  19DE..1A16    ; DSR
+  1A17          ; CI    # BUGINESE VOWEL SIGN I
+  1A18          ; CI    # BUGINESE VOWEL SIGN U
+  1A19          ; CI    # BUGINESE VOWEL SIGN E
+  1A1A          ; CI    # BUGINESE VOWEL SIGN O
+  1A1B          ; CI    # BUGINESE VOWEL SIGN AE
+  1A1E..1A1F    ; DSR
+  1A20..1A54    ; DR	# TAI THAM
+  1A55          ; CI    # TAI THAM CONSONANT SIGN MEDIAL RA
+  1A56          ; CI    # TAI THAM CONSONANT SIGN MEDIAL LA
+  1A57          ; CI    # TAI THAM CONSONANT SIGN LA TANG LAI
+  1A58          ; CI    # TAI THAM SIGN MAI KANG LAI
+  1A59          ; CI    # TAI THAM CONSONANT SIGN FINAL NGA
+  1A5A          ; CI    # TAI THAM CONSONANT SIGN LOW PA
+  1A5B          ; CI    # TAI THAM CONSONANT SIGN HIGH RATHA OR LOW PA
+  1A5C          ; CI    # TAI THAM CONSONANT SIGN MA
+  1A5D          ; CI    # TAI THAM CONSONANT SIGN BA
+  1A5E          ; CI    # TAI THAM CONSONANT SIGN SA
+  1A60          ; CI    # TAI THAM SIGN SAKOT
+  1A61          ; CI    # TAI THAM VOWEL SIGN A
+  1A62          ; CI    # TAI THAM VOWEL SIGN MAI SAT
+  1A63          ; CI    # TAI THAM VOWEL SIGN AA
+  1A64          ; CI    # TAI THAM VOWEL SIGN TALL AA
+  1A65          ; CI    # TAI THAM VOWEL SIGN I
+  1A66          ; CI    # TAI THAM VOWEL SIGN II
+  1A67          ; CI    # TAI THAM VOWEL SIGN UE
+  1A68          ; CI    # TAI THAM VOWEL SIGN UUE
+  1A69          ; CI    # TAI THAM VOWEL SIGN U
+  1A6A          ; CI    # TAI THAM VOWEL SIGN UU
+  1A6B          ; CI    # TAI THAM VOWEL SIGN O
+  1A6C          ; CI    # TAI THAM VOWEL SIGN OA BELOW
+  1A6D          ; CI    # TAI THAM VOWEL SIGN OY
+  1A6E          ; CI    # TAI THAM VOWEL SIGN E
+  1A6F          ; CI    # TAI THAM VOWEL SIGN AE
+  1A70          ; CI    # TAI THAM VOWEL SIGN OO
+  1A71          ; CI    # TAI THAM VOWEL SIGN AI
+  1A72          ; CI    # TAI THAM VOWEL SIGN THAM AI
+  1A73          ; CI    # TAI THAM VOWEL SIGN OA ABOVE
+  1A74          ; CI    # TAI THAM SIGN MAI KANG
+  1A75          ; CI    # TAI THAM SIGN TONE-1
+  1A76          ; CI    # TAI THAM SIGN TONE-2
+  1A77          ; CI    # TAI THAM SIGN KHUEN TONE-3
+  1A78          ; CI    # TAI THAM SIGN KHUEN TONE-4
+  1A79          ; CI    # TAI THAM SIGN KHUEN TONE-5
+  1A7A          ; CI    # TAI THAM SIGN RA HAAM
+  1A7B          ; CI    # TAI THAM SIGN MAI SAM
+  1A7C          ; CI    # TAI THAM SIGN KHUEN-LUE KARAN
+  1A7F          ; CI    # TAI THAM COMBINING CRYPTOGRAMMIC DOT
+  1A80..1A89    ; DSR   # TAI THAM HORA DIGIT ZERO..TAI THAM HORA DIGIT NINE
+  1A90..1A99    ; DSR   # TAI THAM THAM DIGIT ZERO..TAI THAM THAM DIGIT NINE
+  1AA0..1AA6    ; DSR   # TAI THAM PUNCTUATION
+  1AA7          ; DR    # TAI THAM SIGN MAI YAMOK
+  1AA8..1AAD    ; DSR   # TAI THAM PUNCTUATION
+  1B00          ; CI    # BALINESE SIGN ULU RICEM
+  1B01          ; CI    # BALINESE SIGN ULU CANDRA
+  1B02          ; CI    # BALINESE SIGN CECEK
+  1B03          ; CI    # BALINESE SIGN SURANG
+  1B04          ; CI    # BALINESE SIGN BISAH
+  1B05..1B33    ; DSR
+  1B34          ; CI    # BALINESE SIGN REREKAN
+  1B35          ; CI    # BALINESE VOWEL SIGN TEDUNG
+  1B36          ; CI    # BALINESE VOWEL SIGN ULU
+  1B37          ; CI    # BALINESE VOWEL SIGN ULU SARI
+  1B38          ; CI    # BALINESE VOWEL SIGN SUKU
+  1B39          ; CI    # BALINESE VOWEL SIGN SUKU ILUT
+  1B3A          ; CI    # BALINESE VOWEL SIGN RA REPA
+  1B3B          ; CI    # BALINESE VOWEL SIGN RA REPA TEDUNG
+  1B3C          ; CI    # BALINESE VOWEL SIGN LA LENGA
+  1B3D          ; CI    # BALINESE VOWEL SIGN LA LENGA TEDUNG
+  1B3E          ; CI    # BALINESE VOWEL SIGN TALING
+  1B3F          ; CI    # BALINESE VOWEL SIGN TALING REPA
+  1B40          ; CI    # BALINESE VOWEL SIGN TALING TEDUNG
+  1B41          ; CI    # BALINESE VOWEL SIGN TALING REPA TEDUNG
+  1B42          ; CI    # BALINESE VOWEL SIGN PEPET
+  1B43          ; CI    # BALINESE VOWEL SIGN PEPET TEDUNG
+  1B44          ; CI    # BALINESE ADEG ADEG
+  1B45..1B4B    ; DSR
+  1B50..1B6A    ; DSR
+  1B6B          ; CI    # BALINESE MUSICAL SYMBOL COMBINING TEGEH
+  1B6C          ; CI    # BALINESE MUSICAL SYMBOL COMBINING ENDEP
+  1B6D          ; CI    # BALINESE MUSICAL SYMBOL COMBINING KEMPUL
+  1B6E          ; CI    # BALINESE MUSICAL SYMBOL COMBINING KEMPLI
+  1B6F          ; CI    # BALINESE MUSICAL SYMBOL COMBINING JEGOGAN
+  1B70          ; CI    # BALINESE MUSICAL SYMBOL COMBINING KEMPUL WITH JEGOGAN
+  1B71          ; CI    # BALINESE MUSICAL SYMBOL COMBINING KEMPLI WITH JEGOGAN
+  1B72          ; CI    # BALINESE MUSICAL SYMBOL COMBINING BENDE
+  1B73          ; CI    # BALINESE MUSICAL SYMBOL COMBINING GONG
+  1B74..1B7C    ; DSR   # BALINESE MUSICAL SYMBOLS
+  1B80          ; CI    # SUNDANESE SIGN PANYECEK
+  1B81          ; CI    # SUNDANESE SIGN PANGLAYAR
+  1B82          ; CI    # SUNDANESE SIGN PANGWISAD
+  1B83..1BA0    ; DSR   # SUNDANESE
+  1BA1          ; CI    # SUNDANESE CONSONANT SIGN PAMINGKAL
+  1BA2          ; CI    # SUNDANESE CONSONANT SIGN PANYAKRA
+  1BA3          ; CI    # SUNDANESE CONSONANT SIGN PANYIKU
+  1BA4          ; CI    # SUNDANESE VOWEL SIGN PANGHULU
+  1BA5          ; CI    # SUNDANESE VOWEL SIGN PANYUKU
+  1BA6          ; CI    # SUNDANESE VOWEL SIGN PANAELAENG
+  1BA7          ; CI    # SUNDANESE VOWEL SIGN PANOLONG
+  1BA8          ; CI    # SUNDANESE VOWEL SIGN PAMEPET
+  1BA9          ; CI    # SUNDANESE VOWEL SIGN PANEULEUNG
+  1BAA          ; CI    # SUNDANESE SIGN PAMAAEH
+  1BAE..1BAF    ; DSR   # SUNDANESE
+  1BB0..1BB9    ; DSR   # SUNDANESE DIGIT ZERO..SUNDANESE DIGIT NINE
+  1BC0..1BE5    ; DSR   # BATAK LETTER A..U
+  1BE6          ; CI    # BATAK SIGN TOMPI
+  1BE7          ; CI    # BATAK VOWEL SIGN E
+  1BE8          ; CI    # BATAK VOWEL SIGN PAKPAK E
+  1BE9          ; CI    # BATAK VOWEL SIGN EE
+  1BEA          ; CI    # BATAK VOWEL SIGN I
+  1BEB          ; CI    # BATAK VOWEL SIGN KARO I
+  1BEC          ; CI    # BATAK VOWEL SIGN O
+  1BED          ; CI    # BATAK VOWEL SIGN KARO O
+  1BEE          ; CI    # BATAK VOWEL SIGN U
+  1BEF          ; CI    # BATAK VOWEL SIGN U FOR SIMALUNGUN SA
+  1BF0          ; CI    # BATAK CONSONANT SIGN NG
+  1BF1          ; CI    # BATAK CONSONANT SIGN H
+  1BF2          ; CI    # BATAK PANGOLAT
+  1BF3          ; CI    # BATAK PANONGONAN
+  1BFC..1BFF    ; DSR
+  1C00..1C23    ; DSR
+  1C24          ; CI    # LEPCHA SUBJOINED LETTER YA
+  1C25          ; CI    # LEPCHA SUBJOINED LETTER RA
+  1C26          ; CI    # LEPCHA VOWEL SIGN AA
+  1C27          ; CI    # LEPCHA VOWEL SIGN I
+  1C28          ; CI    # LEPCHA VOWEL SIGN O
+  1C29          ; CI    # LEPCHA VOWEL SIGN OO
+  1C2A          ; CI    # LEPCHA VOWEL SIGN U
+  1C2B          ; CI    # LEPCHA VOWEL SIGN UU
+  1C2C          ; CI    # LEPCHA VOWEL SIGN E
+  1C2D          ; CI    # LEPCHA CONSONANT SIGN K
+  1C2E          ; CI    # LEPCHA CONSONANT SIGN M
+  1C2F          ; CI    # LEPCHA CONSONANT SIGN L
+  1C30          ; CI    # LEPCHA CONSONANT SIGN N
+  1C31          ; CI    # LEPCHA CONSONANT SIGN P
+  1C32          ; CI    # LEPCHA CONSONANT SIGN R
+  1C33          ; CI    # LEPCHA CONSONANT SIGN T
+  1C34          ; CI    # LEPCHA CONSONANT SIGN NYIN-DO
+  1C35          ; CI    # LEPCHA CONSONANT SIGN KANG
+  1C36          ; CI    # LEPCHA SIGN RAN
+  1C37          ; CI    # LEPCHA SIGN NUKTA
+  1C3B..1C49    ; DSR
+  1C4D..1C7F    ; DSR
+  1CD0          ; CI    # VEDIC TONE KARSHANA
+  1CD1          ; CI    # VEDIC TONE SHARA
+  1CD2          ; CI    # VEDIC TONE PRENKHA
+  1CD3          ; DSR   # VEDIC SIGN NIHSHVASA
+  1CD4          ; CI    # VEDIC SIGN YAJURVEDIC MIDLINE SVARITA
+  1CD5          ; CI    # VEDIC TONE YAJURVEDIC AGGRAVATED INDEPENDENT SVARITA
+  1CD6          ; CI    # VEDIC TONE YAJURVEDIC INDEPENDENT SVARITA
+  1CD7          ; CI    # VEDIC TONE YAJURVEDIC KATHAKA INDEPENDENT SVARITA
+  1CD8          ; CI    # VEDIC TONE CANDRA BELOW
+  1CD9          ; CI    # VEDIC TONE YAJURVEDIC KATHAKA INDEPENDENT SVARITA SCHROEDER
+  1CDA          ; CI    # VEDIC TONE DOUBLE SVARITA
+  1CDB          ; CI    # VEDIC TONE TRIPLE SVARITA
+  1CDC          ; CI    # VEDIC TONE KATHAKA ANUDATTA
+  1CDD          ; CI    # VEDIC TONE DOT BELOW
+  1CDE          ; CI    # VEDIC TONE TWO DOTS BELOW
+  1CDF          ; CI    # VEDIC TONE THREE DOTS BELOW
+  1CE0          ; CI    # VEDIC TONE RIGVEDIC KASHMIRI INDEPENDENT SVARITA
+  1CE1          ; CI    # VEDIC TONE ATHARVAVEDIC INDEPENDENT SVARITA
+  1CE2          ; CI    # VEDIC SIGN VISARGA SVARITA
+  1CE3          ; CI    # VEDIC SIGN VISARGA UDATTA
+  1CE4          ; CI    # VEDIC SIGN REVERSED VISARGA UDATTA
+  1CE5          ; CI    # VEDIC SIGN VISARGA ANUDATTA
+  1CE6          ; CI    # VEDIC SIGN REVERSED VISARGA ANUDATTA
+  1CE7          ; CI    # VEDIC SIGN VISARGA UDATTA WITH TAIL
+  1CE8          ; CI    # VEDIC SIGN VISARGA ANUDATTA WITH TAIL
+  1CE9..1CEC    ; DSR   # VEDIC SIGN ANUSVARA ANTARGOMUKHA..
+  1CED          ; CI    # VEDIC SIGN TIRYAK
+  1CEE..1CF1    ; DSR   # VEDIC SIGN HEXIFORM LONG ANUSVARA
+  1CF2          ; CI    # VEDIC SIGN ARDHAVISARGA
+  1D00..1DBF    ; DSRM  # LATIN LETTER SMALL CAPITAL A..
+  1DC0          ; CI    # COMBINING DOTTED GRAVE ACCENT
+  1DC1          ; CI    # COMBINING DOTTED ACUTE ACCENT
+  1DC2          ; CI    # COMBINING SNAKE BELOW
+  1DC3          ; CI    # COMBINING SUSPENSION MARK
+  1DC4          ; CI    # COMBINING MACRON-ACUTE
+  1DC5          ; CI    # COMBINING GRAVE-MACRON
+  1DC6          ; CI    # COMBINING MACRON-GRAVE
+  1DC7          ; CI    # COMBINING ACUTE-MACRON
+  1DC8          ; CI    # COMBINING GRAVE-ACUTE-GRAVE
+  1DC9          ; CI    # COMBINING ACUTE-GRAVE-ACUTE
+  1DCA          ; CI    # COMBINING LATIN SMALL LETTER R BELOW
+  1DCB          ; CI    # COMBINING BREVE-MACRON
+  1DCC          ; CI    # COMBINING MACRON-BREVE
+  1DCD          ; CI    # COMBINING DOUBLE CIRCUMFLEX ABOVE
+  1DCE          ; CI    # COMBINING OGONEK ABOVE
+  1DCF          ; CI    # COMBINING ZIGZAG BELOW
+  1DD0          ; CI    # COMBINING IS BELOW
+  1DD1          ; CI    # COMBINING UR ABOVE
+  1DD2          ; CI    # COMBINING US ABOVE
+  1DD3          ; CI    # COMBINING LATIN SMALL LETTER FLATTENED OPEN A ABOVE
+  1DD4          ; CI    # COMBINING LATIN SMALL LETTER AE
+  1DD5          ; CI    # COMBINING LATIN SMALL LETTER AO
+  1DD6          ; CI    # COMBINING LATIN SMALL LETTER AV
+  1DD7          ; CI    # COMBINING LATIN SMALL LETTER C CEDILLA
+  1DD8          ; CI    # COMBINING LATIN SMALL LETTER INSULAR D
+  1DD9          ; CI    # COMBINING LATIN SMALL LETTER ETH
+  1DDA          ; CI    # COMBINING LATIN SMALL LETTER G
+  1DDB          ; CI    # COMBINING LATIN LETTER SMALL CAPITAL G
+  1DDC          ; CI    # COMBINING LATIN SMALL LETTER K
+  1DDD          ; CI    # COMBINING LATIN SMALL LETTER L
+  1DDE          ; CI    # COMBINING LATIN LETTER SMALL CAPITAL L
+  1DDF          ; CI    # COMBINING LATIN LETTER SMALL CAPITAL M
+  1DE0          ; CI    # COMBINING LATIN SMALL LETTER N
+  1DE1          ; CI    # COMBINING LATIN LETTER SMALL CAPITAL N
+  1DE2          ; CI    # COMBINING LATIN LETTER SMALL CAPITAL R
+  1DE3          ; CI    # COMBINING LATIN SMALL LETTER R ROTUNDA
+  1DE4          ; CI    # COMBINING LATIN SMALL LETTER S
+  1DE5          ; CI    # COMBINING LATIN SMALL LETTER LONG S
+  1DE6          ; CI    # COMBINING LATIN SMALL LETTER Z
+  1DFC          ; CI    # COMBINING DOUBLE INVERTED BREVE BELOW
+  1DFD          ; CI    # COMBINING ALMOST EQUAL TO BELOW
+  1DFE          ; CI    # COMBINING LEFT ARROWHEAD ABOVE
+  1DFF          ; CI    # COMBINING RIGHT ARROWHEAD AND DOWN ARROWHEAD BELOW
+  1E00..1F15    ; DSRM
+  1F18..1F1D    ; DSRM
+  1F20..1F45    ; DSRM
+  1F48..1F4D    ; DSRM
+  1F50..1F57    ; DSRM
+  1F59          ; DSRM
+  1F5B          ; DSRM
+  1F5D          ; DSRM
+  1F5F..1F7D    ; DSRM
+  1F80..1FB4    ; DSRM
+  1FB6..1FC4    ; DSRM
+  1FC6..1FD3    ; DSRM
+  1FD6..1FDB    ; DSRM
+  1FDD..1FEF    ; DSRM
+  1FF2..1FF4    ; DSRM
+  1FF6..1FFE    ; DSRM
+  2000..200F    ; DR    # Spaces
+  2010..2015    ; DR    # hyphens (always rotate even stacked, like Excel's hyphen and horizontal bar)
+  2016..2017    ; DSR   # double vertical and low line
+  2018..201F    ; DSR   # quotation marks
+  2020..2023    ; DSR   # DAGGER..TRIANGULAR BULLET
+  2024..2026    ; DR    # ONE DOT LEADER..HORIZONTAL ELLIPSIS (always rotated like Excel)
+  2027..2027    ; DSR   # HYPHENATION POINT
+  2028          ; DR    # LINE SEPARATOR
+  2029          ; DR    # PARAGRAPH SEPARATOR
+  202A..202F    ; DR    # LEFT-TO-RIGHT EMBEDDING..NARROW NO-BREAK SPACE
+  2030..2038    ; DS    # General Punctuation (Common various)
+  2039..203A    ; DR    # SINGLE LEFT..RIGHT POINTING ANGLE QUOTATION MARK
+  203B..203D    ; DSR   # General Punctuation (Common various) *confirm
+  203E..2041    ; DR    # undertie, overline, caret insertion...
+  2042..2043    ; DS    # ASTERISM, HYPHEN BULLET
+  2044          ; DSR   # FRACTION SLASH
+  2045..2046    ; DR    # LEFT SQUARE BRACKET WITH QUILL, U+2046 RIGHT SQUARE BRACKET WITH QUILL
+  2047..204F    ; DSR   # General Punctuation (Common various) *confirm
+  2050          ; DR    # CLOSE UP
+  2051..2053    ; DSR   # General Punctuation (Common various) *confirm
+  2054          ; DR    # INVERTED UNDERTIE
+  2055..205E    ; DSR   # General Punctuation (Common various) *confirm
+  205F..205F    ; DR    # MEDIUM MATHEMATICAL SPACE
+  2060..2063    ; DR    # WORD JOINER..INVISIBLE SEPARATOR
+  2064          ; DR
+  206A..206F    ; DR
+  2070          ; DS
+  2071          ; DSRM
+  2074..2079    ; DS
+  207A..207C    ; DSR
+  207D..207E    ; DR
+  207F          ; DSRM
+  2080..2089    ; DS
+  208A..208C    ; DSR
+  208D..208E    ; DR
+  2090..2094    ; DSRM
+  2095..209C    ; DSRM  # Latin subscript small letters
+  20A0..20B5    ; DSR   # Currency Symbols
+  20B6..20B9    ; DSR   # LIVRE TOURNOIS SIGN..INDIAN RUPEE SIGN
+  20D0..20F0    ; CI    # COMBINING LEFT HARPOON ABOVE..COMBINING ASTERISK ABOVE
+  2100..214F    ; DS    # Letterlike Symbols (Common various) stack like GDI
+  2150..215F    ; DS    # Vulgar fractions
+  2160..2188    ; DSRM  # Roman Numerals
+  2189          ; DS    # VULGAR FRACTION ZERO THIRDS
+  2190..21FF    ; ADS   # Arrows (Common AL) keep them upright (the halfwidth arrows may rotate though)
+  2200..220D    ; DSR   # FOR ALL..SMALL CONTAINS AS MEMBER
+  220E..220E    ; DS    # END OF PROOF
+  220F..2222    ; DSR   # N-ARY PRODUCT..SPHERICAL ANGLE
+  2223..2224    ; DR    # DIVIDES..DOES NOT DIVIDE
+  2225..2226    ; DR    # PARALLEL TO..NOT PARALLEL TO (for Excel)
+  2227..2294    ; DSR   # LOGICAL AND..SQUARE CUP
+  2295..22A5    ; DS    # CIRCLED PLUS..UP TACK
+  22A6..22FF    ; DSR   # ASSERTION..Z NOTATION BAG MEMBERSHIP
+  2300          ; DS    # DIAMETER SIGN
+  2301          ; DR    # ELECTRIC ARROW
+  2302..23FF    ; DS    # Miscellaneous technical
+  2400..2426    ; DS    # Control pictures
+  2427..243F    ; DS    # Control pictures (reserved in Unicode 6)
+  2440..244A    ; DS    # Optical character recognition
+  244B..245F    ; DS    # Optical character recognition (reserved in Unicode 6)
+  2460..24FF    ; DS    # Enclosed Alphanumerics (Common AI)
+  2500..257F    ; BOX   # Box drawing shapes (upright, rotatable via font entry or mirroring table)
+  2580..259F    ; BLK   # Block elements
+  25A0..25FF    ; DS    # Geometric Shapes (Common AI)
+  2600..26FF    ; DS    # Miscellaneous Symbols (Common AL)
+  2700..27BF    ; DS    # Dingbats (Common AL)
+  27C0..27EF    ; DS    # Miscellaneous Mathematical Symbols A
+  27F0..27FF    ; ADS   # Supplemental Arrows A
+  2800..28FF    ; DSR   # Braille Patterns
+  2900..297F    ; ADS   # Supplemental Arrows-B, keep them upright (the halfwidth arrows may rotate though)
+  2980..2982    ; DSR
+  2983..2998    ; DR
+  2999..29D7    ; DSR
+  29D8..29DB    ; DR
+  29DC..29FB    ; DSR
+  29FC..29FD    ; DR
+  29FE..2AFF    ; DR    # Supplemental Mathematical Operators
+  2B00..2B4C    ; DS    # Miscellaneous Symbols and Arrows
+  2B50..2B59    ; DS    # Miscellaneous Symbols and Arrows
+  2C00..2C2E    ; DSR
+  2C30..2C5E    ; DSR
+  2C60..2C6F    ; DSRM
+  2C70          ; DSRM
+  2C71..2C7D    ; DSRM
+  2C7E..2C7F    ; DSRM
+  2C80..2CE4    ; DSRM
+  2CE5..2CEA    ; DSR
+  2CEB..2CEE    ; DSRM
+  2CEF          ; CI    # COPTIC COMBINING NI ABOVE
+  2CF0          ; CI    # COPTIC COMBINING SPIRITUS ASPER
+  2CF1          ; CI    # COPTIC COMBINING SPIRITUS LENIS
+  2CF9..2CFC    ; DSR
+  2CFD          ; DSRM
+  2CFE..2D25    ; DSR
+  2D30..2D65    ; DSR
+  2D6F          ; DSR
+  2D70          ; DSR
+  2D7F          ; CI    # TIFINAGH CONSONANT JOINER
+  2D80..2D96    ; DSR
+  2DA0..2DA6    ; DSR
+  2DA8..2DAE    ; DSR
+  2DB0..2DB6    ; DSR
+  2DB8..2DBE    ; DSR
+  2DC0..2DC6    ; DSR
+  2DC8..2DCE    ; DSR
+  2DD0..2DD6    ; DSR
+  2DD8..2DDE    ; DSR
+  2DE0          ; CI    # COMBINING CYRILLIC LETTER BE
+  2DE1          ; CI    # COMBINING CYRILLIC LETTER VE
+  2DE2          ; CI    # COMBINING CYRILLIC LETTER GHE
+  2DE3          ; CI    # COMBINING CYRILLIC LETTER DE
+  2DE4          ; CI    # COMBINING CYRILLIC LETTER ZHE
+  2DE5          ; CI    # COMBINING CYRILLIC LETTER ZE
+  2DE6          ; CI    # COMBINING CYRILLIC LETTER KA
+  2DE7          ; CI    # COMBINING CYRILLIC LETTER EL
+  2DE8          ; CI    # COMBINING CYRILLIC LETTER EM
+  2DE9          ; CI    # COMBINING CYRILLIC LETTER EN
+  2DEA          ; CI    # COMBINING CYRILLIC LETTER O
+  2DEB          ; CI    # COMBINING CYRILLIC LETTER PE
+  2DEC          ; CI    # COMBINING CYRILLIC LETTER ER
+  2DED          ; CI    # COMBINING CYRILLIC LETTER ES
+  2DEE          ; CI    # COMBINING CYRILLIC LETTER TE
+  2DEF          ; CI    # COMBINING CYRILLIC LETTER HA
+  2DF0          ; CI    # COMBINING CYRILLIC LETTER TSE
+  2DF1          ; CI    # COMBINING CYRILLIC LETTER CHE
+  2DF2          ; CI    # COMBINING CYRILLIC LETTER SHA
+  2DF3          ; CI    # COMBINING CYRILLIC LETTER SHCHA
+  2DF4          ; CI    # COMBINING CYRILLIC LETTER FITA
+  2DF5          ; CI    # COMBINING CYRILLIC LETTER ES-TE
+  2DF6          ; CI    # COMBINING CYRILLIC LETTER A
+  2DF7          ; CI    # COMBINING CYRILLIC LETTER IE
+  2DF8          ; CI    # COMBINING CYRILLIC LETTER DJERV
+  2DF9          ; CI    # COMBINING CYRILLIC LETTER MONOGRAPH UK
+  2DFA          ; CI    # COMBINING CYRILLIC LETTER YAT
+  2DFB          ; CI    # COMBINING CYRILLIC LETTER YU
+  2DFC          ; CI    # COMBINING CYRILLIC LETTER IOTIFIED A
+  2DFD          ; CI    # COMBINING CYRILLIC LETTER LITTLE YUS
+  2DFE          ; CI    # COMBINING CYRILLIC LETTER BIG YUS
+  2DFF          ; CI    # COMBINING CYRILLIC LETTER IOTIFIED BIG YUS
+  2E00..2E01    ; DSR
+  2E02..2E05    ; DR
+  2E06..2E08    ; DSR
+  2E09..2E0A    ; DR
+  2E0B          ; DSR
+  2E0C..2E0D    ; DR
+  2E0E..2E16    ; DSR
+  2E17          ; DR
+  2E18..2E19    ; DSR
+  2E1A          ; DR
+  2E1B          ; DSR
+  2E1C..2E1D    ; DR
+  2E1E..2E1F    ; DSR
+  2E20..2E29    ; DR
+  2E2A..2E2E    ; DSR
+  2E2F          ; DS
+  2E30          ; DSR
+  2E31          ; DSR
+  2E80..2FDF    ; DS    # CJK radicals supplement, Kangxi radicals (Han ID)
+  2FF0..2FFF    ; DS    # Ideographic description characters (Common ID)
+  3000..3007    ; DS    # CJK Symbols and Punctuation (ideographic space) (Common ID)
+  3008          ; DRFMP # LEFT ANGLE BRACKET
+  3009          ; DRFMP # RIGHT ANGLE BRACKET
+  300A          ; DRFMP # LEFT DOUBLE ANGLE BRACKET
+  300B          ; DRFMP # RIGHT DOUBLE ANGLE BRACKET
+  300C          ; DRFMP # LEFT CORNER BRACKET
+  300D          ; DRFMP # RIGHT CORNER BRACKET
+  300E          ; DRFMP # LEFT WHITE CORNER BRACKET
+  300F          ; DRFMP # RIGHT WHITE CORNER BRACKET
+  3010          ; DRFMP # LEFT BLACK LENTICULAR BRACKET
+  3011          ; DRFMP # RIGHT BLACK LENTICULAR BRACKET
+  3012          ; DS    # U+3012 POSTAL MARK
+  3013          ; DRF   # GETA MARK
+  3014          ; DRFMP # LEFT TORTOISE SHELL BRACKET
+  3015          ; DRFMP # RIGHT TORTOISE SHELL BRACKET
+  3016          ; DRFMP # LEFT WHITE LENTICULAR BRACKET
+  3017          ; DRFMP # RIGHT WHITE LENTICULAR BRACKET
+  3018          ; DRFMP # LEFT WHITE TORTOISE SHELL BRACKET
+  3019          ; DRFMP # RIGHT WHITE TORTOISE SHELL BRACKET
+  301A          ; DRFMP # LEFT WHITE SQUARE BRACKET
+  301B          ; DRFMP # RIGHT WHITE SQUARE BRACKET
+  301C          ; DRF   # WAVE DASH
+  301D..3029    ; DS    # REVERSED DOUBLE PRIME QUOTATION MARK..HANGUL DOUBLE DOT TONE MARK
+  302A          ; CI    # IDEOGRAPHIC LEVEL TONE MARK
+  302B          ; CI    # IDEOGRAPHIC RISING TONE MARK
+  302C          ; CI    # IDEOGRAPHIC DEPARTING TONE MARK
+  302D          ; CI    # IDEOGRAPHIC ENTERING TONE MARK
+  302E          ; CI    # HANGUL SINGLE DOT TONE MARK
+  302F          ; CI    # HANGUL DOUBLE DOT TONE MARK
+  3030          ; DRF   # WAVY DASH
+  3031..303F    ; DS    # CJK Symbols and Punctuation (Common ID)
+  3040..3098    ; DS    # Hiragana (Hiragana ID, NS, CM)
+  3099          ; CI    # COMBINING KATAKANA-HIRAGANA VOICED SOUND MARK
+  309A          ; CI    # COMBINING KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK
+  309B..309F    ; DS    # Hiragana (Hiragana ID, NS, CM)
+  30A0..30FB    ; DS    # Katakana (Katakana ID, NS)
+  30FC          ; DRF   # KATAKANA-HIRAGANA PROLONGED SOUND MARK
+  30FD..30FF    ; DS    # Katakana (Katakana ID, NS)
+  3100..312F    ; DS    # Bopomofo (Bopomofo ID)
+  3130..318F    ; DS    # Hangul Compatibility Jamo (Hangul ID)
+  3190..319F    ; DS    # Kanbun (CJK Miscellaneous) (Common ID)
+  31A0..31BF    ; DS    # Bopomofo Extended (Bopomofo ID)
+  31C0..31EF    ; DS    # CJK Strokes (Common ID)
+  31F0..31FF    ; DS    # Katakana Phonetic Extensions (Katakana NS)
+  3200..32FF    ; DS    # Enclosed CJK Letters & Months (Hangul ID)
+  3300..33FF    ; DS    # CJK Compatibility (Katakana, Common ID)
+  3400..4DFF    ; DS    # ExtA range (Han ID)
+  4E00..9FFF    ; DS    # CJK Unified Ideographs (Han ID)
+  A000..A48F    ; DS    # Yi Syllables (Yi ID)
+  A490..A4CF    ; DS    # Yi Radicals (Yi ID)
+  A4D0..A4FD    ; DS    #
+  A4FE..A4FF    ; DSR
+  A500..A60C    ; DS
+  A60D..A60F    ; DSR
+  A610..A62B    ; DS
+  A640..A65F    ; DSRM
+  A660..A66E    ; DSRM
+  A66F          ; CI    # COMBINING CYRILLIC VZMET
+  A670..A672    ; DR
+  A673          ; DSR
+  A67C          ; CI    # COMBINING CYRILLIC KAVYKA
+  A67D          ; CI    # COMBINING CYRILLIC PAYEROK
+  A67E          ; DSR
+  A67F..A697    ; DSRM
+  A6A0..A6EF    ; DSR
+  A6F0          ; CI    # BAMUM COMBINING MARK KOQNDON
+  A6F1          ; CI    # BAMUM COMBINING MARK TUKWENTIS
+  A6F2..A6F7    ; DSR
+  A700..A721    ; DS
+  A722..A787    ; DSRM
+  A788..A78A    ; DS
+  A78B..A78C    ; DSRM
+  A78D..A78E    ; DSRM
+  A790..A791    ; DSRM
+  A7A0..A7A9    ; DSRM
+  A7FA          ; DSRM
+  A7FB..A7FF    ; DSRM
+  A800..A801    ; DSR
+  A802          ; CI    # SYLOTI NAGRI SIGN DVISVARA
+  A803..A805    ; DSR
+  A806          ; CI    # SYLOTI NAGRI SIGN HASANTA
+  A807..A80A    ; DSR
+  A80B          ; CI    # SYLOTI NAGRI SIGN ANUSVARA
+  A80C..A822    ; DSR
+  A823          ; CI    # SYLOTI NAGRI VOWEL SIGN A
+  A824          ; CI    # SYLOTI NAGRI VOWEL SIGN I
+  A825          ; CI    # SYLOTI NAGRI VOWEL SIGN U
+  A826          ; CI    # SYLOTI NAGRI VOWEL SIGN E
+  A827          ; CI    # SYLOTI NAGRI VOWEL SIGN OO
+  A828..A82B    ; DSR
+  A830..A835    ; DS    # NORTH INDIC FRACTION ONE QUARTER..NORTH INDIC FRACTION THREE SIXTEENTHS
+  A836..A839    ; DSR   # NORTH INDIC QUARTER MARK..NORTH INDIC QUANTITY MARK
+  A840..A87F    ; CR    # Phags-Pa (cursively ligation, no stacking, despite the discrete blocky appearance)
+  A880          ; CI    # SAURASHTRA SIGN ANUSVARA
+  A881          ; CI    # SAURASHTRA SIGN VISARGA
+  A882..A8B3    ; DSR
+  A8B4          ; CI    # SAURASHTRA CONSONANT SIGN HAARU
+  A8B5          ; CI    # SAURASHTRA VOWEL SIGN AA
+  A8B6          ; CI    # SAURASHTRA VOWEL SIGN I
+  A8B7          ; CI    # SAURASHTRA VOWEL SIGN II
+  A8B8          ; CI    # SAURASHTRA VOWEL SIGN U
+  A8B9          ; CI    # SAURASHTRA VOWEL SIGN UU
+  A8BA          ; CI    # SAURASHTRA VOWEL SIGN VOCALIC R
+  A8BB          ; CI    # SAURASHTRA VOWEL SIGN VOCALIC RR
+  A8BC          ; CI    # SAURASHTRA VOWEL SIGN VOCALIC L
+  A8BD          ; CI    # SAURASHTRA VOWEL SIGN VOCALIC LL
+  A8BE          ; CI    # SAURASHTRA VOWEL SIGN E
+  A8BF          ; CI    # SAURASHTRA VOWEL SIGN EE
+  A8C0          ; CI    # SAURASHTRA VOWEL SIGN AI
+  A8C1          ; CI    # SAURASHTRA VOWEL SIGN O
+  A8C2          ; CI    # SAURASHTRA VOWEL SIGN OO
+  A8C3          ; CI    # SAURASHTRA VOWEL SIGN AU
+  A8C4          ; CI    # SAURASHTRA SIGN VIRAMA
+  A8CE..A8D9    ; DSR
+  A8E0          ; CI    # COMBINING DEVANAGARI DIGIT ZERO
+  A8E1          ; CI    # COMBINING DEVANAGARI DIGIT ONE
+  A8E2          ; CI    # COMBINING DEVANAGARI DIGIT TWO
+  A8E3          ; CI    # COMBINING DEVANAGARI DIGIT THREE
+  A8E4          ; CI    # COMBINING DEVANAGARI DIGIT FOUR
+  A8E5          ; CI    # COMBINING DEVANAGARI DIGIT FIVE
+  A8E6          ; CI    # COMBINING DEVANAGARI DIGIT SIX
+  A8E7          ; CI    # COMBINING DEVANAGARI DIGIT SEVEN
+  A8E8          ; CI    # COMBINING DEVANAGARI DIGIT EIGHT
+  A8E9          ; CI    # COMBINING DEVANAGARI DIGIT NINE
+  A8EA          ; CI    # COMBINING DEVANAGARI LETTER A
+  A8EB          ; CI    # COMBINING DEVANAGARI LETTER U
+  A8EC          ; CI    # COMBINING DEVANAGARI LETTER KA
+  A8ED          ; CI    # COMBINING DEVANAGARI LETTER NA
+  A8EE          ; CI    # COMBINING DEVANAGARI LETTER PA
+  A8EF          ; CI    # COMBINING DEVANAGARI LETTER RA
+  A8F0          ; CI    # COMBINING DEVANAGARI LETTER VI
+  A8F1          ; CI    # COMBINING DEVANAGARI SIGN AVAGRAHA
+  A8F2..A8FB    ; CSR
+  A900..A925    ; DSR
+  A926          ; CI    # KAYAH LI VOWEL UE
+  A927          ; CI    # KAYAH LI VOWEL E
+  A928          ; CI    # KAYAH LI VOWEL U
+  A929          ; CI    # KAYAH LI VOWEL EE
+  A92A          ; CI    # KAYAH LI VOWEL O
+  A92B          ; CI    # KAYAH LI TONE PLOPHU
+  A92C          ; CI    # KAYAH LI TONE CALYA
+  A92D          ; CI    # KAYAH LI TONE CALYA PLOPHU
+  A92E..A946    ; DSR
+  A947          ; CI    # REJANG VOWEL SIGN I
+  A948          ; CI    # REJANG VOWEL SIGN U
+  A949          ; CI    # REJANG VOWEL SIGN E
+  A94A          ; CI    # REJANG VOWEL SIGN AI
+  A94B          ; CI    # REJANG VOWEL SIGN O
+  A94C          ; CI    # REJANG VOWEL SIGN AU
+  A94D          ; CI    # REJANG VOWEL SIGN EU
+  A94E          ; CI    # REJANG VOWEL SIGN EA
+  A94F          ; CI    # REJANG CONSONANT SIGN NG
+  A950          ; CI    # REJANG CONSONANT SIGN N
+  A951          ; CI    # REJANG CONSONANT SIGN R
+  A952          ; CI    # REJANG CONSONANT SIGN H
+  A953          ; CI    # REJANG VIRAMA
+  A95F          ; DSR
+  A960..A97C    ; DS    # HANGUL CHOSEONG
+  A980          ; CI    # JAVANESE SIGN PANYANGGA
+  A981          ; CI    # JAVANESE SIGN CECAK
+  A982          ; CI    # JAVANESE SIGN LAYAR
+  A983          ; CI    # JAVANESE SIGN WIGNYAN
+  A984..A9B2    ; DR    # JAVANESE
+  A9B3          ; CI    # JAVANESE SIGN CECAK TELU
+  A9B4          ; CI    # JAVANESE VOWEL SIGN TARUNG
+  A9B5          ; CI    # JAVANESE VOWEL SIGN TOLONG
+  A9B6          ; CI    # JAVANESE VOWEL SIGN WULU
+  A9B7          ; CI    # JAVANESE VOWEL SIGN WULU MELIK
+  A9B8          ; CI    # JAVANESE VOWEL SIGN SUKU
+  A9B9          ; CI    # JAVANESE VOWEL SIGN SUKU MENDUT
+  A9BA          ; CI    # JAVANESE VOWEL SIGN TALING
+  A9BB          ; CI    # JAVANESE VOWEL SIGN DIRGA MURE
+  A9BC          ; CI    # JAVANESE VOWEL SIGN PEPET
+  A9BD          ; CI    # JAVANESE CONSONANT SIGN KERET
+  A9BE          ; CI    # JAVANESE CONSONANT SIGN PENGKAL
+  A9BF          ; CI    # JAVANESE CONSONANT SIGN CAKRA
+  A9C0          ; CI    # JAVANESE PANGKON
+  A9C1..A9CD    ; DSR
+  A9CF..A9D9    ; DR
+  A9DE..A9DF    ; DSR
+  AA00..AA28    ; DR
+  AA29          ; CI    # CHAM VOWEL SIGN AA
+  AA2A          ; CI    # CHAM VOWEL SIGN I
+  AA2B          ; CI    # CHAM VOWEL SIGN II
+  AA2C          ; CI    # CHAM VOWEL SIGN EI
+  AA2D          ; CI    # CHAM VOWEL SIGN U
+  AA2E          ; CI    # CHAM VOWEL SIGN OE
+  AA2F          ; CI    # CHAM VOWEL SIGN O
+  AA30          ; CI    # CHAM VOWEL SIGN AI
+  AA31          ; CI    # CHAM VOWEL SIGN AU
+  AA32          ; CI    # CHAM VOWEL SIGN UE
+  AA33          ; CI    # CHAM CONSONANT SIGN YA
+  AA34          ; CI    # CHAM CONSONANT SIGN RA
+  AA35          ; CI    # CHAM CONSONANT SIGN LA
+  AA36          ; CI    # CHAM CONSONANT SIGN WA
+  AA40..AA42    ; DR
+  AA43          ; CI    # CHAM CONSONANT SIGN FINAL NG
+  AA44..AA4B    ; DR
+  AA4C          ; CI    # CHAM CONSONANT SIGN FINAL M
+  AA4D          ; CI    # CHAM CONSONANT SIGN FINAL H
+  AA50..AA59    ; DR
+  AA5C..AA5F    ; DSR
+  AA60..AA76    ; DR
+  AA77..AA79    ; DSR
+  AA7A          ; DR
+  AA7B          ; CI    # MYANMAR SIGN PAO KAREN TONE
+  AA80..AAAF    ; DSR
+  AAB0          ; CI    # TAI VIET MAI KANG
+  AAB1          ; DSR
+  AAB2          ; CI    # TAI VIET VOWEL I
+  AAB3          ; CI    # TAI VIET VOWEL UE
+  AAB4          ; CI    # TAI VIET VOWEL U
+  AAB5..AAB6    ; DSR
+  AAB7          ; CI    # TAI VIET MAI KHIT
+  AAB8          ; CI    # TAI VIET VOWEL IA
+  AAB9..AABD    ; DSR
+  AABE          ; CI    # TAI VIET VOWEL AM
+  AABF          ; CI    # TAI VIET TONE MAI EK
+  AAC0          ; DSR
+  AAC1          ; CI    # TAI VIET TONE MAI THO
+  AAC2          ; DSR
+  AADB..AADF    ; DSR
+  AB01..AB06    ; DSR
+  AB09..AB0E    ; DSR
+  AB11..AB16    ; DSR
+  AB20..AB26    ; DSR
+  AB28..AB2E    ; DSR
+  ABC0..ABE2    ; DSR
+  ABE3          ; CI    # MEETEI MAYEK VOWEL SIGN ONAP
+  ABE4          ; CI    # MEETEI MAYEK VOWEL SIGN INAP
+  ABE5          ; CI    # MEETEI MAYEK VOWEL SIGN ANAP
+  ABE6          ; CI    # MEETEI MAYEK VOWEL SIGN YENAP
+  ABE7          ; CI    # MEETEI MAYEK VOWEL SIGN SOUNAP
+  ABE8          ; CI    # MEETEI MAYEK VOWEL SIGN UNAP
+  ABE9          ; CI    # MEETEI MAYEK VOWEL SIGN CHEINAP
+  ABEA          ; CI    # MEETEI MAYEK VOWEL SIGN NUNG
+  ABEB          ; DSR
+  ABEC          ; CI    # MEETEI MAYEK LUM IYEK
+  ABED          ; CI    # MEETEI MAYEK APUN IYEK
+  ABF0..ABF9    ; DSR
+  AC00..D7FF    ; DS    # Hangul (Korean) (Hangul H1,H2,H3,Jungseong)
+  D800..DFFF    ; DSR   # Surrogates
+  E000..F8FF    ; DS    # Private Use Area (PUA) code
+  F900..FAFF    ; DS    # CJK Compatibility Ideographs (Han ID)
+  FB00..FB06    ; DSRM
+  FB13..FB17    ; DSR
+  FB1D          ; DSR
+  FB1E          ; CI    # HEBREW POINT JUDEO-SPANISH VARIKA
+  FB1F..FB36    ; DSR
+  FB38..FB3C    ; DSR
+  FB3E          ; DSR
+  FB40..FB41    ; DSR
+  FB43..FB44    ; DSR
+  FB46..FB4F    ; DSR
+  FB50..FBB1    ; CR
+  FBB2..FBC1    ; CR
+  FBD3..FD3D    ; CR
+  FD3E..FD3F    ; DR
+  FD50..FD8F    ; CR
+  FD92..FDC7    ; CR
+  FDF0..FDFB    ; CR
+  FDFC          ; DSR   # RIAL SIGN
+  FDFD          ; DSR
+  FE00..FE0F    ; CI    # VARIATION SELECTOR-1..VARIATION SELECTOR-16
+  FE10..FE1F    ; DS    # Presentation vertical forms (Common EX,IS,OP,CL)
+  FE20          ; CI    # COMBINING LIGATURE LEFT HALF
+  FE21          ; CI    # COMBINING LIGATURE RIGHT HALF
+  FE22          ; CI    # COMBINING DOUBLE TILDE LEFT HALF
+  FE23          ; CI    # COMBINING DOUBLE TILDE RIGHT HALF
+  FE24          ; CI    # COMBINING MACRON LEFT HALF
+  FE25          ; CI    # COMBINING MACRON RIGHT HALF
+  FE26          ; CI    # COMBINING CONJOINING MACRON
+  FE30..FE4F    ; DS    # CJK Compatibility forms (Common ID,OP,CL)
+  FE50..FE58    ; DS    # Small Form Variants
+  FE59          ; DRMP  # SMALL LEFT PARENTHESIS
+  FE5A          ; DRMP  # SMALL RIGHT PARENTHESIS
+  FE5B          ; DRMP  # SMALL LEFT CURLY BRACKET
+  FE5C          ; DRMP  # SMALL RIGHT CURLY BRACKET
+  FE5D          ; DRMP  # SMALL LEFT TORTOISE BRACKET
+  FE5E          ; DRMP  # SMALL RIGHT TORTOISE BRACKET
+  FE5F..FE63    ; DR    # SMALL NUMBER SIGN..SMALL HYPHEN-MINUS
+  FE64..FE65    ; DRMP  # SMALL LESS-THAN SIGN..SMALL GREATER-THAN SIGN
+  FE66..FE6B    ; DR    # SMALL EQUALS SIGN..SMALL COMMERCIAL AT
+  FE70..FE74    ; CR
+  FE76..FEFC    ; CR
+  FEFF          ; DR
+  FF01..FF07    ; DS    # ！＂＃＄％＆＇
+  FF08..FF09    ; DRFMP # （） FULLWIDTH PARENTHESIS
+  FF0A..FF1B    ; DS    # ＊＋，－．／０..９：；
+  FF1C          ; DSMP  # ＜ FULLWIDTH LESS-THAN SIGN
+  FF1D          ; DRF   # ＝ FULLWIDTH EQUALS SIGN
+  FF1E          ; DSMP  # ＞ FULLWIDTH GREATER-THAN SIGN
+  FF1F..FF3A    ; DS    # ？＠Ａ..Ｚ
+  FF3B          ; DRFMP # ［ FULLWIDTH LEFT SQUARE BRACKET
+  FF3C          ; DS    # ＼ FULLWIDTH REVERSE SOLIDUS
+  FF3D          ; DRFMP # ］ FULLWIDTH RIGHT SQUARE BRACKET
+  FF3E          ; DS    # ＾ FULLWIDTH CIRCUMFLEX ACCENT
+  FF3F          ; DRF   # ＿ FULLWIDTH LOW LINE
+  FF40..FF5A    ; DS    # Full width ｀ａ..ｚ
+  FF5B          ; DRFMP # ｛ FULLWIDTH LEFT CURLY BRACKET｜｝～｟｠
+  FF5C          ; DRF   # ｜ FULLWIDTH VERTICAL LINE
+  FF5D          ; DRFMP # ｝ FULLWIDTH RIGHT CURLY BRACKET
+  FF5E          ; DRF   # ～ FULLWIDTH TILDE
+  FF5F..FF60    ; DRFMP # ｟｠ FULLWIDTH LEFT..RIGHT WHITE PARENTHESIS
+  FF61          ; DS    # ｡ HALFWIDTH IDEOGRAPHIC FULL STOP
+  FF62..FF63    ; DRMP  # HALFWIDTH LEFT CORNER BRACKET..HALFWIDTH RIGHT CORNER BRACKET
+  FF64..FF6F    ; DSR   # Halfwidth CJK (Katakana, Common various)
+  FF70          ; DR    # HALFWIDTH KATAKANA-HIRAGANA PROLONGED SOUND MARK (from Excel)
+  FF71..FFDF    ; DSR   # Halfwidth CJK (Katakana, Common various)
+  FFE0..FFE2    ; DS    # ￠￡￢ FULLWIDTH CENT SIGN..FULLWIDTH NOT SIGN
+  FFE3          ; DRF   # ￣ FULLWIDTH MACRON (rotates from Excel)
+  FFE4..FFE6    ; DS    # ￤￥￦ FULLWIDTH BROKEN BAR..FULLWIDTH WON SIGN
+  FFE7          ; DS    # reserved
+  FFE8          ; DS    # ￨ HALFWIDTH FORMS LIGHT VERTICAL
+  FFE9..FFEC    ; ADSR  # ￩￪￫￬  halfwidth arrows
+  FFED..FFEE    ; DS    # ￭￮
+  FFF9..FFFB    ; DR
+  FFFC..FFFD    ; ANY   # ￼� replacement characters
+  FFFE..FFFF    ; DR    # reserved point
+ 10000..1000B   ; DS
+ 1000D..10026   ; DS
+ 10028..1003A   ; DS
+ 1003C..1003D   ; DS
+ 1003F..1004D   ; DS
+ 10050..1005D   ; DS
+ 10080..100FA   ; DS
+ 10100..10102   ; DSR
+ 10107..10133   ; DS
+ 10137..1013F   ; DSR
+ 10140..10178   ; DSRM
+ 10179..10189   ; DSR
+ 1018A          ; DSRM
+ 10190..1019B   ; DSR
+ 101D0..101FC   ; DSR
+ 101FD          ; CI    # PHAISTOS DISC SIGN COMBINING OBLIQUE STROKE
+ 10280..1029C   ; DSR
+ 102A0..102D0   ; DSRM
+ 10300..1031E   ; DSRM
+ 10320..10323   ; DSRM
+ 10330..1034A   ; DSRM
+ 10380..1039D   ; DS
+ 1039F          ; DSR
+ 103A0..103C3   ; DS
+ 103C8..103CF   ; DS
+ 103D0          ; DSR
+ 103D1..103D5   ; DS
+ 10400..1044F   ; DSRM
+ 10450..1049D   ; DSR
+ 104A0..104A9   ; DSR
+ 10800..10805   ; DSR
+ 10808          ; DSR
+ 1080A..10835   ; DSR
+ 10837..10838   ; DSR
+ 1083C          ; DSR
+ 1083F          ; DSR
+ 10840..10855   ; DSR
+ 10857..1085F   ; DSR
+ 10900..10919   ; DSR
+ 1091A..1091B   ; DSR
+ 1091F..10939   ; DSR
+ 1093F          ; DSR
+ 10A00          ; DSR
+ 10A01          ; CI    # KHAROSHTHI VOWEL SIGN I
+ 10A02          ; CI    # KHAROSHTHI VOWEL SIGN U
+ 10A03          ; CI    # KHAROSHTHI VOWEL SIGN VOCALIC R
+ 10A05          ; CI    # KHAROSHTHI VOWEL SIGN E
+ 10A06          ; CI    # KHAROSHTHI VOWEL SIGN O
+ 10A0C          ; CI    # KHAROSHTHI VOWEL LENGTH MARK
+ 10A0D          ; CI    # KHAROSHTHI SIGN DOUBLE RING BELOW
+ 10A0E          ; CI    # KHAROSHTHI SIGN ANUSVARA
+ 10A0F          ; CI    # KHAROSHTHI SIGN VISARGA
+ 10A10..10A13   ; DSR
+ 10A15..10A17   ; DSR
+ 10A19..10A33   ; DSR
+ 10A38          ; CI    # KHAROSHTHI SIGN BAR ABOVE
+ 10A39          ; CI    # KHAROSHTHI SIGN CAUDA
+ 10A3A          ; CI    # KHAROSHTHI SIGN DOT BELOW
+ 10A3F          ; CI    # KHAROSHTHI VIRAMA
+ 10A40..10A47   ; DSR
+ 10A50..10A58   ; DSR
+ 10A60..10A7E   ; DSRM  # OLD SOUTH ARABIAN
+ 10A7F          ; DSR
+ 10B00..10B35   ; DR    # AVESTAN LETTERS
+ 10B39..10B55   ; DSR   # Avestan symbols
+ 10B58..10B72   ; DSR   # INSCRIPTIONAL PARTHIAN NUMBER
+ 10B78..10B7F   ; DSR   # INSCRIPTIONAL PAHLAVI NUMBER
+ 10C00..10C48   ; DSR   # OLD TURKIC
+ 10E60..10E7E   ; DSR   # RUMI NUMBER
+ 11000          ; CI    # BRAHMI SIGN CANDRABINDU
+ 11001          ; CI    # BRAHMI SIGN ANUSVARA
+ 11002          ; CI    # BRAHMI SIGN VISARGA
+ 11003..11037   ; DSR   # BRAHMI
+ 11038          ; CI    # BRAHMI VOWEL SIGN AA
+ 11039          ; CI    # BRAHMI VOWEL SIGN BHATTIPROLU AA
+ 1103A          ; CI    # BRAHMI VOWEL SIGN I
+ 1103B          ; CI    # BRAHMI VOWEL SIGN II
+ 1103C          ; CI    # BRAHMI VOWEL SIGN U
+ 1103D          ; CI    # BRAHMI VOWEL SIGN UU
+ 1103E          ; CI    # BRAHMI VOWEL SIGN VOCALIC R
+ 1103F          ; CI    # BRAHMI VOWEL SIGN VOCALIC RR
+ 11040          ; CI    # BRAHMI VOWEL SIGN VOCALIC L
+ 11041          ; CI    # BRAHMI VOWEL SIGN VOCALIC LL
+ 11042          ; CI    # BRAHMI VOWEL SIGN E
+ 11043          ; CI    # BRAHMI VOWEL SIGN AI
+ 11044          ; CI    # BRAHMI VOWEL SIGN O
+ 11045          ; CI    # BRAHMI VOWEL SIGN AU
+ 11046          ; CI    # BRAHMI VIRAMA
+ 11047..1104D   ; DSR   # Brahmi symbols
+ 11052..1106F   ; DSR   # Brahmi numbers
+ 11080          ; CI    # KAITHI SIGN CANDRABINDU
+ 11081          ; CI    # KAITHI SIGN ANUSVARA
+ 11082          ; CI    # KAITHI SIGN VISARGA
+ 11083..110AF   ; DSR   # Kaithi letters
+ 110B0          ; CI    # KAITHI VOWEL SIGN AA
+ 110B1          ; CI    # KAITHI VOWEL SIGN I
+ 110B2          ; CI    # KAITHI VOWEL SIGN II
+ 110B3          ; CI    # KAITHI VOWEL SIGN U
+ 110B4          ; CI    # KAITHI VOWEL SIGN UU
+ 110B5          ; CI    # KAITHI VOWEL SIGN E
+ 110B6          ; CI    # KAITHI VOWEL SIGN AI
+ 110B7          ; CI    # KAITHI VOWEL SIGN O
+ 110B8          ; CI    # KAITHI VOWEL SIGN AU
+ 110B9          ; CI    # KAITHI SIGN VIRAMA
+ 110BA          ; CI    # KAITHI SIGN NUKTA
+ 110BB..110BC   ; DSR   # KAITHI
+ 110BD          ; DR    # KAITHI
+ 110BE..110C1   ; DSR   # KAITHI
+ 12000..1236E   ; DSR   # CUNEIFORM SIGN
+ 12400..12462   ; DSR   # CUNEIFORM NUMERIC SIGN
+ 12470..12473   ; DSR   # CUNEIFORM PUNCTUATION
+ 13000..1342E   ; DSM   # Egyptian hieroglyph block
+ 16800..16A38   ; DSR   # BAMUM
+ 1B000..1B001   ; DS    # KATAKANA LETTER ARCHAIC E..HIRAGANA LETTER ARCHAIC YE
+ 1D000..1D0F5   ; DSR
+ 1D100..1D164   ; DS    # Musical symbols
+ 1D165          ; CI    # MUSICAL SYMBOL COMBINING STEM
+ 1D166          ; CI    # MUSICAL SYMBOL COMBINING SPRECHGESANG STEM
+ 1D167          ; CI    # MUSICAL SYMBOL COMBINING TREMOLO-1
+ 1D168          ; CI    # MUSICAL SYMBOL COMBINING TREMOLO-2
+ 1D169          ; CI    # MUSICAL SYMBOL COMBINING TREMOLO-3
+ 1D16A..1D16C   ; DS    # Musical symbols
+ 1D16D          ; CI    # MUSICAL SYMBOL COMBINING AUGMENTATION DOT
+ 1D16E          ; CI    # MUSICAL SYMBOL COMBINING FLAG-1
+ 1D16F          ; CI    # MUSICAL SYMBOL COMBINING FLAG-2
+ 1D170          ; CI    # MUSICAL SYMBOL COMBINING FLAG-3
+ 1D171          ; CI    # MUSICAL SYMBOL COMBINING FLAG-4
+ 1D172          ; CI    # MUSICAL SYMBOL COMBINING FLAG-5
+ 1D173..1D17A   ; DS    # Musical symbols
+ 1D17B          ; CI    # MUSICAL SYMBOL COMBINING ACCENT
+ 1D17C          ; CI    # MUSICAL SYMBOL COMBINING STACCATO
+ 1D17D          ; CI    # MUSICAL SYMBOL COMBINING TENUTO
+ 1D17E          ; CI    # MUSICAL SYMBOL COMBINING STACCATISSIMO
+ 1D17F          ; CI    # MUSICAL SYMBOL COMBINING MARCATO
+ 1D180          ; CI    # MUSICAL SYMBOL COMBINING MARCATO-STACCATO
+ 1D181          ; CI    # MUSICAL SYMBOL COMBINING ACCENT-STACCATO
+ 1D182          ; CI    # MUSICAL SYMBOL COMBINING LOURE
+ 1D183..1D184   ; DS    # Musical symbols
+ 1D185          ; CI    # MUSICAL SYMBOL COMBINING DOIT
+ 1D186          ; CI    # MUSICAL SYMBOL COMBINING RIP
+ 1D187          ; CI    # MUSICAL SYMBOL COMBINING FLIP
+ 1D188          ; CI    # MUSICAL SYMBOL COMBINING SMEAR
+ 1D189          ; CI    # MUSICAL SYMBOL COMBINING BEND
+ 1D18A          ; CI    # MUSICAL SYMBOL COMBINING DOUBLE TONGUE
+ 1D18B          ; CI    # MUSICAL SYMBOL COMBINING TRIPLE TONGUE
+ 1D18C..1D1A9   ; DS    # Musical symbols
+ 1D1AA          ; CI    # MUSICAL SYMBOL COMBINING DOWN BOW
+ 1D1AB          ; CI    # MUSICAL SYMBOL COMBINING UP BOW
+ 1D1AC          ; CI    # MUSICAL SYMBOL COMBINING HARMONIC
+ 1D1AD          ; CI    # MUSICAL SYMBOL COMBINING SNAP PIZZICATO
+ 1D1AE..1D1F0   ; DS    # Musical symbols
+ 1D200..1D241   ; DSR
+ 1D242          ; CI    # COMBINING GREEK MUSICAL TRISEME
+ 1D243          ; CI    # COMBINING GREEK MUSICAL TETRASEME
+ 1D244          ; CI    # COMBINING GREEK MUSICAL PENTASEME
+ 1D245          ; DSR
+ 1D300..1D356   ; DSR
+ 1D360..1D371   ; DS
+ 1D400..1D454   ; DS
+ 1D456..1D49C   ; DS
+ 1D49E..1D49F   ; DS
+ 1D4A2          ; DS
+ 1D4A5..1D4A6   ; DS
+ 1D4A9..1D4AC   ; DS
+ 1D4AE..1D4B9   ; DS
+ 1D4BB          ; DS
+ 1D4BD..1D4C3   ; DS
+ 1D4C5..1D505   ; DS
+ 1D507..1D50A   ; DS
+ 1D50D..1D514   ; DS
+ 1D516..1D51C   ; DS
+ 1D51E..1D539   ; DS
+ 1D53B..1D53E   ; DS
+ 1D540..1D544   ; DS
+ 1D546          ; DS
+ 1D54A..1D550   ; DS
+ 1D552..1D6A5   ; DS
+ 1D6A8..1D6C0   ; DS
+ 1D6C1          ; DSR
+ 1D6C2..1D6DA   ; DS
+ 1D6DB          ; DSR
+ 1D6DC..1D6FA   ; DS
+ 1D6FB          ; DSR
+ 1D6FC..1D714   ; DS
+ 1D715          ; DSR
+ 1D716..1D734   ; DS
+ 1D735          ; DSR
+ 1D736..1D74E   ; DS
+ 1D74F          ; DSR
+ 1D750..1D76E   ; DS
+ 1D76F          ; DSR
+ 1D770..1D788   ; DS
+ 1D789          ; DSR
+ 1D78A..1D7A8   ; DS
+ 1D7A9          ; DSR
+ 1D7AA..1D7C2   ; DS
+ 1D7C3          ; DSR
+ 1D7C4..1D7CB   ; DS
+ 1D7CE..1D7FF   ; DS
+ 1F000..1F02F   ; DS    # Mahjong Tiles
+ 1F030..1F09F   ; DS    # Domino Tiles
+ 1F0A0..1F0FF   ; DS    # Playing Cards
+ 1F100..1F1FF   ; DS    # Enclosed Alphanumeric Supplement
+ 1F200..1F2FF   ; DS    # Enclosed Ideographic Supplement
+ 1F300..1F5FF   ; DS    # Miscellaneous Symbols And Pictographs
+ 1F600..1F64F   ; DS    # Emoticons
+ 1F680..1F6FF   ; DS    # Transport And Map Symbols
+ 1F700..1F77F   ; DS    # Alchemical Symbols
+ 20000..2A6DF   ; DS    # CJK Unified ideographs extension B
+ 2A700..2B73F   ; DS    # CJK Unified ideographs extension C
+ 2B740..2F7FF   ; DS    # CJK Unified ideographs extension D
+ 2F800..2FA1F   ; DS    # CJK Unified ideographs supplement
+ E0001          ; DR
+ E0020..E007F   ; DR
+ E0100..E01EF   ; CI    # VARIATION SELECTOR-17..VARIATION SELECTOR-256
+ F0000..FFFFD   ; DSR   # Private Use A
+100000..10FFFD  ; DSR   # Private Use B

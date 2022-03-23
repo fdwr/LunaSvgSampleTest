@@ -1,0 +1,776 @@
+﻿# Orientations-5.1.0.txt
+# Date: 2010-09-15, 17:00:00 GMT [MD]
+#
+# DirectWrite Character Database
+# Created by dwayner
+
+# Property: Orientation
+
+# ================================================
+# Generation rules:
+#
+# If Latin, Greek, Cyrillic (and not symbol other, like U+0482 CYRILLIC THOUSANDS SIGN)
+# then stackable, mirrorable, rotatable, and discrete.
+#
+# If symbol other and script common, 
+# then stackable, rotatable, and discrete.
+#
+# If full width (even if Latin), mark as upright (not rotatable) (but still boustrophodonic mirrorable)
+# You can almost make a firm statement that if the codepoint is any of the following scripts, then it remains upright: Bopomofo, Han, Hangul, Hiragana, Katakana, Yi
+# However, there are half-width Katakana and Hangul characters that are not upright (they have a ‘narrow’ decomposition type which can be the key to this exception).
+# For many Common script, you should be able to use the ideographic line breaking class (ID) to determine uprightness. Though, abusing the line breaking class this way seems somewhat unreliable, and not future-proof (but maybe fine in practice).
+# For remaining Common script, you could look for ambiguous ideographic (AI), but there are many symbols that are instead alphabetic (AL) which should be upright. For example, you want to keep the Victory Hand and Latin Cross upright, but they are both Common AL. You also may not want ‘Three Rightward Arrows’ to suddenly become ‘Three Downward Arrows’ (another Common AL). Roman Numerals actually seem like great candidates for stacking (AI), but they are script Latin, so which wins?
+# If any new symbols have mirror pairs, mark as rotatable, mirror paired (or DSR if ideographic).
+#
+# Equivalence Classes:
+#
+# GDI and GDI+ only have two classes:
+#
+# 1. Characters that remain upright.
+# 2. Characters that follow the baseline.
+#
+# For supporting stacked text or the other proposed UAX #9 approach,
+# two classes is insufficient. Though, for the simpler client who only
+# wants the GDI-like approach, all the classes below can be mapped to
+# these two classes.
+#
+# In addition to rotation, the class data contains enough information
+# to distinguish mirroring characters and scripts too. Most mirrorable
+# characters (notably common punctuation) already have a substitution
+# available via character translation; but a handful of scripts also
+# mirror based on direction, and these are unlikely to ever receive
+# (nor should they) mirror codepoints. Instead, these should be
+# mirrored via a graphic transform or font feature, such as rtlm. The
+# data does not specify which should be used.
+#
+# D  - discrete (generally freely rotatable and stackable)
+# C  - cursive/connected (not stackable, as it would look broken)
+# S  - stackable
+# R  - rotatable
+# RV - rotatable via vert feature
+# M  - mirrorable
+# MP - mirrorable via mirror pair
+# B  - baseline following
+# 
+# - Mirrorable characters that have a mirror pair ({ } < >).
+# - Mirrorable characters that have no mirror pair (but achievable for L bidi class via rtlm, or R bidi class via ltrm).
+# - Should always remain upright, regardless of reading direction. These never mirror, regardless of reading direction (Chinese/Korean/Japanese). The only exception may be coercing them bottom-to-top, where it’s more sensible to rotate them 270CW.
+# - Should remain oriented along the baseline following the reading direction. These rotate in vertical and via a transform (90CW for ttb along with Latin, rotated 270CW for btt) (most opening/closing parenthesis)
+# - Should remain oriented along the baseline (rotated 90CW for ttb, rotated 270CW for btt). However, these are historically rotated via font’s ‘vert’ feature rather than a graphic transform. Using a graphic transform to accomplish rotation instead would actually produce quite reasonable for most of these characters (if the font lacked a vert feature), but ideally, the font substitutes different forms with an adjusted width and height (lest the CJK font have a non-square character ratio) and stem width. Note that punctuation such as the ideographic full-stop (U+3002 “。”) are not part of this class. They require the vert feature always to be placed correctly within the square (and are simply grouped with the other kana).
+# 
+# Should (or rather, may) orient to follow the reading direction (Mongolian in RTL, Ogham in RTL?)
+# Mirrorable scripts like Runic/Egyptian hieroglyphics/Mayan that mirror according to reading direction and always stack in top to bottom (not rotate).
+#
+#
+# 000 Arabic              Arab  L=0 R=939 N=60
+# 001 Armenian            Armn  L=89 R=0 N=1
+# 002 Balinese            Bali  L=100 R=0 N=21
+# 003 Bengali             Beng  L=80 R=0 N=11
+# 004 Bopomofo            Bopo  L=65 R=0 N=0
+# 005 Braille             Brai  L=256 R=0 N=0
+# 006 Buginese            Bugi  L=28 R=0 N=2
+# 007 Buhid               Buhd  L=18 R=0 N=2
+# 008 Canadian_Aboriginal Cans  L=630 R=0 N=0
+# 009 Carian              Cari  L=49 R=0 N=0
+# 010 Cham                Cham  L=71 R=0 N=12
+# 011 Cherokee            Cher  L=85 R=0 N=0
+# 012 Common              Zyyy  L=2002 R=4 N=3172
+# 013 Coptic              Copt  L=115 R=0 N=13
+# 014 Cuneiform           Xsux  L=982 R=0 N=0
+# 015 Cypriot             Cprt  L=0 R=55 N=0
+# 016 Cyrillic            Cyrl  L=356 R=0 N=48
+# 017 Deseret             Dsrt  L=80 R=0 N=0
+# 018 Devanagari          Deva  L=91 R=0 N=16
+# 019 Ethiopic            Ethi  L=450 R=0 N=11
+# 020 Georgian            Geor  L=120 R=0 N=0
+# 021 Glagolitic          Glag  L=94 R=0 N=0
+# 022 Gothic              Goth  L=27 R=0 N=0
+# 023 Greek               Grek  L=348 R=0 N=163
+# 024 Gujarati            Gujr  L=69 R=0 N=14
+# 025 Gurmukhi            Guru  L=65 R=0 N=14
+# 026 Han                 Hani  L=71249 R=0 N=329
+# 027 Hangul              Hang  L=11615 R=0 N=5
+# 028 Hanunoo             Hano  L=18 R=0 N=3
+# 029 Hebrew              Hebr  L=0 R=80 N=53
+# 030 Hiragana            Hira  L=89 R=0 N=0
+# 031 Inherited           Zinh  L=0 R=0 N=496
+# 032 Kannada             Knda  L=79 R=0 N=5
+# 033 Katakana            Kana  L=299 R=0 N=0
+# 034 Kayah_Li            Kali  L=40 R=0 N=8
+# 035 Kharoshthi          Khar  L=0 R=52 N=13
+# 036 Khmer               Khmr  L=83 R=0 N=63
+# 037 Lao                 Laoo  L=50 R=0 N=15
+# 038 Latin               Latn  L=1241 R=0 N=0
+# 039 Lepcha              Lepc  L=64 R=0 N=10
+# 040 Limbu               Limb  L=54 R=0 N=12
+# 041 Linear_B            Linb  L=211 R=0 N=0
+# 042 Lycian              Lyci  L=29 R=0 N=0
+# 043 Lydian              Lydi  L=0 R=27 N=0
+# 044 Malayalam           Mlym  L=88 R=0 N=7
+# 045 Mongolian           Mong  L=140 R=0 N=13
+# 046 Myanmar             Mymr  L=129 R=0 N=27
+# 047 New_Tai_Lue         Talu  L=78 R=0 N=2
+# 048 Nko                 Nkoo  L=0 R=46 N=13
+# 049 Ogham               Ogam  L=26 R=0 N=3
+# 050 Ol_Chiki            Olck  L=48 R=0 N=0
+# 051 Old_Italic          Ital  L=35 R=0 N=0
+# 052 Old_Persian         Xpeo  L=50 R=0 N=0
+# 053 Oriya               Orya  L=73 R=0 N=11
+# 054 Osmanya             Osma  L=40 R=0 N=0
+# 055 Phags_Pa            Phag  L=52 R=0 N=4
+# 056 Phoenician          Phnx  L=0 R=26 N=1
+# 057 Rejang              Rjng  L=26 R=0 N=11
+# 058 Runic               Runr  L=78 R=0 N=0
+# 059 Saurashtra          Saur  L=80 R=0 N=1
+# 060 Shavian             Shaw  L=48 R=0 N=0
+# 061 Sinhala             Sinh  L=75 R=0 N=5
+# 062 Sundanese           Sund  L=47 R=0 N=8
+# 063 Syloti_Nagri        Sylo  L=35 R=0 N=9
+# 064 Syriac              Syrc  L=0 R=48 N=29
+# 065 Tagalog             Tglg  L=17 R=0 N=3
+# 066 Tagbanwa            Tagb  L=16 R=0 N=2
+# 067 Tai_Le              Tale  L=35 R=0 N=0
+# 068 Tamil               Taml  L=61 R=0 N=11
+# 069 Telugu              Telu  L=72 R=0 N=21
+# 070 Thaana              Thaa  L=0 R=39 N=11
+# 071 Thai                Thai  L=70 R=0 N=16
+# 072 Tibetan             Tibt  L=126 R=0 N=75
+# 073 Tifinagh            Tfng  L=55 R=0 N=0
+# 074 Ugaritic            Ugar  L=31 R=0 N=0
+# 075 Vai                 Vaii  L=297 R=0 N=3
+# 076 Yi                  Yiii  L=1165 R=0 N=55
+# 077 Unknown             Zzzz  L=1007308 R=2252 N=3838
+#
+#                         IsoSNum IDscrtW IBlockW CnctdW ICursvW 
+# 000 Unknown             999,    false,  false,  false,  false
+# 001 Common              998,    true,   false,  false,  false
+# 002 Inherited           994,    true,   false,  false,  false
+# 003 Arabic              160,    false,  false,  true,   true,
+# 004 Armenian            230,    true,   false,  false,  false
+# 005 Balinese            360,    true,   false,  false,  false
+# 006 Bengali             325,    false,  false,  true,   false  Devanagari-like
+# 007 Bopomofo            285,    true,   true,   false,  false
+# 008 Braille             570,    true,   false,  false,  false
+# 009 Buginese            367,    true,   false,  false,  false
+# 010 Buhid               372,    true,   false,  false,  false
+# 011 Canadian_Aboriginal 440,    true,   false,  false,  false
+# 012 Carian              201,    true,   false,  false,  false
+# 013 Cham                358,    true,   false,  false,  false
+# 014 Cherokee            445,    true,   false,  false,  false
+# 015 Coptic              204,    true,   false,  false,  false
+# 016 Cuneiform           20,     true,   false,  false,  false  seems stackable, probably not mirrorable
+# 017 Cypriot             403,    true,   false,  false,  false
+# 018 Cyrillic            220,    true,   false,  false,  false  Latin-like
+# 019 Deseret             250,    true,   false,  false,  false
+# 020 Devanagari          315,    false,  false,  true,   false  connected
+# 021 Ethiopic            430,    true,   false,  false,  false
+# 022 Georgian            240,    true,   false,  false,  false
+# 023 Glagolitic          225,    true,   false,  false,  false
+# 024 Gothic              206,    true,   false,  false,  false  Latin-like
+# 025 Greek               200,    true,   false,  false,  false  Latin-like
+# 026 Gujarati            320,    true,   false,  false,  false
+# 027 Gurmukhi            310,    false,  false,  true,   false  Devanagari-like
+# 028 Han                 500,    true,   true,   false,  false  ideo
+# 029 Hangul              286,    true,   false,  false,  false  ideo
+# 030 Hanunoo             371,    true,   false,  false,  false
+# 031 Hebrew              125,    true,   false,  false,  false
+# 032 Hiragana            410,    true,   true,   false,  false
+# 033 Kannada             345,    true,   false,  false,  false
+# 034 Katakana            411,    true,   true,   false,  false
+# 035 Kayah_Li            357,    true,   false,  false,  false
+# 036 Kharoshthi          305,    true,   false,  false,  false
+# 037 Khmer               355,    true,   false,  false,  false  Thai like
+# 038 Lao                 356,    true,   false,  false,  false
+# 039 Latin               215,    true,   false,  false,  false
+# 040 Lepcha              335,    true,   false,  false,  false
+# 041 Limbu               336,    true,   false,  false,  false
+# 042 Linear_B            401,    true,   false,  false,  false
+# 043 Lycian              202,    true,   false,  false,  false
+# 044 Lydian              116,    true,   false,  false,  false
+# 045 Malayalam           347,    true,   false,  false,  false
+# 046 Mongolian           145,    false,  false,  true,   true,  rotates
+# 047 Myanmar             350,    true,   false,  false,  false
+# 048 New_Tai_Lue         354,    true,   false,  false,  false
+# 049 Nko                 165,    true,   false,  false,  false
+# 050 Ogham               212,    false,  false,  true,   false
+# 051 Ol_Chiki            261,    true,   false,  false,  false
+# 052 Old_Italic          210,    true,   false,  false,  false
+# 053 Old_Persian         30,     true,   false,  false,  false
+# 054 Oriya               327,    true,   false,  false,  false  Telugu-like (discrete, but varying width)
+# 055 Osmanya             260,    true,   false,  false,  false
+# 056 Phags_Pa            331,    true,   true,   false,  false
+# 057 Phoenician          115,    true,   false,  false,  false
+# 058 Rejang              363,    true,   false,  false,  false
+# 059 Runic               211,    true,   false,  false,  false
+# 060 Saurashtra          344,    true,   false,  false,  false  stackable
+# 061 Shavian             281,    true,   false,  false,  false
+# 062 Sinhala             348,    true,   false,  false,  false
+# 063 Sundanese           362,    true,   false,  false,  false
+# 064 Syloti_Nagri        316,    false,  false,  true,   false  Devanagari-like
+# 065 Syriac              135,    false,  false,  true,   true,  Arabic-like
+# 066 Tagalog             370,    true,   false,  false,  false
+# 067 Tagbanwa            373,    true,   false,  false,  false
+# 068 Tai_Le              353,    true,   false,  false,  false
+# 069 Tamil               346,    true,   false,  false,  false
+# 070 Telugu              340,    true,   false,  false,  false
+# 071 Thaana              170,    true,   false,  false,  false
+# 072 Thai                352,    true,   false,  false,  false
+# 073 Tibetan             330,    true,   false,  false,  false
+# 074 Tifinagh            120,    true,   false,  false,  false
+# 075 Ugaritic            40,     true,   false,  false,  false
+# 076 Vai                 470,    true,   false,  false,  false
+# 077 Yi                  460,    true,   true,   false,  false
+#Meitei Mayek (Meithei, Meetei) Mtei	337  Devanagari-like
+#Visp	280	Visible Speech  Discrete, Stackable, (maybe rotatable, but could change meaning!)
+#http://www.omniglot.com/writing/visiblespeech.htm
+
+
+#Equivalence classes:
+
+
+# RTL connected
+# Arabic                 = 160,	// Arab	Arabic
+# Syriac                 = 135,	// Syrc	Syriac
+
+# RTL stackable
+# Hebrew                 = 125,	// Hebr	Hebrew	Hebrew
+# Nko                    = 165,	// Nkoo	N'Ko
+# Old_Turkic             = 175,	// Orkh	Old Turkic, Orkhon Runic (TTB default is 270CW rather than stacked)
+
+
+# LTR discrete stackable rotatable mirrorable
+# Latin                  = 215,	// Latn	Latin
+# Latin_Fraktur          = 217,	// Latf	Latin (Fraktur variant) *
+# Latin_Gaelic           = 216,	// Latg	Latin (Gaelic variant) *
+# Greek                  = 200,	// Grek	Greek - Latin-like
+# Deseret                = 250,	// Dsrt	Deseret (Mormon)
+# Cyrillic               = 220,	// Cyrl	Cyrillic - Latin-like
+# Cyrillic_Slavonic      = 221,	// Cyrs	Cyrillic (Old Church Slavonic variant) *
+# Gothic                 = 206,	// Goth	Gothic
+# Coptic                 = 204,	// Copt	Coptic
+
+# Runic                  = 211,	// Runr	Runic
+
+# LTR discrete stackable rotatable
+# Thai                   = 352,	// Thai	Thai
+
+# LTR discrete rotatable, not stacked
+# * not reliably stackable because chars are too wide, like U+0D10 ഐ Malayalam letter ai Lo L.
+#   They could be reasonably stacked if the glyphs within clusters were fragmented.
+# Telugu                 = 340,	// Telu	Telugu - too wide to be stackable
+# Malayalam              = 347,	// Mlym	Malayalam	Malayalam
+
+# LTR connected rotatable
+# Bengali                = 325,	// Beng	Bengali
+# Devanagari             = 315,	// Deva	Devanagari (Nagari)
+# Gurmukhi               = 310,	// Guru	Gurmukhi	Gurmukhi
+# Syloti_Nagri           = 316,	// Sylo	Syloti Nagri
+# Meetei_Mayek           = 337,	// Mtei	Meitei Mayek (Meithei, Meetei)
+
+# TTB discrete stackable
+# Han                    = 500,	// Hani	Han	Han (Hanzi, Kanji, Hanja)
+# HanSimplified          = 501,	// Hans	Han (Simplified variant) *
+# HanTraditional         = 502,	// Hant	Han (Traditional variant) *
+# Hiragana               = 410,	// Hira	Hiragana
+# Katakana_Or_Hiragana   = 412,	// Hrkt	Alias for Hiragana + Katakana *
+# Japanese               = 413,	// Jpan	Japanese (alias for Han + Hiragana + Katakana) *
+# Katakana               = 411,	// Kana	Katakana
+# Bopomofo               = 285,	// Bopo	Bopomofo
+# Braille                = 570,	// Brai	Braille
+# Yi                     = 460,	// Yiii	Yi
+# Canadian_Aboriginal    = 440,	// Cans	Unified Canadian Aboriginal Syllabics - keep upright, rotating changes meaning!
+
+# TTB connected rotatable
+# Mongolian              = 145,	// Mong	Mongolian	Mongolian
+# Phags_Pa               = 331,	// Phag	Phags-pa
+
+# TTB/LTR/BTT connected rotatable
+# Ogham                  = 212,	// Ogam	Ogham
+
+# RTL/LTR/TTB discrete stackable mirrorable
+# Egyptian_Hieroglyphs   =  50,	// Egyp	Egyptian hieroglyphs
+# Egyptian_demotic       =  70,	// Egyd	Egyptian demotic * (more cursive, maybe rotatable)
+# Egyptian_hieratic      =  60,	// Egyh	Egyptian hieratic * (TTB legacy before Amenemhat III)
+
+# LTR/RTL(upside down) discrete stackable not-mirrorable
+# Rongorongo             = 620,	// Roro	Rongorongo *
+
+# LTR discrete stackable
+# Visible_Speech         = 280,	// Visp	Visible Speech * (rotation would change meaning!)
+
+
+
+#Unclassified:
+# Imperial_Aramaic       = 124,	// Armi Imperial Aramaic
+# Armenian               = 230,	// Armn	Armenian
+# Avestan                = 134,	// Avst	Avestan
+# Balinese               = 360,	// Bali	Balinese
+# Bamum                  = 435,	// Bamu	Bamum
+# Bassa_Vah              = 259,	// Bass Bassa Vah *
+# Batak                  = 365,	// Batk	Batak
+# Blissymbols            = 550,	// Blis Blissymbols *
+# Brahmi                 = 300,	// Brah	Brahmi
+# Buginese               = 367,	// Bugi	Buginese
+# Buhid                  = 372,	// Buhd	Buhid
+# Chakma                 = 349,	// Cakm	Chakma *
+# Carian                 = 201,	// Cari	Carian
+# Cham                   = 358,	// Cham	Cham
+# Cherokee               = 445,	// Cher	Cherokee
+# Cirth                  = 291,	// Cirt	Cirth *
+# Cypriot                = 403,	// Cprt	Cypriot
+# Duployan               = 755,	// Dupl	Duployan shorthand, Duployan stenography *
+# Elbasan                = 226,	// Elba	Elbasan *
+# Ethiopic               = 430,	// Ethi	Ethiopic
+# Khutsuri               = 241,	// Geok	Khutsuri (Asomtavruli and Nuskhuri) *
+# Georgian               = 240,	// Geor	Georgian (Mkhedruli)
+# Glagolitic             = 225,	// Glag	Glagolitic
+# Grantha                = 343,	// Gran	Grantha *
+# Gujarati               = 320,	// Gujr	Gujarati	Gujarati
+# Hangul                 = 286,	// Hang	Hangul	Hangul (Hangul, Hangeul)
+# Hanunoo                = 371,	// Hano	Hanunoo (Hanunóo)
+# PahawhHmong            = 450,	// Hmng	Pahawh Hmong *
+# Old_Hungarian          = 176,	// Hung	Old Hungarian *
+# Indus                  = 610,	// Inds	Indus (Harappan) *
+# Old_Italic             = 210,	// Ital	Old Italic (Etruscan, Oscan, etc.)
+# Javanese               = 361,	// Java	Javanese
+# Kayah_Li               = 357,	// Kali	Kayah Li
+# Kharoshthi             = 305,	// Khar	Kharoshthi
+# Khmer                  = 355,	// Khmr	Khmer
+# Kannada                = 345,	// Knda	Kannada
+# Korean                 = 287,	// Kore	Korean (alias for Hangul + Han) *
+# Kpelle                 = 436,	// Kpel	Kpelle *
+# Kaithi                 = 317,	// Kthi	Kaithi
+# Tai_Tham               = 351,	// Lana	Tai Tham (Lanna)
+# Lao                    = 356,	// Laoo	Lao
+# Lepcha                 = 335,	// Lepc	Lepcha (Rong)
+# Limbu                  = 336,	// Limb	Limbu
+# Linear_A               = 400,	// Lina	Linear A *
+# Linear_B               = 401,	// Linb	Linear B
+# Lisu                   = 399,	// Lisu	Lisu (Fraser)
+# Loma                   = 437,	// Loma	Loma *
+# Lycian                 = 202,	// Lyci	Lycian
+# Lydian                 = 116,	// Lydi	Lydian
+# Mandaic                = 140,	// Mand	Mandaic, Mandaean
+# Manichaean             = 139,	// Mani	Manichaean *
+# Mayan_Hieroglyphs      = 90,	// Maya	Mayan hieroglyphs *
+# Mende                  = 438,	// Mend	Mende *
+# Meroitic_Cursive       = 101,	// Merc	Meroitic Cursive *
+# Meroitic_Hieroglyphs   = 100,	// Mero	Meroitic Hieroglyphs *
+# Moon                   = 218,	// Moon	Moon (Moon code, Moon script, Moon type) *
+# Myanmar                = 350,	// Mymr	Myanmar (Burmese)
+# Narb                   = 106,	// Narb	Old North Arabian (Ancient North Arabian) *
+# Nbat                   = 159,	// Nbat	Nabataean *
+# Nakhi_Geba             = 420,	// Nkgb	Nakhi Geba ('Na-'KhiGgo-baw, Naxi Geba) *
+# Ol_Chiki               = 261,	// Olck	Ol Chiki (Ol Cemet’, Ol, Santali)
+# Oriya                  = 327,	// Orya	Oriya (Telugu-like, discrete, but varying width)
+# Osmanya                = 260,	// Osma	Osmanya
+# Palmyrene              = 126,	// Palm	Palmyrene *
+# Old_Permic             = 227,	// Perm	Old Permic *
+# Inscriptional_Pahlavi  = 131,	// Phli	Inscriptional Pahlavi
+# Psalter_Pahlavi        = 132,	// Phlp	Psalter Pahlavi *
+# Book_Pahlavi           = 133,	// Phlv	Book Pahlavi *
+# Phoenician             = 115,	// Phnx	Phoenician	Phoenician
+# Miao                   = 282,	// Plrd	Miao (Pollard) *
+# Inscriptional_Parthian = 130,	// Prti	Inscriptional Parthian
+# PrivateUseStart        = 900,	// Qaaa	Reserved for private use (start) *
+# PrivateUseEnd          = 949,	// Qabx	Reserved for private use (end) *
+# Rejang                 = 363,	// Rjng	Rejang (Redjang, Kaganga)
+# Samaritan              = 123,	// Samr	Samaritan	Samaritan
+# Sarati                 = 292,	// Sara	Sarati *
+# Old_South_Arabian      = 105,	// Sarb	Old South Arabian
+# Saurashtra             = 344,	// Saur	Saurashtra
+# Sign_Writing           =  95,	// Sgnw	SignWriting *
+# Shavian                = 281,	// Shaw	Shavian	Shavian (Shaw)
+# Sindhi                 = 318,	// Sind	Sindhi *
+# Sinhala                = 348,	// Sinh	Sinhala
+# Sundanese              = 362,	// Sund	Sundanese
+# Syriac_Estrangelo      = 138,	// Syre	Syriac (Estrangelo variant) *
+# Syriac_Western         = 137,	// Syrj	Syriac (Western variant) *
+# Syriac_Eastern         = 136,	// Syrn	Syriac (Eastern variant) *
+# Tagbanwa               = 373,	// Tagb	Tagbanwa
+# Tai_Le                 = 353,	// Tale	Tai Le
+# New_Tai_Lue            = 354,	// Talu	Tai Lue
+# Tamil                  = 346,	// Taml	Tamil
+# Tai_Viet               = 359,	// Tavt	Tai Viet
+# Tengwar                = 290,	// Teng	Tengwar *
+# Tifinagh               = 120,	// Tfng	Tifinagh (Berber)
+# Tagalog                = 370,	// Tglg	Tagalog (Baybayin, Alibata)
+# Thaana                 = 170,	// Thaa	Thaana
+# Tibetan                = 330,	// Tibt	Tibetan
+# Ugaritic               =  40,	// Ugar	Ugaritic
+# Vai                    = 470,	// Vaii	Vai
+# Warang_Citi            = 262,	// Wara	Warang Citi (Varang Kshiti) *
+# Old_Persian            =  30,	// Xpeo	Old Persian
+# Cuneiform              =  20,	// Xsux	Cuneiform, Sumero-Akkadian
+# Math_notation          = 995,	// Zmth	Mathematical notation *
+# Symbols                = 996,	// Zsym	Symbols *
+
+# Inherited              = 994,	// Zinh	Code for inherited script
+# Unwritten              = 997,	// Zxxx	Code for unwritten documents *
+# Common                 = 998,	// Zyyy	Common	Code for undetermined script
+# Unknown                = 999,	// Zzzz	Unknown	Code for uncoded script
+
+
+
+
+# Use OpenType features (rtlm, ltrm, vert, vrt2)
+# Use character remapping (mirror pairs, vert pairs)
+# Orient arrows to baseline / keep upright (arrows do not mirror)
+
+
+# All code points not explicitly listed for Orientation
+# have the value RC - rotatable/connected
+
+
+# Classes:
+# Latin
+# Thai
+# Arabic
+# Japanese
+# Mongolian
+# Devanagari
+
+
+# DiscreteS: Han, Hangul, Japanese Katakana & Hiragana, Yi, Phags-Pa(?)
+# Stackable, doesn't rotate in TTB, doesn't mirror, goes LTR generally, but occasionally RTL (for single column height wrapped text on signs, or sometimes on the sides of vehicles).
+# This also includes some other scripts that generally rotate, such as Latin full-width characters: U+FF21 FULLWIDTH LATIN CAPITAL LETTER A.
+
+# DiscreteSRM_LTR: Latin, Greek, Cyrillic, also including Gothic, Shavian (maybe U+222B INTEGRAL?)
+# Stackable, rotatable.
+# Although not found today as RTL, these inherit an ancient legacy of mirrored boustrophedon, such that if they were coerced into RTL, each glyph would mirror. The only time you ever see this nowadays is on ambulances, and that's only so that you see it correctly in your mirror.
+
+# DiscreteSR: Cherokee(L), Braille(L), Thai(L), Khmer(L), Cypriot(R), Hebrew(R), Saurashtra(L), Gujarati(L), NKo(R), Sundanese(L)
+# Stackable and rotatable, but does not mirror. Most of the remaining discrete scripts fall in here.
+
+# DiscreteSRM_RTL: NA
+
+# DiscreteSR_LOR: most punctuation
+# This punctuation can either stack or rotate, such as the exclamation mark or commercial at sign. It is direction neutral and does not mirror.
+
+# ConnectedR_LOR: ...
+# Most scripts and any unknown scripts. They are assumed to not mirror and rotate (to keep any necessary glyph connection).
+
+# ConnectedR_LTR: Devanagari, Gurmukhi, Bengali, Malayalam, Telugu, Syloti_Nagri
+# Always rotates, never mirrors or stacks. Rotates CW90 for TTB. Keeps orientation in LTR (rather than rotating upside down). Note that Malayalam and Telugu are not actually 'connected' scripts in that the glyphs actual touch each other, but the writing is left connected along the baseline (otherwise the variable width clusters would look odd stacked). It may be possible to stack them reasonably by stacking individual glyphs rather than whole glyph clusters, but that's brittle.
+
+# ConnectedR_RTL: Arabic, Syriac
+# Always rotates, never mirrors or stacks. Rotates CW270 for TTB (or CW90 for TTB with bidi level odd), CW90 for BTT. Keeps orientation in LTR (rather than rotating upside down).
+
+# ConnectedTTB: Mongolian
+# Always rotates, never mirrors or stacks. Strongly TTB in natural orientation, but rotates CCW in LTR (or validly CW in RTL).
+
+# ConnectedBTT: Ogham
+# Always rotates, never mirrors or stacks. BTT in natural orientation, but curves around to TTB too. LTR is 0CW. RTL is 180CW.
+
+# DiscreteSM_LOR_TTB: Egyptian Hieroglyphics(L), Runic(L), Mayan glyphs, Sabean(R)
+# Stackable, never rotates in TTB, goes left or right, mirrors in RTL-TTB (otherwise would be retrograde reading). Also mirrors horizontally for TTB-RTL (identity for TTB-LTR).
+
+# DiscreteR_LTR: Rongo Rongo (rotating boustrophedon)
+# Default LTR. Rotates 180CW in RTL. Rotates 90CW in TTB, 270CW in BTT (though seems stackable would be valid too).
+# To read a rongo-rongo tablet, you start at the bottom left-hand corner and read along the line. Then you turn the tablet by 180 degrees and begin reading the next line up, again from left to right. At the end of that line, you repeat the 180-degree turn, and so on.)
+
+# SymbolRMP_LTR: Opening/closing symbols
+# These should rotate in both TTB rotating and TTB stacked layout, such as the parenthesis U+0028. They also mirror, but via a character mirror pair (not via a font feature or transform, though, those would work too).
+
+# SymbolRF: Ideographic opening/closing symbols
+# These should also rotate, but they are generally rotated via the font's 'vert' feature. Thus the orientation from layout's point of view is actually 0CW (otherwise double rotation would occur). If the font lacked a vert feature for that character, the character could be reasonably rotated via a graphic transform (the stem width and placement will less ideal than if the vert feature existed, but it will be an improvement over remaining upright). Examples include U+3014 LEFT TORTOISE SHELL BRACKET and U+30FC KATAKANA-HIRAGANA PROLONGED SOUND MARK.
+
+# Arrow_SMR: Arrows
+# These can technically always remain fixed to the original direction, mirror, or rotate to follow the baseline. The default is to remain upright (0CW), regardless of reading direction.
+
+# Block:
+
+# Boxes:
+
+# Any: Object replacement character
+# This character can accomodate any reading direction and glyph orientation.
+
+
+
+# DS    - discrete stackable (ideographic upright, stacked, never mirrored, like Chinese)
+#         S LTR={L0 R0 T0 B270,180}
+# DSR*  - rotatable and stackable discrete (Latin/Hebrew)
+#         RS LTR={L0 R90,180 T0 B270} RTL={L270,180 R0 T0 B90}
+# CR    - rotating connected (Devanagari/Arabic/Ogham?)
+#         RC LTR={L0 R180 T90 B270} RTL={L180 R0 T270 B90}
+# CRU   - rotating connected/can rotate upside-down 180 (Mongolian/Rongo Rongo)
+#         RUC LTR={L0 R180 T90 B270}
+# DRU   - rotating discrete/can rotate upside-down 180 (Rongo Rongo)
+#         RU LTR={L0 R180 T90 B270}
+# DSM   - stackable and mirrorable discrete (Egyptian hieroglyphs/Mayan/Runic/(rarely)Orkhon)
+#         SM {L0 RM0 TL0 TRM0}
+# ARNW  - narrow width arrows
+#         SRARW (do not mirror, though, technically could)
+# ADSR  - half-width arrows
+#         SRFARW
+# ADS   - full-width arrows (maintain orientation regardless of text direction)
+#
+# DRMP  - rotated punctuation/symbol (rotated in stacked TTB, but has no vert feature, like "(")
+#         R (narrow-width)
+# DRFMP - full width rotating punctuation (typically stay upright and rotate via a 'vert' feature)
+#         RF (full-width)
+# DRF   - full width rotating punctuation (typically stay upright and rotate via a 'vert' feature)
+#         RF (full-width)
+# BOX   - Box drawing shapes
+#         SRBOX
+# BLK   - Block elements
+#         SRBLK (L0 R0 T0 B0)
+# NO    - neutral orientation
+#         SMR
+# UNK   - U+221A SQUARE ROOT? √ mirrorable (transform only), maybe not stackable?
+# DSRML - stackable gfx mirrorable rotatable discrete, strong L (Latin/Greek/Cyrillic)
+#
+# All combining marks adopt the orientation of their base character.
+# Note they are not explicitly marked here. Instead, combining marks
+# are checked using general property Mn.
+
+
+# First  Last   Name                                                GDI+ GDI DWrite
+# 0x1100 0x11FF Hangul Jamo                                         y y y Hangul
+# 0x2000 0x206F General Punctuation                                 . y mix Common various
+# 0x2100 0x214F Letterlike Symbols                                  . y mix Common various
+# 0x2190 0x21FF Arrows                                              . . y Common AL (think we should keep them upright)
+# 0x2460 0x24FF Enclosed Alphanumerics                              y y y Common AI
+# 0x25A0 0x25FF Geometric Shapes                                    y y y Common AI
+# 0x2600 0x26FF Miscellaneous Symbols                               y y y Common AL
+# 0x2700 0x27FF Dingbats (supplemental arrows, misc math symbols)   y y y Common AL
+# 0x2E80 0x2FDF CJK radicals supplement, Kangxi radicals            y . y Han ID
+# 0x2FF0 0x2FFF Ideographic description characters                  . . y Common ID
+# 0x3000 0x3000 CJK Symbols and Punctuation (ideographic space)     y . y Common ID
+# 0x3001 0x303F CJK Symbols and Punctuation                         y y y Common ID
+# 0x3040 0x309F Hiragana                                            y y y Hiragana ID, NS, CM
+# 0x30A0 0x30FF Katakana                                            y y y Katakana ID, NS
+# 0x3100 0x312F Bopomofo                                            y y y Bopomofo ID
+# 0x3130 0x318F Hangul Compatibility Jamo                           y y y Hangul ID
+# 0x3190 0x319F Kanbun (CJK Miscellaneous)                          y y y Common ID
+# 0x31A0 0x31BF Bopomofo Extended                                   y . y Bopomofo ID
+# 0x31C0 0x31EF CJK Strokes                                         . . y Common ID
+# 0x31F0 0x31FF Katakana Phonetic Extensions                        . y y Katakana NS
+# 0x3200 0x32FF Enclosed CJK Letters & Months                       y y y Hangul ID
+# 0x3300 0x33FF CJK Compatibility                                   y y y Katakana, Common ID
+# 0x3400 0x4DFF ExtA range                                          y y y Han ID
+# 0x4E00 0x9FFF CJK Unified Ideographs                              y y y Han ID
+# 0xA000 0xA48F Yi Syllables                                        y y y Yi ID
+# 0xA490 0xA4CF Yi Radicals                                         y y y Yi ID
+# 0xAC00 0xD7A3 Hangul (Korean)                                     y y y Hangul H1,H2,H3
+# 0xD840 0xD8BF High surrogates for planes 2,3                      n?. ? Unknown XX (doesn't matter)
+# 0xE000 0xF8FF Private Use Area (PUA) code                         ? y ? Unknown XX
+# 0xF900 0xFAFF CJK Compatibility Ideographs                        y y y Han ID
+# 0xFE10 0xFE1F Presentation vertical forms                         . . y Common EX,IS,OP,CL
+# 0xFE30 0xFE4F CJK Compatibility forms                             y y y Common ID,OP,CL
+# 0xFF00 0xFF00 Fullwidth forms (reserved point)                    y . ? Unknown XX
+# 0xFF01 0xFF5F Fullwidth forms                                     y y y Common various
+# 0xFF60 0xFF60 Fullwidth forms (right white parenthesis)           . y y Common CL
+# 0xFF61 0xFFDF Halfwidth CJK (excluded)                            . . n Katakana, Common various
+# 0xFFE0 0xFFEE Fullwidth and halfwidth forms                       y y y Common various
+# 0xFFEF 0xFFEF Fullwidth and halfwidth forms (reserved point)      y . ok Unknown XX
+
+# From Excel, these rotate in stacked mode
+# ()<>[]{}‐―‥…←↑→↓∥、。〈〉《》「」『』【】〓〔〕〖〗〘〙〚〛ー﹙﹚﹛﹜﹝﹞（）＝［］＿｛｜｝～｢｣ｰ￣ 
+#
+# 0x0028U, // LEFT PARENTHESIS
+# 0x0029U, // RIGHT PARENTHESIS
+# 0x003cU, // LESS-THAN SIGN
+# 0x003eU, // GREATER-THAN SIGN
+# 0x005bU, // LEFT SQUARE BRACKET
+# 0x005dU, // RIGHT SQUARE BRACKET
+# 0x007bU, // LEFT CURLY BRACKET
+# 0x007dU, // RIGHT CURLY BRACKET
+# 
+# 0x2010U, // HYPHEN
+# 0x2015U, // HORIZONTAL BAR
+# 0x2025U, // TWO DOT LEADER
+# 0x2026U, // HORIZONTAL ELLIPSIS
+# 0x2190U, // LEFTWARDS ARROW
+# 0x2191U, // UPWARDS ARROW
+# 0x2192U, // RIGHTWARDS ARROW
+# 0x2193U, // DOWNWARDS ARROW
+# 0x2225U, // PARALLEL TO (double vertical line)
+# 
+# 0x3001U, // IDEOGRAPHIC COMMA
+# 0x3002U, // IDEOGRAPHIC FULL STOP
+# 
+# 0x3008U, // LEFT ANGLE BRACKET
+# 0x3009U, // RIGHT ANGLE BRACKET
+# 0x300aU, // LEFT DOUBLE ANGLE BRACKET
+# 0x300bU, // RIGHT DOUBLE ANGLE BRACKET
+# 0x300cU, // LEFT CORNER BRACKET
+# 0x300dU, // RIGHT CORNER BRACKET
+# 0x300eU, // LEFT WHITE CORNER BRACKET
+# 0x300fU, // RIGHT WHITE CORNER BRACKET
+# 0x3010U, // LEFT BLACK LENTICULAR BRACKET
+# 0x3011U, // RIGHT BLACK LENTICULAR BRACKET
+# 0x3013U, // GETA MARK
+# 0x3014U, // LEFT TORTOISE SHELL BRACKET
+# 0x3015U, // RIGHT TORTOISE SHELL BRACKET
+# 0x3016U, // LEFT WHITE LENTICULAR BRACKET
+# 0x3017U, // RIGHT WHITE LENTICULAR BRACKET
+# 0x3018U, // LEFT WHITE TORTOISE SHELL BRACKET
+# 0x3019U, // RIGHT WHITE TORTOISE SHELL BRACKET
+# 0x301aU, // LEFT WHITE SQUARE BRACKET
+# 0x301bU, // RIGHT WHITE SQUARE BRACKET
+# 0x30fcU, // KATAKANA-HIRAGANA PROLONGED SOUND MARK
+# 
+# 0xfe59U, // SMALL LEFT PARENTHESIS
+# 0xfe5aU, // SMALL RIGHT PARENTHESIS
+# 0xfe5bU, // SMALL LEFT CURLY BRACKET
+# 0xfe5cU, // SMALL RIGHT CURLY BRACKET
+# 0xfe5dU, // SMALL LEFT TORTOISE BRACKET
+# 0xfe5eU, // SMALL RIGHT TORTOISE BRACKET
+# 
+# 0xff08U, // FULLWIDTH LEFT PARENTHESIS
+# 0xff09U, // FULLWIDTH RIGHT PARENTHESIS
+# 0xff1dU, // FULLWIDTH EQUALS SIGN
+# 0xff3bU, // FULLWIDTH LEFT SQUARE BRACKET
+# 0xff3dU, // FULLWIDTH RIGHT SQUARE BRACKET
+# 0xff3fU, // FULLWIDTH LOW LINE
+# 0xff5bU, // FULLWIDTH LEFT CURLY BRACKET
+# 0xff5cU, // FULLWIDTH VERTICAL LINE
+# 0xff5dU, // FULLWIDTH RIGHT CURLY BRACKET
+# 0xff5eU, // FULLWIDTH TILDE
+# 0xff62U, // HALFWIDTH LEFT CORNER BRACKET
+# 0xff63U, // HALFWIDTH RIGHT CORNER BRACKET
+# 0xff70U, // HALFWIDTH KATAKANA-HIRAGANA PROLONGED SOUND MARK
+# 0xffe3U, // FULL WIDTH MACRON
+
+
+0000..0020    ; DR    # Control characters
+007F..00A0    ; DR    # Control
+
+0028          ; DRMP  # LEFT PARENTHESIS
+0029          ; DRMP  # RIGHT PARENTHESIS
+003C          ; DRMP  # LESS-THAN SIGN
+003E          ; DRMP  # GREATER-THAN SIGN
+005B          ; DRMP  # LEFT SQUARE BRACKET
+005D          ; DRMP  # RIGHT SQUARE BRACKET
+007B          ; DRMP  # LEFT CURLY BRACKET
+007D          ; DRMP  # RIGHT CURLY BRACKET
+
+0020..007E    ; DSR   # ASCII todo:
+0041..005A    ; DSRML # LATIN CAPITAL LETTER A..LATIN CAPITAL LETTER Z
+0061..007A    ; DSRML # LATIN SMALL LETTER A..LATIN SMALL LETTER Z
+00AA          ; DSRML # FEMININE ORDINAL INDICATOR
+00B5          ; DSRML # MICRO SIGN
+00BA          ; DSRML # MASCULINE ORDINAL INDICATOR
+00C0..00D6    ; DSRML # LATIN CAPITAL LETTER A WITH GRAVE..LATIN CAPITAL LETTER O WITH DIAERESIS
+00D8..00F6    ; DSRML # LATIN CAPITAL LETTER O WITH STROKE..LATIN SMALL LETTER O WITH DIAERESIS
+00F8..01BA    ; DSRML # LATIN SMALL LETTER O WITH STROKE..LATIN SMALL LETTER EZH WITH TAIL
+01BB          ; DSRML # LATIN LETTER TWO WITH STROKE
+01BC..01BF    ; DSRML # LATIN CAPITAL LETTER TONE FIVE..LATIN LETTER WYNN
+01C0..01C3    ; DSRML # LATIN LETTER DENTAL CLICK..LATIN LETTER RETROFLEX CLICK
+01C4..0293    ; DSRML # LATIN CAPITAL LETTER DZ WITH CARON..LATIN SMALL LETTER EZH WITH CURL
+0294          ; DSRML # LATIN LETTER GLOTTAL STOP
+0295..02AF    ; DSRML # LATIN LETTER PHARYNGEAL VOICED FRICATIVE..LATIN SMALL LETTER TURNED H WITH FISHHOOK AND TAIL
+02B0..02B8    ; DSRML # MODIFIER LETTER SMALL H..MODIFIER LETTER SMALL Y
+02BB..02C1    ; DSRML # MODIFIER LETTER TURNED COMMA..MODIFIER LETTER REVERSED GLOTTAL STOP
+02D0..02D1    ; DSRML # MODIFIER LETTER TRIANGULAR COLON..MODIFIER LETTER HALF TRIANGULAR COLON
+02E0..02E4    ; DSRML # MODIFIER LETTER SMALL GAMMA..MODIFIER LETTER SMALL REVERSED GLOTTAL STOP
+02EE          ; DSRML # MODIFIER LETTER DOUBLE APOSTROPHE
+0300..036F    ; CI    # Combining diacritical marks
+0370..0373    ; DSRML # GREEK CAPITAL LETTER HETA..GREEK SMALL LETTER ARCHAIC SAMPI
+0376..0377    ; DSRML # GREEK CAPITAL LETTER PAMPHYLIAN DIGAMMA..GREEK SMALL LETTER PAMPHYLIAN DIGAMMA
+037A          ; DSRML # GREEK YPOGEGRAMMENI
+037B..037D    ; DSRML # GREEK SMALL REVERSED LUNATE SIGMA SYMBOL..GREEK SMALL REVERSED DOTTED LUNATE SIGMA SYMBOL
+0386          ; DSRML # GREEK CAPITAL LETTER ALPHA WITH TONOS
+0388..038A    ; DSRML # GREEK CAPITAL LETTER EPSILON WITH TONOS..GREEK CAPITAL LETTER IOTA WITH TONOS
+038C          ; DSRML # GREEK CAPITAL LETTER OMICRON WITH TONOS
+038E..03A1    ; DSRML # GREEK CAPITAL LETTER UPSILON WITH TONOS..GREEK CAPITAL LETTER RHO
+03A3..03F5    ; DSRML # GREEK CAPITAL LETTER SIGMA..GREEK LUNATE EPSILON SYMBOL
+03F7..0481    ; DSRML # GREEK CAPITAL LETTER SHO..CYRILLIC SMALL LETTER KOPPA
+0482          ; DSR   # CYRILLIC THOUSANDS SIGN
+048A..0525    ; DSRML # L& [156] CYRILLIC CAPITAL LETTER SHORT I WITH TAIL..CYRILLIC SMALL LETTER PE WITH DESCENDER
+
+0900..097F	  ; CRL   # Devanagari
+
+0590..05FF    ; DSRR  # Hebrew
+0600..06FF    ; CRR   # Arabic
+0700..074F    ; CRR   # Syriac
+0750..077F    ; CRR   # Arabic supplement
+
+1100..11FF    ; DS    # Hangul Jamo (Hangul)
+16A0..16FF    ; DSRM  # Runic (no strong vertical directionality, as shown on the Stentoften Stone, but LTR)
+1800..18AF    ; CRU   # Mongolian block
+
+# General Punctuation (Common various)
+2000..200F    ; DR    # Spaces
+2010..2015    ; DR    # hyphens
+2016..2017    ; DSR   # double vertical and low line
+2018..201F    ; DSR   # quotation marks
+2020..2027    ; DSR   # General Punctuation (Common various)
+2028          ; DR    # LINE SEPARATOR
+2029          ; DR    # PARAGRAPH SEPARATOR
+202A..202F    ; DR    # U+202A LEFT-TO-RIGHT EMBEDDING..U+202F NARROW NO-BREAK SPACE
+2030..2038    ; DS    # General Punctuation (Common various)
+2039..203A    ; DR    # U+2039 SINGLE LEFT and RIGHT POINTING ANGLE QUOTATION MARK
+203B..203D    ; DSR   # General Punctuation (Common various) *confirm
+203E..2041    ; DR    # undertie, overline, caret insertion...
+2042..2043    ; DS    # U+2042 ASTERISM, U+2043 HYPHEN BULLET
+2044          ; DSR   # U+2044 FRACTION SLASH
+2045..2046    ; DR    # U+2045 LEFT SQUARE BRACKET WITH QUILL, U+2046 RIGHT SQUARE BRACKET WITH QUILL
+2047..206F    ; DS    # General Punctuation (Common various) *confirm
+2100..214F    ; DS    # Letterlike Symbols (Common various) *confirm
+
+2190..21FF    ; ADSR  # Arrows (Common AL)
+2460..24FF    ; DS    # Enclosed Alphanumerics (Common AI)
+2500..257F    ; BOX   # Box drawing shapes (upright, rotatable via font entry or mirroring table)
+2580..259F    ; BLK   # Block elements
+25A0..25FF    ; DS    # Geometric Shapes (Common AI)
+2600..26FF    ; DS    # Miscellaneous Symbols (Common AL)
+2700..27FF    ; DS    # Dingbats (supplemental arrows, misc math symbols) (Common AL)
+2E80..2FDF    ; DS    # CJK radicals supplement, Kangxi radicals (Han ID)
+2FF0..2FFF    ; DS    # Ideographic description characters (Common ID)
+3000..3000    ; DS    # CJK Symbols and Punctuation (ideographic space) (Common ID)
+3001..303F    ; DS    # CJK Symbols and Punctuation (Common ID)
+3040..309F    ; DS    # Hiragana (Hiragana ID, NS, CM)
+30A0..30FF    ; DS    # Katakana (Katakana ID, NS)
+3100..312F    ; DS    # Bopomofo (Bopomofo ID)
+3130..318F    ; DS    # Hangul Compatibility Jamo (Hangul ID)
+3190..319F    ; DS    # Kanbun (CJK Miscellaneous) (Common ID)
+31A0..31BF    ; DS    # Bopomofo Extended (Bopomofo ID)
+31C0..31EF    ; DS    # CJK Strokes (Common ID)
+31F0..31FF    ; DS    # Katakana Phonetic Extensions (Katakana NS)
+3200..32FF    ; DS    # Enclosed CJK Letters & Months (Hangul ID)
+3300..33FF    ; DS    # CJK Compatibility (Katakana, Common ID)
+3400..4DFF    ; DS    # ExtA range (Han ID)
+4E00..9FFF    ; DS    # CJK Unified Ideographs (Han ID)
+A000..A48F    ; DS    # Yi Syllables (Yi ID)
+A490..A4CF    ; DS    # Yi Radicals (Yi ID)
+A840..A87F    ; DR    # Phags-Pa (cursively ligation, no stacking)
+AC00..D7A3    ; DS    # Hangul (Korean) (Hangul H1,H2,H3)
+D800..DFFF    ; DSR   # Surrogates
+E000..F8FF    ; DS    # Private Use Area (PUA) code
+# FB21 todo: Hebrew presentation forms
+
+F900..FAFF    ; DS    # CJK Compatibility Ideographs (Han ID)
+FE10..FE1F    ; DS    # Presentation vertical forms (Common EX,IS,OP,CL)
+FE30..FE4F    ; DS    # CJK Compatibility forms (Common ID,OP,CL)
+
+# Fullwidth forms (Common various)
+FF01..FF07    ; DS    # ！＂＃＄％＆＇
+FF08..FF09    ; DRFMP # （） FULLWIDTH PARENTHESIS
+FF0A..FF0C    ; DS    # ＊＋，－．／０..９：；＜
+FF0D          ; DRF   # ＝ FULLWIDTH EQUALS SIGN
+FF0E..FF3A    ; DS    # ＞？＠Ａ..Ｚ
+FF3B          ; DRFMP # ［ FULLWIDTH LEFT SQUARE BRACKET
+FF3C          ; DS    # ＼ FULLWIDTH REVERSE SOLIDUS
+FF3D          ; DRFMP # ］ FULLWIDTH RIGHT SQUARE BRACKET
+FF3E          ; DS    # ＾ FULLWIDTH CIRCUMFLEX ACCENT
+FF3F          ; DRF   # ＿ FULLWIDTH LOW LINE
+FF40..FF5A    ; DS    # ｀ａ..ｚ
+FF5B..FF60    ; DRF   # ｜｝～｟｠｛
+FF61..FF6F    ; DSR   # Halfwidth CJK (Katakana, Common various)
+FF70          ; RP    # HALFWIDTH KATAKANA-HIRAGANA PROLONGED SOUND MARK (from Excel)
+FF71..FFDF    ; DSR   # Halfwidth CJK (Katakana, Common various)
+FFE0..FFE6    ; DS    # ￠￡￢￣￤￥￦
+FFE7          ; DS    # reserved
+FFE8          ; DS    # ￨ HALFWIDTH FORMS LIGHT VERTICAL
+FFE9..FFEC    ; ADSR  # ￩￪￫￬  halfwidth arrows
+FFED..FFEE    ; DS    # ￭￮
+FFFC..FFFD    ; NO    # ￼�
+
+20000..2A6DF  ; DS    # CJK Unified ideographs extension B
+2A700..2B73F  ; DS    # CJK Unified ideographs extension C
+2B740..2F7FF  ; DS    # CJK Unified ideographs extension D
+2F800..2FA1F  ; DS    # CJK Unified ideographs supplement
+
+13000..1342E  ; DSM # Egyptian hieroglyph block

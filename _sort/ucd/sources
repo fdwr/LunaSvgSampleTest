@@ -1,0 +1,22 @@
+TARGETNAME=ucdtool
+TARGETTYPE=PROGRAM
+UMTYPE=console
+
+# This is actually tool code but it falls into the TEST_CODE bucket for publishing purposes.
+TEST_CODE=1
+
+_NT_TARGET_VERSION=$(_NT_TARGET_VERSION_WIN7)
+
+USE_MSVCRT=1
+USE_NATIVE_EH=1
+USE_STL=1
+
+MSC_OPTIMIZATION=/Od
+MSC_WARNING_LEVEL=/W4
+
+SOURCES=\
+	ucdtool.cpp
+
+INCLUDES=\
+	$(INCLUDES);		\
+	$(CORETEXT_PATH)\Data
