@@ -160,7 +160,9 @@ ATOM RegisterMainWindowClass(HINSTANCE instanceHandle);
 BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow);
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+void ClearSvgList();
 void LoadSvgFile(const wchar_t* filePath);
+void AppendSingleSvgFile(wchar_t const* filePath);
 void RedrawSvgLater(HWND hwnd);
 void RedrawSvg(HWND hwnd);
 
@@ -176,15 +178,8 @@ int APIENTRY wWinMain(
     UNREFERENCED_PARAMETER(commandLine);
 
     // Parse parameters.
-    wchar_t fileName[MAX_PATH];
-    fileName[0] = 0;
     int argumentCount = 0;
     wchar_t** arguments = CommandLineToArgvW(GetCommandLine(), &argumentCount);
-    if (arguments != nullptr && argumentCount > 1)
-    {
-        wcsncpy_s(fileName, arguments[1], wcslen(arguments[1]));
-        LocalFree(arguments);
-    }
 
     // Initialize global strings.
     LoadStringW(instanceHandle, IDS_APP_TITLE, g_applicationTitle, MAX_LOADSTRING);
@@ -197,12 +192,17 @@ int APIENTRY wWinMain(
         return FALSE;
     }
 
-    // Load the file name if given.
-    if (fileName[0])
+    // Load the file names if given.
+    if (argumentCount > 1)
     {
-        LoadSvgFile(fileName);
+        ClearSvgList();
+        for (int argumentIndex = 1; argumentIndex < argumentCount; ++argumentIndex)
+        {
+            AppendSingleSvgFile(arguments[argumentIndex]);
+        }
         RedrawSvgLater(g_windowHandle);
     }
+    LocalFree(arguments);
 
     HACCEL hAccelTable = LoadAccelerators(instanceHandle, MAKEINTRESOURCE(IDC_LUNASVGTEST));
 
@@ -731,13 +731,13 @@ void ClearSvgList()
 }
 
 
-void AppendSingleSvgFile(wchar_t const* fileName)
+void AppendSingleSvgFile(wchar_t const* filePath)
 {
-    auto document = lunasvg::Document::loadFromFile(fileName);
+    auto document = lunasvg::Document::loadFromFile(filePath);
     if (document)
     {
         g_svgDocuments.push_back(std::move(document));
-        g_filenameList.push_back(fileName);
+        g_filenameList.push_back(filePath);
     }
     RealignBitmapOffsetsLater();
 }
