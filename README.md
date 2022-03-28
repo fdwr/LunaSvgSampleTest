@@ -3,7 +3,7 @@
 Dwayne Robinson 2022-03-27
 
 ## What
-Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and also to see if I can extend it to play around with SVG grid fitting possibilities for crisper toolbar icons.
+Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and also to (someday) experiment with various SVG extensions for grid-fitting icons to get crisper toolbar icons.
 
 ![Image of LunaSvgTest](SvgLunaTestScreenshot.png)
 
@@ -20,7 +20,7 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 - Opens simple non-animated SVG's. I've seen a few fail to load in LunaSvg if they use other units (like "1em"), but otherwise every one I've tried load.
 - Multiple sizes: fixed size, natural size, window size, waterfall display
 - Pixel zoom: to see the actual rendering up close
-- Grid display
+- Grid display (
 
 ## Related
 

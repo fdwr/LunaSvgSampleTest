@@ -76,8 +76,6 @@ bool g_realignBitmap = false; // Set true after loading new files to recenter/re
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
-const uint32_t g_waterfallBitmapWidth = 832;
-const uint32_t g_waterfallBitmapHeight = 400;
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
