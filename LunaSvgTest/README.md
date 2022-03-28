@@ -3,7 +3,9 @@
 Dwayne Robinson 2022-03-21
 
 ## What
-Just a test of LunaSvg to see how it works and if I can extend it (it's wonderfully stand-alone with no large framework dependencies like Skia or Cairo), making it very easy to integrate into an existing project that has a memory bitmap.
+Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (it's wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and if I can extend it to play around with SVG grid fitting possibilities.
+
+![Image of LunaSvgTest](SvgLunaTestScreenshot.png)
 
 ## Usage
 - **OS**: Windows 7+
@@ -12,10 +14,10 @@ Just a test of LunaSvg to see how it works and if I can extend it (it's wonderfu
 - **License**: [License.txt](License.txt) tldr: Do pretty much whatever you want with the binary at no cost, except the icons are copyrighted by others.
 
 ## Building
-- Open the CMake project with Visual Studio (confusingly you have to open the project via "Open Folder" instead of Open Project).
+- Open the CMake project with Visual Studio (confusingly to open a CMake project, you have to open the project via "Open Folder" instead of "Open Project").
 
 ## Features
-- Open simple non-animated SVG's. I've seen a few fail to load in LunaSvg if they use other units (like "1em"), but otherwise every one I've tried load.
+- Opens simple non-animated SVG's. I've seen a few fail to load in LunaSvg if they use other units (like "1em"), but otherwise every one I've tried load.
 - Multiple sizes: fixed size, natural size, window size, waterfall display
 - Pixel zoom: to see the actual rendering up close
 - Grid display
