@@ -1093,7 +1093,7 @@ void RedrawSvg(RECT const& clientRect)
     }
 
     RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
-    GenerateCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
+    GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
     LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
     RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
     g_bitmap.reset(boundingRect.right, boundingRect.bottom);
