@@ -8,9 +8,23 @@
 constexpr size_t MAX_LOADSTRING = 100;
 HINSTANCE g_instanceHandle;                     // Current process base memory address.
 HWND g_windowHandle;
+HWND g_toolTipWindowHandle;
 WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
 WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
+
+TOOLINFO g_toolTipInfo =
+{
+    .cbSize = sizeof(TOOLINFO),
+    .uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT | TTF_ABSOLUTE, //|TTF_CENTERTIP,
+    .hwnd = nullptr, // containing hwnd
+    .uId = 0, // tool id/handle
+    .rect = {0,0,4096,4096},
+    .hinst = nullptr, // instance handle
+    .lpszText = const_cast<LPWSTR>(L""), // updated text
+    .lParam = 0,
+    .lpReserved = nullptr,
+};
 
 enum class BitmapSizingDisplay
 {
@@ -74,6 +88,17 @@ lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
 bool g_svgNeedsRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
 bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
+std::wstring g_errorMessage;
+const std::wstring_view g_defaultMessage =
+    L"No SVG loaded\r\n"
+    L"\r\n"
+    L"Use File/Open or drag&drop filenames to load SVG documents.\r\n"
+    L"\r\n"
+    L"mouse wheel = pan vertically\r\n"
+    L"mouse wheel + shift = pan horizontally\r\n"
+    L"mouse wheel + ctrl = zoom\r\n"
+    L"middle mouse drag = pan\r\n"
+    L"arrow keys/home/end/pgup/pgdn = pan\r\n";
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
@@ -241,6 +266,64 @@ ATOM RegisterMainWindowClass(HINSTANCE instanceHandle)
     return RegisterClassExW(&wcex);
 }
 
+
+// Create singleton tooltip used for error messages.
+void CreateToolTip(HINSTANCE instanceHandle, HWND parentHwnd)
+{
+    g_toolTipInfo.hinst = instanceHandle;
+    g_toolTipInfo.hwnd = parentHwnd;
+
+    g_toolTipWindowHandle = CreateWindowEx(
+        0,
+        TOOLTIPS_CLASS,
+        NULL,
+        WS_POPUP|TTS_NOANIMATE|TTS_NOFADE|TTS_NOPREFIX,//|TTS_BALLOON|TTS_ALWAYSTIP
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        nullptr,
+        nullptr,
+        instanceHandle,
+        0
+    );
+
+    SetWindowPos(g_toolTipWindowHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
+    SendMessage(g_toolTipWindowHandle, TTM_ADDTOOL, 0, (LPARAM)&g_toolTipInfo);
+}
+
+
+void ShowToolTip(
+    const wchar_t* message,
+    int32_t toolTipX = 10,
+    int32_t toolTipY = 10
+    )
+{
+    // Adjust the client-relative coordinates to screen space.
+    POINT toolTipPoint = { toolTipX, toolTipY };
+    ClientToScreen(g_windowHandle, &toolTipPoint);
+    // auto {toolTipScreenX, toolTipScreenY} = toolTipPoint; // Why C++, why? Be self-consistent, using curly braces.
+    auto [toolTipScreenX, toolTipScreenY] = toolTipPoint;
+
+    //SendMessage(TtHwnd, TTM_SETMAXTIPWIDTH, 0, sz.cx); // No wrapping. Just let it be as wide as it needs to be.
+    g_toolTipInfo.lpszText = const_cast<LPWSTR>(message);
+    SendMessage(g_toolTipWindowHandle, TTM_UPDATETIPTEXT, 0, (LPARAM)&g_toolTipInfo);
+    SendMessage(g_toolTipWindowHandle, TTM_TRACKPOSITION, 0, (LPARAM)(toolTipScreenX | toolTipScreenY << 16)); // reposition one last time
+    SendMessage(g_toolTipWindowHandle, TTM_TRACKACTIVATE, (WPARAM)true, (LPARAM)&g_toolTipInfo); // now show it so it calcs size
+}
+
+
+void HideToolTip()
+{
+    SendMessage(g_toolTipWindowHandle, TTM_TRACKACTIVATE, (WPARAM)false, (LPARAM)&g_toolTipInfo); // now show it so it calcs size
+}
+
+
+/*TIMERPROC*/void CALLBACK HideToolTipTimerProc(HWND hwnd, UINT uElapse, UINT_PTR uIDEvent, DWORD dwTime)
+{
+    KillTimer(hwnd, uIDEvent);
+    HideToolTip();
+}
+
+
 // Save the process base memory address in a global variable, and
 // create the main program window.
 BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow)
@@ -272,6 +355,8 @@ BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow)
 
     ShowWindow(hwnd, commandShow);
     UpdateWindow(hwnd);
+
+    CreateToolTip(instanceHandle, hwnd);
 
     return TRUE;
 }
@@ -726,6 +811,7 @@ void ClearSvgList()
     g_svgDocuments.clear();
     g_filenameList.clear();
     g_bitmap = lunasvg::Bitmap();
+    g_errorMessage.clear();
 }
 
 
@@ -736,6 +822,12 @@ void AppendSingleSvgFile(wchar_t const* filePath)
     {
         g_svgDocuments.push_back(std::move(document));
         g_filenameList.push_back(filePath);
+    }
+    else
+    {
+        wchar_t errorMessage[1000];
+        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s\n", filePath);
+        g_errorMessage += errorMessage;
     }
     RealignBitmapOffsetsLater();
 }
@@ -755,6 +847,13 @@ void LoadSvgFiles(std::vector<std::wstring>&& fileList)
     for (auto& fileName : movedFileList)
     {
         AppendSingleSvgFile(fileName.c_str());
+    }
+
+    if (!g_errorMessage.empty())
+    {
+        // Show error messages, after two second delay.
+        ShowToolTip(g_errorMessage.c_str());
+        SetTimer(g_windowHandle, IDM_OPEN_FILE, 2000, &HideToolTipTimerProc);
     }
 }
 
@@ -1411,22 +1510,13 @@ void RepaintWindow(HWND hwnd)
     if (!g_bitmap.valid())
     {
         FillRect(ps.hdc, &clientRect, g_backgroundWindowBrush);
+        SetBkMode(ps.hdc, TRANSPARENT);
         HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
-        std::wstring_view message =
-            L"No SVG loaded\r\n"
-            L"\r\n"
-            L"Use File/Open or drag&drop filenames to load SVG documents.\r\n"
-            L"\r\n"
-            L"mouse wheel = pan vertically\r\n"
-            L"mouse wheel + shift = pan horizontally\r\n"
-            L"mouse wheel + ctrl = zoom\r\n"
-            L"middle mouse drag = pan\r\n"
-            L"arrow keys/home/end/pgup/pgdn = pan";
-        DrawText(ps.hdc, message.data(), int(message.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
+        DrawText(ps.hdc, g_defaultMessage.data(), int(g_defaultMessage.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
         SelectObject(ps.hdc, oldFont);
     }
     // Draw bitmap.
-    else
+    else // g_bitmap.valid()
     {
         BITMAPHEADERv5 bitmapInfo = {};
         FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);

@@ -20,6 +20,7 @@
 // Windows Header Files
 #include <windows.h>
 #include <windowsx.h>
+#include <commctrl.h> // for tooltip
 #include <commdlg.h> // GetOpenFileName
 #include <shellapi.h> // DragQueryFile
 
