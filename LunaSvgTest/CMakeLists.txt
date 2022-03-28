@@ -5,7 +5,7 @@ project(LunaSvgTest VERSION 1.0.0 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 11)
 
-#set(BUILD_SHARED_LIBS ON)
+set(BUILD_SHARED_LIBS OFF)
 
 set(PLUTOVG_BGRA_PIXEL_ORDER ON CACHE BOOL "Use BGRA order instead of RGBA, useful for Windows GDI." FORCE)
 add_subdirectory(external/lunasvg)

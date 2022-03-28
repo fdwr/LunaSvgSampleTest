@@ -1,5 +1,19 @@
 Random thoughts for the future:
 
+TODO:
+    - Diagnose use-test.svg load failure
+    - Display load failure message
+    - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
+    - Move these thoughts below to another file
+    - Upload to GitHub
+
+Fix void Canvas::rgba() to use macros. canvas.cpp line 195
+    plutovg-private.h
+    #define plutovg_alpha_shift 24
+    #define plutovg_red_shift 0
+    #define plutovg_green_shift 8
+    #define plutovg_blue_shift 16
+
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
     Grid fitting

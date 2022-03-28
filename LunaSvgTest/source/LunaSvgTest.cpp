@@ -1,175 +1,15 @@
-/*
-LunaSvgTest.cpp: Main application.
-
-TODO:
-    - Honor SetIndent in waterfall (so icons on next line are right of the labels)
-    - Support waterfall along size first, then document
-    - Support vertical flow for fixed size and waterfall
-    - Add size wrap option
-    - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
-    - Move these thoughts below to another file
-    - Upload to GitHub
-
-Fix void Canvas::rgba() to use macros. canvas.cpp line 195
-    plutovg-private.h
-    #define plutovg_alpha_shift 24
-    #define plutovg_red_shift 0
-    #define plutovg_green_shift 8
-    #define plutovg_blue_shift 16
-
-Gridfitting prototype - add extended SVG attributes for gridfitting
-    Anchor points
-    Grid fitting
-        Align group of objects to adjusted/aligned point
-        Translate anchor and entire grouped object and then stretch by other anchor
-        transform-grid(translate(...) scale(...)
-    Rounding
-        Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
-        rounding-origin for in (toward zero) and out (toward infinity) rounding
-        inward and outward rounding based on path direction clockwise vs counterclockwise
-        Round relative another point
-        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)"
-        Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
-    Conditional details
-        Conditional visibility based on device pixels per canvas unit (PPU)
-    Minimum constraints
-        Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
-        Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
-
-Read:
-    A vector format for Flutter by Google
-    https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
-    http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
-    https://yqnn.github.io/svg-path-editor/
-
-Investigate callstack for pixel coordinate rounding / grid-fitting:
-    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 128	C
-    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
-    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
-    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
-    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 111	C++
-    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
-    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
-    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
-    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
-    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
-    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
-    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
-
-    lunasvgtest.exe!lunasvg::to_plutovg_path(plutovg * pluto, const lunasvg::Path & path) Line 293	C++
-    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path & path, const lunasvg::Transform & transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 106	C++
-    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState & state, const lunasvg::Path & path) Line 332	C++
-    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState & state) Line 409	C++
-    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
-    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState & state) Line 180	C++
-    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState & state) Line 88	C++
-    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState & state) Line 160	C++
-    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix & matrix, unsigned int backgroundColor) Line 212	C++
-
-    lunasvgtest.exe!plutovg_matrix_map_point(const plutovg_matrix_t * matrix, const plutovg_point_t * src, plutovg_point_t * dst) Line 128	C
-    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 108	C
-    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t * rle, const plutovg_path * path, const plutovg_matrix_t * matrix, const plutovg_rect_t * clip, const plutovg_stroke_data_t * stroke, plutovg_fill_rule_t winding) Line 268	C
-    lunasvgtest.exe!plutovg_fill_preserve(plutovg * pluto) Line 464	C
-    lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
-
-Elements:
-    anchor
-
-Attribute:
-    grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
-    grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
-    grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
-    grid-offset - adjustment in device pixels, such as shifting to a half pixel.
-    grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
-    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
-    anchors - list of relative anchors for a path
-
-Example:
-    Grid alignment cannot be part of transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" ignores the translate).
-
-        <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
-        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
-        <g grid-align="plusSignTopLeftCorner">
-            <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
-            <g grid-align="plusSignCenter">
-                <circle cx="38" cy="38" r="10"/>
-                <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
-                <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
-
-                ...
-                <!-- 3 anchors are used in the path for displacement.
-                     Multiple anchors can apply to multiple points,
-                     such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
-                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
-            </g>
-        </g>
-
-    One anchor can be defined relative to another one.
-    Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
-    todo: second anchor is relative to the rounded location rather than user coordinates, right?
-    todo: should I use an explicit attribute like grid-minimum="1px" instead of rounding, that way nearest can be used?
-    todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
-    todo: what about 45 degree angles, so that two octagons keep the same distance from each other? It's okay if the corners
-    todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
-          are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
-          A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
-
-        <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
-        <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
-        <path id="topComponent" anchors="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor -->
-        <path id="bottomComponent" anchors="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
-
-    todo: Can you just declare values inline with shorthand, rather than require anchor?
-
-        <g grid-align="37.5 37.5 halves-up fraction-left">
-
-    Referring to the same anchor twice in a nested group will be a nop, since the outer group
-    already aligned the anchor.
-
-        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
-        <g grid-align="plusSignTopLeftCorner">
-            <g grid-align="plusSignTopLeftCorner"><!-- nop since already pixel aligned -->
-                <path d="m 10 10 h20 v20 z"/>
-            </g>
-        </g>
-
-    You should be able to stretch components too between the bounds, which translates to a tranform scale and translate:
-
-        <anchor id="topLeftCorner" x="40" y="40" grid-rounding="up left">
-        <anchor id="bottomRightCorner" x="60" y="60" grid-rounding="down right">
-        <g grid-fit="topLeftCorner bottomRightCorner">
-            <circle cx="50" cy="50" r="10"/>
-        </g>
-
-    Minimum stroke:
-        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
-
-Related:
-    WPF SnapsToDevicePixels and UseLayoutRounding. https://blog.benoitblanchon.fr/wpf-blurry-images/
-    WPF GuidelineSets https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
-    Images and Icons for Visual Studio https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
-    
-    Microsoft W3C rep for SVG https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
-    SVG specification https://github.com/w3c/svgwg/tree/master
-    TrueType hinting is overkill https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
-
-    For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
-      Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-      Possibly use eigen vector?
-      Possibly just check x and y after rotating the transform back to axis alignment?
-*/
+// LunaSvgTest.cpp: Main application.
 
 #include "precomp.h"
 #include "LunaSvgTest.h"
-
 #include "lunasvg.h"
 
-constexpr size_t MAX_LOADSTRING = 100;
 // Global Variables:
-HINSTANCE g_instanceHandle;                     // current process instance
+constexpr size_t MAX_LOADSTRING = 100;
+HINSTANCE g_instanceHandle;                     // Current process base memory address.
 HWND g_windowHandle;
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
+WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
 
 enum class BitmapSizingDisplay
@@ -188,6 +28,7 @@ enum class BackgroundColorMode
     OpaqueGray,
 };
 
+// A single item on the screen, either SVG document or size label.
 struct CanvasItem
 {
     enum class ItemType : uint8_t
@@ -198,9 +39,8 @@ struct CanvasItem
     enum class Flags : uint8_t
     {
         Default = 0, // Default
-        Hidden = 1, // Do not draw this item.
-        NewLine = 2, // Wrap this item to a new row/column (depending on flow direction)
-        SetIndent = 4, // This items sets an indent for wrapped items
+        NewLine = 1, // Wrap this item to a new row/column (depending on flow direction)
+        SetIndent = 2, // This items sets an indent for wrapped items
     };
     enum class FlowDirection
     {
@@ -208,6 +48,7 @@ struct CanvasItem
         DownRight,
         Total,
     };
+
     ItemType itemType;
     Flags flags;
     uint8_t padding1;
@@ -217,20 +58,22 @@ struct CanvasItem
         uint32_t labelSize;
         uint32_t svgDocumentIndex;
     } value;
-    uint32_t x;
-    uint32_t y;
-    uint32_t w;
-    uint32_t h;
+    uint32_t x; // Left edge of item box
+    uint32_t y; // Top edge of item box
+    uint32_t w; // Width
+    uint32_t h; // Height
 };
 
 DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 
-
+// Horrible assortment of (gasp) global variables rather than a proper class instance.
 std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
 std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
-lunasvg::Bitmap g_bitmap;
-bool g_svgNeedsRedrawing = true;
+lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
+bool g_svgNeedsRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
+bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
+bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_waterfallBitmapWidth = 832;
@@ -239,29 +82,20 @@ const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
 
-unsigned int g_bitmapSizePerDocument = 64; // in pixels
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
+uint32_t g_bitmapSizePerDocument = 64; // in pixels
 uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
 uint32_t g_gridSize = 8;
-int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
-int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels.
-bool g_invertColors = false;
-bool g_gridVisible = false;
-bool g_realignBitmap = false; // Set true after loading new files.
-bool g_constrainBitmapOffsets = false; // Set true after resizing.
+int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans right.
+int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans down.
+CanvasItem::FlowDirection g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
+bool g_invertColors = false; // Negate all the bitmap colors.
+bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
 
-int32_t g_previousMouseX = 0;
+int32_t g_previousMouseX = 0; // Used for middle drag.
 int32_t g_previousMouseY = 0;
-
-// Forward declarations of functions included in this code module:
-ATOM RegisterMainWindowClass(HINSTANCE hInstance);
-BOOL InitializeInstance(HINSTANCE, int);
-LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK AboutDialogProcedure(HWND, UINT, WPARAM, LPARAM);
-void LoadSvgFile(const wchar_t* filePath);
-void RedrawSvgLater(HWND hWnd);
-void RedrawSvg(HWND hWnd);
 
 struct PixelBgra
 {
@@ -271,9 +105,9 @@ struct PixelBgra
     uint8_t a;
 };
 
-// What moron decided to essentially use inheritance with the BITMAPINFOHEADER but also rename
-// all the struct fields, needlessly prefixing everything with {bi, bc, bv5} so that generic
-// code could not work with different versions of the structs? (face palm)
+// Redefine the bitmap header structs so inheritance works.
+// Who needlessly prefixed every field with {bi, bc, bv5} so that generic
+// code could not work with different versions of the structs? (sigh, face palm)
 struct BITMAPHEADERv2 // BITMAPCOREHEADER
 {
     DWORD        size;
@@ -319,6 +153,17 @@ struct BITMAPHEADERv5 : BITMAPHEADERv4 // BITMAPV5HEADER
     DWORD        reserved;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+
+// Forward declarations of functions included in this code module:
+ATOM RegisterMainWindowClass(HINSTANCE instanceHandle);
+BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow);
+LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+void LoadSvgFile(const wchar_t* filePath);
+void RedrawSvgLater(HWND hwnd);
+void RedrawSvg(HWND hwnd);
+
 
 int APIENTRY wWinMain(
     _In_ HINSTANCE instanceHandle,
@@ -342,12 +187,12 @@ int APIENTRY wWinMain(
     }
 
     // Initialize global strings.
-    LoadStringW(instanceHandle, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(instanceHandle, IDC_LUNASVGTEST, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(instanceHandle, IDS_APP_TITLE, g_applicationTitle, MAX_LOADSTRING);
+    LoadStringW(instanceHandle, IDC_LUNASVGTEST, g_windowClassName, MAX_LOADSTRING);
     RegisterMainWindowClass(instanceHandle);
 
     // Perform application initialization:
-    if (!InitializeInstance(instanceHandle, nCmdShow))
+    if (!InitializeWindowInstance(instanceHandle, nCmdShow))
     {
         return FALSE;
     }
@@ -379,41 +224,35 @@ int APIENTRY wWinMain(
 
 ATOM RegisterMainWindowClass(HINSTANCE instanceHandle)
 {
-    WNDCLASSEXW wcex;
-
-    wcex.cbSize = sizeof(WNDCLASSEX);
-
-    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
-    wcex.lpfnWndProc    = &WindowProcedure;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = instanceHandle;
-    wcex.hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = g_backgroundWindowBrush;
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = wcex.hIcon;
+    WNDCLASSEXW wcex =
+    {
+        .cbSize         = sizeof(WNDCLASSEX),
+        .style          = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
+        .lpfnWndProc    = &WindowProcedure,
+        .cbClsExtra     = 0,
+        .cbWndExtra     = 0,
+        .hInstance      = instanceHandle,
+        .hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST)),
+        .hCursor        = LoadCursor(nullptr, IDC_ARROW),
+        .hbrBackground  = g_backgroundWindowBrush,
+        .lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST),
+        .lpszClassName  = g_windowClassName,
+        .hIconSm        = wcex.hIcon,
+    };
 
     return RegisterClassExW(&wcex);
 }
 
-//   FUNCTION: InitializeInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
+// Save the process base memory address in a global variable, and
+// create the main program window.
+BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow)
 {
     g_instanceHandle = instanceHandle; // Store instance handle in our global variable
 
     HWND hwnd = CreateWindowExW(
         WS_EX_ACCEPTFILES,
-        szWindowClass,
-        szTitle,
+        g_windowClassName,
+        g_applicationTitle,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT,
         0,
@@ -429,24 +268,26 @@ BOOL InitializeInstance(HINSTANCE instanceHandle, int nCmdShow)
     {
         return FALSE;
     }
+    g_windowHandle = hwnd;
 
     ShowScrollBar(hwnd, SB_BOTH, true);
 
-    ShowWindow(hwnd, nCmdShow);
+    ShowWindow(hwnd, commandShow);
     UpdateWindow(hwnd);
-
-    g_windowHandle = hwnd;
 
     return TRUE;
 }
 
+
+// Return the index of the value greater than or equal the given one.
+// If there aren't any, return the last element (not end).
 template <typename T>
-size_t FindValueNearestIndex(std::span<const T> valueList, T currentValue)
+size_t FindValueIndexGE(std::span<const T> valueList, T currentValue)
 {
     assert(!valueList.empty());
     auto it = std::lower_bound(valueList.begin(), valueList.end(), currentValue);
     ptrdiff_t index = it - valueList.begin();
-    if (size_t(index) >= valueList.size())
+    if (size_t(index) >= valueList.size() && !valueList.empty())
     {
         --index;
     }
@@ -454,23 +295,24 @@ size_t FindValueNearestIndex(std::span<const T> valueList, T currentValue)
 }
 
 
+// Find the next or previous value from the list, using the current value and
+// a delta (if positive, look forward to the next one).
 template <typename T>
-T FindAdjustedValue(std::span<const T> valueList, T currentValue, size_t delta)
+T FindValueNextPrevious(std::span<const T> valueList, T currentValue, ptrdiff_t delta)
 {
-    assert(!valueList.empty());
-    auto it = std::lower_bound(valueList.begin(), valueList.end(), currentValue);
-    ptrdiff_t index = (it - valueList.begin()) + delta;
-    if (size_t(index) >= valueList.size())
+    if (valueList.empty())
     {
         return currentValue;
     }
-    else
-    {
-        return valueList[index];
-    }
+
+    auto it = std::lower_bound(valueList.begin(), valueList.end(), currentValue);
+    ptrdiff_t index = (it - valueList.begin()) + delta;
+    index = std::clamp(index, ptrdiff_t(0), ptrdiff_t(valueList.size() - 1));
+    return valueList[index];
 }
 
 
+// Set window scrollbar extents, both horizontal and vertical.
 void SetScrollbars(
     HWND hwnd,
     int32_t xMin,
@@ -503,47 +345,26 @@ void SetScrollbars(
 }
 
 
-uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarType, int32_t lineSize)
+// Handle scroll bar events by updating the current position.
+// Why isn't this logic just built into Windows??
+uint32_t HandleScrollbarEvent(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarType, int32_t lineSize)
 {
-    // Why do we have to repeat this function for something that should be built into Windows?
     SCROLLINFO scrollInfo = {sizeof(scrollInfo), SIF_ALL};
     GetScrollInfo(hwnd, scrollBarType, &scrollInfo);  // get information about the scroll
     int32_t newPosition = scrollInfo.nPos;
 
     switch (scrollBarCode)
     {
-    case SB_RIGHT:
-        newPosition = scrollInfo.nMax;
-        break;
-
-    case SB_LINERIGHT:
-        newPosition += lineSize;
-        break;
-
-    case SB_LINELEFT:
-        newPosition -= lineSize;
-        break;
-
-    case SB_PAGERIGHT:
-        newPosition += scrollInfo.nPage;
-        break;
-
-    case SB_PAGELEFT:
-        newPosition -= scrollInfo.nPage;
-        break;
-
+    case SB_LINELEFT:       newPosition -= lineSize;            break;
+    case SB_LINERIGHT:      newPosition += lineSize;            break;
+    case SB_PAGELEFT:       newPosition -= scrollInfo.nPage;    break;
+    case SB_PAGERIGHT:      newPosition += scrollInfo.nPage;    break;
+    case SB_LEFT:           newPosition = scrollInfo.nMin;      break;
+    case SB_RIGHT:          newPosition = scrollInfo.nMax;      break;
     case SB_THUMBTRACK:
-    case SB_THUMBPOSITION:
-        newPosition = scrollInfo.nTrackPos;
-        break;
-
-    case SB_LEFT:
-        newPosition = scrollInfo.nMin;
-        break;
-
+    case SB_THUMBPOSITION:  newPosition = scrollInfo.nTrackPos; break;
     case SB_ENDSCROLL:
-    default:
-        return newPosition;
+    default:                return newPosition;
     }
 
     newPosition = std::clamp(newPosition, scrollInfo.nMin, int32_t(scrollInfo.nMax - scrollInfo.nPage));
@@ -556,190 +377,47 @@ uint32_t HandleScrollbar(HWND hwnd, uint32_t scrollBarCode, uint32_t scrollBarTy
 }
 
 
+void UpdateBitmapScrollbars(HWND hwnd)
+{
+    // Show disabled scroll bars for empty bitmap.
+    if (!g_bitmap.valid())
+    {
+        SetScrollbars(hwnd, 0, 0, 0, 0, 0, 0, 0, 0);
+        return;
+    }
+
+    RECT clientRect;
+    GetClientRect(hwnd, /*out*/&clientRect);
+
+    auto getRange = [](int32_t offset, int32_t bitmapSize, int32_t windowSize)
+    {
+        const int32_t pageSize = std::min(bitmapSize, windowSize);
+        const int32_t minValue = std::min(offset, std::min(0, bitmapSize - windowSize));
+        const int32_t maxValue = std::max(offset + pageSize, bitmapSize);
+        return std::tuple<int32_t, int32_t, int32_t>(pageSize, minValue, maxValue);
+    };
+
+    const auto [xPageSize, xMin, xMax] = getRange(g_bitmapOffsetX, g_bitmap.width() * g_bitmapPixelZoom, int32_t(clientRect.right));
+    const auto [yPageSize, yMin, yMax] = getRange(g_bitmapOffsetY, g_bitmap.height() * g_bitmapPixelZoom, int32_t(clientRect.bottom));
+    SetScrollbars(hwnd, xMin, xMax, xPageSize, g_bitmapOffsetX, yMin, yMax, yPageSize, g_bitmapOffsetY);
+}
+
+
+// Enqueue a realignment later of the bitmap view after drawing.
 void RealignBitmapOffsetsLater()
 {
     g_realignBitmap = true;
 }
 
 
+// Enqueue constraining the bitmap view after drawing.
 void ConstrainBitmapOffsetsLater()
 {
     g_constrainBitmapOffsets = true;
 }
 
 
-#if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST
-void PremultiplyBgraData(uint8_t* pixels, uint32_t pixelByteCount)
-{
-    uint8_t* data = g_bitmap.data();
-    for (uint32_t i = 0; i < pixelByteCount; i += 4)
-    {
-        data[i + 0] = data[i + 0] * data[i + 3] / 255;
-        data[i + 1] = data[i + 1] * data[i + 3] / 255;
-        data[i + 2] = data[i + 2] * data[i + 3] / 255;
-    }
-}
-
-void Unpremultiply1(
-    lunasvg::Bitmap& bitmap,
-    int ri,
-    int gi,
-    int bi,
-    int ai,
-    bool unpremultiply
-    )
-{
-    const uint32_t width = bitmap.width();
-    const uint32_t height = bitmap.height();
-    const uint32_t stride = bitmap.stride();
-    auto rowData = bitmap.data();
-
-    // warning C4018: '<': signed/unsigned mismatch
-    for (uint32_t y = 0; y < height; ++y)
-    {
-        auto data = rowData;
-        for (uint32_t x = 0; x < width; ++x)
-        {
-            auto b = data[0];
-            auto g = data[1];
-            auto r = data[2];
-            auto a = data[3];
-
-            if (unpremultiply && a != 0)
-            {
-                r = (r * 255) / a;
-                g = (g * 255) / a;
-                b = (b * 255) / a;
-            }
-
-            //data[ri] = r;
-            //data[gi] = g;
-            //data[bi] = b;
-            //data[ai] = a;
-            data[0] = b;
-            data[1] = g;
-            data[2] = r;
-            data[3] = a;
-            data += 4;
-        }
-        rowData += stride;
-    }
-}
-
-
-void Unpremultiply2(
-    lunasvg::Bitmap& bitmap,
-    int ri,
-    int gi,
-    int bi,
-    int ai,
-    bool unpremultiply
-    )
-{
-    const uint32_t width = bitmap.width();
-    const uint32_t height = bitmap.height();
-    const uint32_t stride = bitmap.stride();
-    auto rowData = bitmap.data();
-
-    for (uint32_t y = 0; y < height; ++y)
-    {
-        auto data = rowData;
-        for (uint32_t x = 0; x < width; ++x)
-        {
-            auto b = data[0];
-            auto g = data[1];
-            auto r = data[2];
-            auto a = data[3];
-
-            uint32_t adjustedA = a - 1;
-            //if (unpremultiply && adjustedA <= 254)
-            // 282ms vs 200ms
-            if (unpremultiply && a != 0)
-            {
-                uint32_t f = (16777215 / a);
-                r = (r * f) >> 16;
-                g = (g * f) >> 16;
-                b = (b * f) >> 16;
-                //r = (r * 255) / a;
-                //g = (g * 255) / a;
-                //b = (b * 255) / a;
-            }
-
-            //data[ri] = r;
-            //data[gi] = g;
-            //data[bi] = b;
-            //data[ai] = a;
-            data[0] = b;
-            data[1] = g;
-            data[2] = r;
-            data[3] = a;
-            data += 4;
-        }
-        rowData += stride;
-    }
-}
-
-
-void Unpremultiply3(
-    lunasvg::Bitmap& bitmap,
-    int ri,
-    int gi,
-    int bi,
-    int ai,
-    bool unpremultiply
-    )
-{
-    const uint32_t width = bitmap.width();
-    const uint32_t height = bitmap.height();
-    const uint32_t stride = bitmap.stride();
-    auto rowData = bitmap.data();
-    uint8_t alphaTable[256][256];
-
-    for (uint32_t i = 0; i < 255; ++i)
-    {
-        alphaTable[i][0] = i;
-    }
-    for (uint32_t i = 0; i < 255; ++i)
-    {
-        for (uint32_t a = 1; a < 256; ++a)
-        {
-            alphaTable[i][a] = (i * 255) / a;
-        }
-    }
-
-    for (uint32_t y = 0; y < height; ++y)
-    {
-        auto data = rowData;
-        for (uint32_t x = 0; x < width; ++x)
-        {
-            auto b = data[0];
-            auto g = data[1];
-            auto r = data[2];
-            auto a = data[3];
-
-            if (unpremultiply && a != 0)
-            {
-                r = alphaTable[r][a];
-                g = alphaTable[g][a];
-                b = alphaTable[b][a];
-            }
-
-            //data[ri] = r;
-            //data[gi] = g;
-            //data[bi] = b;
-            //data[ai] = a;
-            data[0] = b;
-            data[1] = g;
-            data[2] = r;
-            data[3] = a;
-            data += 4;
-        }
-        rowData += stride;
-    }
-}
-#endif
-
-
+// Draw horizontal and vertical lines using the given color.
 void DrawBitmapGrid(
     HDC hdc,
     int32_t xOffset,
@@ -751,11 +429,14 @@ void DrawBitmapGrid(
     HBRUSH brush
 )
 {
+    // Vertical lines left to right.
     for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
     {
         RECT rect = { .left = x, .top = yOffset, .right = x + 1, .bottom = int32_t(yOffset + height) };
         FillRect(hdc, &rect, brush);
     }
+
+    // Horizontal lines top to bottom.
     for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
     {
         RECT rect = { .left = xOffset, .top = y, .right = int32_t(xOffset + width), .bottom = y + 1 };
@@ -764,6 +445,7 @@ void DrawBitmapGrid(
 }
 
 
+// Negate all the pixel values, respecting premultiplied alpha (not just 255 - v).
 void NegateBitmap(lunasvg::Bitmap& bitmap)
 {
     const uint32_t width = bitmap.width();
@@ -787,13 +469,18 @@ void NegateBitmap(lunasvg::Bitmap& bitmap)
             data[1] = g;
             data[2] = r;
             data[3] = a;
-            data += 4;
+            data += sizeof(uint32_t);
         }
         rowData += stride;
     }
 }
 
 
+// Tiny 5x7 digits for the pixel labels.
+// 0 = transparent
+// 1 = black
+// 2 = gray
+// 3 = white
 const uint32_t g_smallDigitHeight = 7;
 const uint32_t g_smallDigitWidth = 5;
 const uint32_t g_smallDigitAdvance = 3;
@@ -891,9 +578,11 @@ const uint8_t g_smallDigitPixels[10][g_smallDigitHeight][g_smallDigitWidth] =
     },
 };
 
+
+// Draw a string of tiny digits.
 void DrawSmallDigits(
     uint8_t* pixels, // BGRA
-    const unsigned char* digits,
+    char8_t const* digits,
     uint32_t digitCount,
     uint32_t x,
     uint32_t y,
@@ -902,7 +591,8 @@ void DrawSmallDigits(
     uint32_t bitmapByteStridePerRow
     )
 {
-    if (y < 0 || y + g_smallDigitHeight > bitmapHeight) // Cheap clipping (whole clip, not partial)
+    // Cheap clipping (whole clip, not partial)
+    if (y < 0 || y + g_smallDigitHeight > bitmapHeight)
     {
         return;
     }
@@ -921,13 +611,18 @@ void DrawSmallDigits(
         }
 
         uint32_t digit = digits[digitIndex] - '0';
+        if (digit > 9u)
+        {
+            continue; // Skip non-numbers.
+        }
+
         const uint8_t* digitPixels = &g_smallDigitPixels[std::min(digit, 9u)][0][0];
         uint8_t* pixel = pixels + x * sizeof(uint32_t);
         for (uint32_t j = 0; j < g_smallDigitHeight; ++j)
         {
             for (uint32_t i = 0; i < g_smallDigitWidth; ++i)
             {
-                // Check for transparency (0), black (1), or white (2).
+                // Check for transparency (0). Otherwise draw black (1), gray (2), or white (3).
                 uint32_t digitPixelValue = *digitPixels;
                 if (digitPixelValue > 0)
                 {
@@ -945,36 +640,7 @@ void DrawSmallDigits(
 }
 
 
-lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t width, uint32_t height)
-{
-    auto documentWidth = document.width();
-    auto documentHeight = document.height();
-    if (documentWidth == 0.0 || documentHeight == 0.0)
-    {
-        return {};
-    }
-
-    double actualWidth = width;
-    double actualHeight = height;
-    if (width == 0 && height == 0)
-    {
-        actualWidth = documentWidth;
-        actualHeight = documentHeight;
-    }
-    else if (width != 0 && height == 0)
-    {
-        actualHeight = actualWidth * documentHeight / documentWidth;
-    }
-    else if (height != 0 && width == 0)
-    {
-        actualWidth = actualHeight * documentWidth / documentHeight;
-    }
-
-    lunasvg::Matrix matrix{actualWidth / documentWidth, 0, 0, actualHeight / documentHeight, 0, 0};
-    return matrix;
-}
-
-
+// Given the SVG document and a desired size, compute the transformation matrix.
 lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t minimumSize)
 {
     auto documentWidth = document.width();
@@ -989,14 +655,15 @@ lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t minimumSi
 }
 
 
+// Draw dark gray/light gray checkerboard of 8x8 pixels.
 void DrawCheckerboardBackground(
-    uint8_t* pixels, // B,G,R,A
+    uint8_t* pixels, // 32-bits of {B,G,R,A}.
     uint32_t x,
     uint32_t y,
     uint32_t width,
     uint32_t height,
     uint32_t byteStridePerRow
-)
+    )
 {
     const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
     uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
@@ -1094,7 +761,7 @@ void LoadSvgFiles(std::vector<std::wstring>&& fileList)
 }
 
 
-// Helper to generate 1:1 canvas item per SVG document.
+// Helper to append one canvas item per SVG document at the given pixel size.
 void AppendCanvasItemsGivenSize(std::vector<CanvasItem>& canvasItems, uint32_t documentPixelSize)
 {
     const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
@@ -1114,10 +781,12 @@ void AppendCanvasItemsGivenSize(std::vector<CanvasItem>& canvasItems, uint32_t d
 }
 
 
+// Generate all the items for the canvas given the current SVG documents, a bounding rectangle,
+// flow direction, and bitmap sizing display. Layout of x,y coordinates occurs later.
 void GenerateCanvasItems(
-    RECT const& clientRect,
+    RECT const& boundingRect,
     CanvasItem::FlowDirection flowDirection,
-    std::vector<CanvasItem>& canvasItems
+    /*out*/ std::vector<CanvasItem>& canvasItems
     )
 {
     canvasItems.clear();
@@ -1139,17 +808,18 @@ void GenerateCanvasItems(
         {
             for (uint32_t bitmapSize : g_waterfallBitmapSizes)
             {
-                // Add a label.
+                // Append a label of the current pixel size.
                 CanvasItem labelCanvasItem =
                 {
                     .itemType = CanvasItem::ItemType::SizeLabel,
-                    .flags = CanvasItem::Flags::NewLine,
+                    .flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent,
                     .value = {.labelSize = bitmapSize},
                     .w = isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
                     .h = isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
                 };
                 canvasItems.push_back(std::move(labelCanvasItem));
 
+                // Append all SVG documents at the current size.
                 for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
                 {
                     auto& document = g_svgDocuments[documentIndex];
@@ -1169,7 +839,7 @@ void GenerateCanvasItems(
 
     case BitmapSizingDisplay::WindowSize:
         {
-            const uint32_t bitmapMaximumSize = std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
+            const uint32_t bitmapMaximumSize = std::min(boundingRect.bottom, boundingRect.right) / g_bitmapPixelZoom;
             AppendCanvasItemsGivenSize(canvasItems, bitmapMaximumSize);
         }
         break;
@@ -1177,7 +847,7 @@ void GenerateCanvasItems(
     case BitmapSizingDisplay::Natural:
         {
             AppendCanvasItemsGivenSize(canvasItems, /*documentPixelSize*/ 0);
-            // Set the height and width each of canvas item.
+            // Set the height and width each of canvas item to its natural dimensions.
             for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
             {
                 auto& canvasItem = canvasItems[documentIndex];
@@ -1191,51 +861,72 @@ void GenerateCanvasItems(
 }
 
 
+// Lay all the canvas item positions by flow direction.
 void LayoutCanvasItems(
     RECT const& boundingRect,
     CanvasItem::FlowDirection flowDirection,
     /*inout*/ std::span<CanvasItem> canvasItems
     )
 {
-    // Lay all the canvas item positions by flow direction.
+    assert(boundingRect.left == 0 && boundingRect.top == 0);
+    const uint32_t bitmapMaximumVisibleWidth = boundingRect.right / g_bitmapPixelZoom;
+    const uint32_t bitmapMaximumVisibleHeight = boundingRect.bottom / g_bitmapPixelZoom;
 
+    uint32_t x = 0, y = 0; // Current canvas item's top left.
+    uint32_t indentX = 0, indentY = 0;
     RECT lineRect = {}; // Accumulated rect of current line (row or column until next wrap).
-    unsigned int bitmapMaximumVisibleWidth = boundingRect.right / g_bitmapPixelZoom;
-    unsigned int bitmapMaximumVisibleHeight = boundingRect.bottom / g_bitmapPixelZoom;
-    uint32_t x = 0, y = 0;
 
     for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
     {
         auto& canvasItem = canvasItems[canvasItemIndex];
         uint32_t nextX = x, nextY = y;
+        const bool isNewLine = bool(canvasItem.flags & CanvasItem::Flags::NewLine);
+        const bool hasSetIndent = bool(canvasItem.flags & CanvasItem::Flags::SetIndent);
+
         switch (flowDirection)
         {
         case CanvasItem::FlowDirection::RightDown:
-            if (x + canvasItem.w > bitmapMaximumVisibleWidth || bool(canvasItem.flags & CanvasItem::Flags::NewLine))
+            if (x + canvasItem.w > bitmapMaximumVisibleWidth || isNewLine)
             {
-                if (lineRect.right > 0)
+                if (isNewLine)
                 {
-                    x = 0;
+                    indentX = 0;
+                }
+                if (lineRect.right > int32_t(indentX))
+                {
+                    x = indentX;
                     y = lineRect.bottom;
                     nextY = y;
                     lineRect = {};
                 }
             }
             nextX = x + canvasItem.w;
+            if (hasSetIndent)
+            {
+                indentX = nextX;
+            }
             break;
 
         case CanvasItem::FlowDirection::DownRight:
-            if (y + canvasItem.h > bitmapMaximumVisibleHeight || bool(canvasItem.flags & CanvasItem::Flags::NewLine))
+            if (y + canvasItem.h > bitmapMaximumVisibleHeight || isNewLine)
             {
-                if (lineRect.bottom > 0)
+                if (isNewLine)
                 {
-                    y = 0;
+                    indentY = 0;
+                }
+                if (lineRect.bottom > int32_t(indentY))
+                {
+                    y = indentY;
                     x = lineRect.right;
                     nextX = x;
                     lineRect = {};
                 }
             }
             nextY = y + canvasItem.h;
+            if (hasSetIndent)
+            {
+                indentY = nextY;
+            }
             break;
         };
 
@@ -1260,12 +951,12 @@ void LayoutCanvasItems(
 }
 
 
+// Compute the union of all canvas items bounding rects to determine necessary bitmap size.
 RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
 {
     RECT boundingRect = {};
-    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
+    for (auto& canvasItem : canvasItems)
     {
-        auto& canvasItem = canvasItems[canvasItemIndex];
         RECT currentRect =
         {
             .left = LONG(canvasItem.x),
@@ -1279,6 +970,8 @@ RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
 }
 
 
+// Redraw all canvas items into the given bitmap.
+// The screen was already cleared.
 void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap& bitmap)
 {
     constexpr uint32_t maximumSmallDigitNumbers = 4;
@@ -1286,7 +979,6 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 
     for (const auto& canvasItem : canvasItems)
     {
-        // Draw each size, left to right, top to bottom.
         switch (canvasItem.itemType)
         {
         case CanvasItem::ItemType::SizeLabel:
@@ -1303,7 +995,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 
                 DrawSmallDigits(
                     bitmap.data(),
-                    reinterpret_cast<unsigned char*>(digits),
+                    reinterpret_cast<char8_t const*>(digits),
                     digitCount,
                     digitX,
                     digitY,
@@ -1321,6 +1013,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 
                 // Draw the icon into a subrect of the larger atlas texture,
                 // adjusting the pointer offset while keeping the correct stride.
+                // This will also force clipping into the item's window.
                 uint32_t pixelOffset = canvasItem.y * g_bitmap.stride() + canvasItem.x * sizeof(uint32_t);
                 subbitmap.reset(bitmap.data() + pixelOffset, canvasItem.w, canvasItem.h, bitmap.stride());
 
@@ -1334,12 +1027,11 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 }
 
 
+// Realign the offsets to the new bitmap size (typically after loading a new file)
+// so the bitmap is either centered in the window or anchored at the top left,
+// rather than randomly wherever it was last.
 void RealignBitmapOffsets(RECT const& clientRect)
 {
-    // Realign the offsets to the new bitmap size (typically after loading a new file)
-    // so the bitmap is either centered in the window or anchored at the top left,
-    // rather than randomly wherever it was last.
-
     const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
     g_bitmapOffsetX = std::min((effectiveBitmapWidth - clientRect.right) / 2, 0L);
@@ -1349,10 +1041,18 @@ void RealignBitmapOffsets(RECT const& clientRect)
 }
 
 
+// Realign offsets, using the HWND to get the client rectangle.
+void RealignBitmapOffsets(HWND hwnd)
+{
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+    RealignBitmapOffsets(clientRect);
+}
+
+
+// Constrain the bitmap offsets so they are visible (not recentered like RealignBitmapOffsets).
 void ConstrainBitmapOffsets(RECT const& clientRect)
 {
-    // Constrain the bitmap offsets so they are visible (not recentered like RealignBitmapOffsets).
-
     const int32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
     const int32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
     g_bitmapOffsetX = std::clamp(g_bitmapOffsetX, std::min(effectiveBitmapWidth - int32_t(clientRect.right), 0), std::max(effectiveBitmapWidth - int32_t(clientRect.right), 0));
@@ -1362,14 +1062,7 @@ void ConstrainBitmapOffsets(RECT const& clientRect)
 }
 
 
-void RealignBitmapOffsets(HWND hwnd)
-{
-    RECT clientRect;
-    GetClientRect(hwnd, &clientRect);
-    RealignBitmapOffsets(clientRect);
-}
-
-
+// Redraw the background behind the SVG, such as transparent black or checkerboard.
 void RedrawSvgBackground()
 {
     switch (g_backgroundColorMode)
@@ -1379,14 +1072,7 @@ void RedrawSvgBackground()
         break;
 
     case BackgroundColorMode::GrayCheckerboard:
-        DrawCheckerboardBackground(
-            g_bitmap.data(),
-            0,
-            0,
-            g_bitmap.width(),
-            g_bitmap.height(),
-            g_bitmap.stride()
-        );
+        DrawCheckerboardBackground(g_bitmap.data(), 0, 0, g_bitmap.width(), g_bitmap.height(), g_bitmap.stride());
         break;
 
     case BackgroundColorMode::OpaqueWhite:
@@ -1406,8 +1092,9 @@ void RedrawSvg(RECT const& clientRect)
         return;
     }
 
-    GenerateCanvasItems(clientRect, CanvasItem::FlowDirection::RightDown, /*inout*/g_canvasItems);
-    LayoutCanvasItems(clientRect, CanvasItem::FlowDirection::RightDown, /*inout*/g_canvasItems);
+    RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
+    GenerateCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
+    LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
     RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
     g_bitmap.reset(boundingRect.right, boundingRect.bottom);
     RedrawSvgBackground();
@@ -1422,71 +1109,13 @@ void RedrawSvg(RECT const& clientRect)
     {
         ConstrainBitmapOffsets(clientRect);
     }
-
-    #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST // hack:::
-    // Premultiply pixels so that edges are antialiased.
-    // hack:::PremultiplyBgraData(g_bitmap.data(), g_bitmap.stride() * g_bitmap.height());
-
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
-    LARGE_INTEGER endTime1, endTime2, endTime3;
-    QueryPerformanceCounter(&startTime);
-
-    for (uint32_t i = 0; i < 300; ++i)
-        Unpremultiply1(g_bitmap, 2,1,0,3, true);
-    QueryPerformanceCounter(&endTime1);
-
-    for (uint32_t i = 0; i < 300; ++i)
-        Unpremultiply2(g_bitmap, 2,1,0,3, true);
-    QueryPerformanceCounter(&endTime2);
-
-    for (uint32_t i = 0; i < 300; ++i)
-        Unpremultiply3(g_bitmap, 2,1,0,3, true);
-    QueryPerformanceCounter(&endTime3);
-    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_NORMAL);
-
-    auto GetDuration = [=](LARGE_INTEGER startTime, LARGE_INTEGER endTime) -> double
-    {
-        return double(endTime.QuadPart - startTime.QuadPart) * 1000 / double(cpuFrequency.QuadPart);
-    };
-    double durationMs1 = GetDuration(startTime, endTime1);
-    double durationMs2 = GetDuration(endTime1, endTime2);
-    double durationMs3 = GetDuration(endTime2, endTime3);
-    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %1.6fms, %1.6fms)", szTitle, durationMs1, durationMs2, durationMs3);
-    SetWindowText(hwnd, windowTitle);
-    #endif
-}
-
-void UpdateBitmapScrollbars(HWND hwnd)
-{
-    // Show disabled scroll bars for empty bitmap.
-    if (!g_bitmap.valid())
-    {
-        SetScrollbars(hwnd, 0, 0, 0, 0, 0, 0, 0, 0);
-        return;
-    }
-
-    RECT clientRect;
-    GetClientRect(hwnd, /*out*/&clientRect);
-
-    auto getRange = [](int32_t offset, int32_t bitmapSize, int32_t windowSize)
-    {
-        const int32_t pageSize = std::min(bitmapSize, windowSize);
-        const int32_t minValue = std::min(offset, std::min(0, bitmapSize - windowSize));
-        const int32_t maxValue = std::max(offset + pageSize, bitmapSize);
-        return std::tuple<int32_t, int32_t, int32_t>(pageSize, minValue, maxValue);
-    };
-
-    const auto [xPageSize, xMin, xMax] = getRange(g_bitmapOffsetX, g_bitmap.width()  * g_bitmapPixelZoom, int32_t(clientRect.right));
-    const auto [yPageSize, yMin, yMax] = getRange(g_bitmapOffsetY, g_bitmap.height() * g_bitmapPixelZoom, int32_t(clientRect.bottom));
-    SetScrollbars(hwnd, xMin, xMax, xPageSize, g_bitmapOffsetX, yMin, yMax, yPageSize, g_bitmapOffsetY);
 }
 
 
+// Enqueue the bitmap for redraw later in WM_PAINT, without redrawing the SVG
+// (such as with a pure translation or zoom).
 void RedrawBitmapLater(HWND hwnd)
 {
-    // Enqueue the bitmap for redraw later in WM_PAINT, without redrawing the SVG
-    // (such as with a pure translation or zoom).
-
     RECT invalidationRect =
     {
         LONG(-g_bitmapOffsetX),
@@ -1499,18 +1128,18 @@ void RedrawBitmapLater(HWND hwnd)
     GetClientRect(hwnd, &clientRect);
     if (!IntersectRect(&invalidationRect, &invalidationRect, &clientRect))
     {
+        // Force at least one pixel to be invalidated so the WM_PAINT is generated.
         invalidationRect.right = 1;
         invalidationRect.top = 1;
     }
 
-    // Force at least one pixel to be invalidated so the WM_PAINT is generated.
     InvalidateRect(hwnd, &invalidationRect, true);
 }
 
 
+// Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
 void RedrawSvgLater(HWND hwnd)
 {
-    // Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
     g_svgNeedsRedrawing = true;
     InvalidateRect(hwnd, nullptr, true);
 }
@@ -1537,7 +1166,7 @@ void RedrawSvg(HWND hwnd)
     durationMs *= 1000.0;
     wchar_t windowTitle[1000];
     wchar_t const* filename = !g_filenameList.empty() ? g_filenameList.front().c_str() : L"";
-    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u, %s)", szTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u, %s)", g_applicationTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
     SetWindowText(hwnd, windowTitle);
 
     if (g_invertColors)
@@ -1550,6 +1179,7 @@ void RedrawSvg(HWND hwnd)
 }
 
 
+// Fill in a GDI BITMAPHEADER from the bitmap information.
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
     /*out*/ BITMAPHEADERv5& bitmapInfo
@@ -1583,6 +1213,15 @@ void FillBitmapInfoFromLunaSvgBitmap(
 }
 
 
+// Draw a rectangle minus the inner rectangle, filling in a frame.
+// This 4-piece drawing eliminates the flicker would otherwise happen from
+// filling the entire background followed by the image atop.
+// ____________
+// |  ______  |
+// |  |    |  |
+// |  |____|  |
+// |__________|
+//
 void DrawRectangleAroundRectangle(
     HDC hdc,
     const RECT& outerRect,
@@ -1590,39 +1229,12 @@ void DrawRectangleAroundRectangle(
     HBRUSH brush
     )
 {
-    // Fill the frame around the inner rect.
-    // This 4-piece drawing eliminates the flicker would otherwise happen from
-    // filling the entire background followed by the image atop.
-
-    RECT rects[4] = {
-        // Top
-        {
-            outerRect.left,
-            outerRect.top,
-            outerRect.right,
-            innerRect.top,
-        },
-        // Bottom
-        {
-            outerRect.left,
-            innerRect.bottom,
-            outerRect.right,
-            outerRect.bottom,
-        },
-        // Left
-        {
-            outerRect.left,
-            innerRect.top,
-            innerRect.left,
-            innerRect.bottom,
-        },
-        // Right
-        {
-            innerRect.right,
-            innerRect.top,
-            outerRect.right,
-            innerRect.bottom,
-        },
+    RECT rects[4] =
+    {
+        /* Top */       { outerRect.left,  outerRect.top,    outerRect.right, innerRect.top, },
+        /* Bottom */    { outerRect.left,  innerRect.bottom, outerRect.right, outerRect.bottom, },
+        /* Left */      { outerRect.left,  innerRect.top,    innerRect.left,  innerRect.bottom, },
+        /* Right */     { innerRect.right, innerRect.top,    outerRect.right, innerRect.bottom, },
     };
 
     for (auto& rect : rects)
@@ -1635,7 +1247,8 @@ void DrawRectangleAroundRectangle(
 }
 
 
-void CopySvgBitmapToClipboard(
+// Why is using the clipboard so much more complicated than it ought to be?
+void CopyBitmapToClipboard(
     lunasvg::Bitmap& bitmap,
     HWND hwnd
     )
@@ -1704,6 +1317,12 @@ void CopySvgBitmapToClipboard(
 }
 
 
+// StretchBlt has a bug with larger scales where the aspect ratio becomes distorted
+// if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale),
+// even if 95% of the content is clipped/off screen.
+//
+// So this wrapper just virtually clips the stretch by adjusting the offsets and
+// size according to the clip rect. Windows *should* just do this itself :/.
 BOOL StretchBltFixed(
     HDC hdcDest,
     int destX,
@@ -1717,14 +1336,8 @@ BOOL StretchBltFixed(
     int srcH,
     DWORD rop,
     RECT const& clipRect
-)
+    )
 {
-    // StretchBlt has a bug with larger scales where the aspect ratio becomes distorted
-    // if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale),
-    // even if 95% of the content is clipped/off screen.
-    // So this wrapper just virtually clips the stretch by adjusting the offsets and
-    // size according to the clip rect. Windows *should* just do this itself :/.
-
     if (srcW < 0 || srcH < 0 || destW < 0 || destH < 0)
     {
         return true; // No division by zero (would be an empty drawing anyway).
@@ -1814,6 +1427,7 @@ void RepaintWindow(HWND hwnd)
         DrawText(ps.hdc, message.data(), int(message.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
         SelectObject(ps.hdc, oldFont);
     }
+    // Draw bitmap.
     else
     {
         BITMAPHEADERv5 bitmapInfo = {};
@@ -1848,9 +1462,11 @@ void RepaintWindow(HWND hwnd)
                 0 // colorUse
             );
         }
-        else // Scale
+        else // Draw scaled.
         {
-            // This would be faster if cached, but... it's fast enough.
+            // todo:
+            // This would be faster if cached, but shrug, it's fast enough.
+            // Could alternately call StretchDIBits instead.
             HBITMAP bitmap = CreateDIBitmap(
                 hdc,
                 reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
@@ -1863,6 +1479,7 @@ void RepaintWindow(HWND hwnd)
             SelectObject(sourceHdc, bitmap);
             SetStretchBltMode(ps.hdc, COLORONCOLOR);
             SetGraphicsMode(ps.hdc, GM_ADVANCED);
+
             StretchBltFixed(
                 ps.hdc,
                 -g_bitmapOffsetX,
@@ -1902,6 +1519,8 @@ void RepaintWindow(HWND hwnd)
 }
 
 
+// Update the menu items to reflect actual program state.
+// (Win32 really ought to have a better way to link menu item state to program state)
 void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
 {
     MENUITEMINFO menuItemInfo =
@@ -1930,10 +1549,12 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
         {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
         {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
-        {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueNearestIndex<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
+        {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
         {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
-        {IDM_ZOOM, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
-        {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueNearestIndex<uint32_t>(g_gridSizes, g_gridSize)); }},
+        {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
+        {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(g_canvasFlowDirection); }},
+        {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
+        {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, g_gridSize)); }},
     };
 
     for (auto& menuItem : menuItemData)
@@ -1956,12 +1577,13 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
 }
 
 
+// Handle 1D scrolling, like grabbing a horizontal or vertical scroll bar.
 void HandleBitmapScrolling(HWND hwnd, uint32_t scrollBarCode, int32_t delta, bool isHorizontal)
 {
     const uint32_t scrollBarType = isHorizontal ? SB_HORZ : SB_VERT;
     int32_t& currentOffsetRef = isHorizontal ? g_bitmapOffsetX : g_bitmapOffsetY;
     const int32_t previousOffset = currentOffsetRef;
-    const int32_t currentOffset = HandleScrollbar(hwnd, scrollBarCode, scrollBarType, delta);
+    const int32_t currentOffset = HandleScrollbarEvent(hwnd, scrollBarCode, scrollBarType, delta);
 
     if (previousOffset != currentOffset)
     {
@@ -1982,12 +1604,12 @@ void HandleBitmapScrolling(HWND hwnd, uint32_t scrollBarCode, int32_t delta, boo
 }
 
 
-// 2D offsets.
+// Handle 2D scrolling like middle mouse drag.
 void HandleBitmapScrolling(HWND hwnd, int32_t deltaX, int32_t deltaY)
 {
     if (deltaX == 0 && deltaY == 0)
     {
-        return;
+        return; // Nop.
     }
 
     // Clamp the adjustments to the new bitmap offset.
@@ -2027,7 +1649,7 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
     if (keyFlags & MK_CONTROL)
     {
         int32_t zDelta = delta;
-        auto newPixelZoom = FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
+        auto newPixelZoom = FindValueNextPrevious<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, zDelta > 0 ? 1 : -1);
         if (newPixelZoom != g_bitmapPixelZoom)
         {
             // Adjust mouse message coordinates from desktop to window-relative.
@@ -2041,11 +1663,11 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
             mouseCoordinate.y = std::clamp(int32_t(mouseCoordinate.y), -g_bitmapOffsetY, effectiveBitmapHeight - g_bitmapOffsetY);
 
             // Compute zoom origin based on mouse cursor (not just the top/left of the current view like some apps).
-            RedrawBitmapLater(hwnd);
+            RedrawBitmapLater(hwnd); // Invalidate using current zoom.
             g_bitmapOffsetX = (g_bitmapOffsetX + mouseCoordinate.x) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.x;
             g_bitmapOffsetY = (g_bitmapOffsetY + mouseCoordinate.y) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.y;
             g_bitmapPixelZoom = newPixelZoom;
-            RedrawBitmapLater(hwnd);
+            RedrawBitmapLater(hwnd); // Invalidate using new zoom.
             UpdateBitmapScrollbars(hwnd);
         }
     }
@@ -2062,7 +1684,7 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
 {
     if (newBitmapPixelZoom == g_bitmapPixelZoom)
     {
-        return;
+        return; // Nop.
     }
 
     RedrawBitmapLater(hwnd);
@@ -2082,14 +1704,7 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
 }
 
 
-//  FUNCTION: WindowProcedure(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
+// Processes messages for the main window.
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -2124,6 +1739,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         .Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE | OFN_ALLOWMULTISELECT,
                     };
 
+                    // Get the filename(s) from the user.
                     if (GetOpenFileName(&openFileName) && openFileName.nFileOffset > 0)
                     {
                         std::vector<std::wstring> filenameList;
@@ -2151,6 +1767,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_FILE_RELOAD:
+                // Reload the previous SVG files, useful if you update the SVG file in a text editor and resave it.
                 if (!g_filenameList.empty())
                 {
                     LoadSvgFiles(std::move(g_filenameList));
@@ -2214,6 +1831,24 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RealignBitmapOffsetsLater();
                 break;
 
+            case IDM_SIZE_WRAPPED:
+                g_bitmapSizeWrapped = !g_bitmapSizeWrapped;
+                RedrawSvgLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_SIZE_FLOW_RIGHT_DOWN:
+                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                RedrawSvgLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_SIZE_FLOW_DOWN_RIGHT:
+                g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
+                RedrawSvgLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
             case IDM_ZOOM0:
             case IDM_ZOOM1:
             case IDM_ZOOM2:
@@ -2230,11 +1865,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_ZOOM_IN:
             case IDM_ZOOM_OUT:
-                ChangeBitmapZoomCentered(hwnd, FindAdjustedValue<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, wmId == IDM_ZOOM_IN ? 1 : -1));
+                ChangeBitmapZoomCentered(hwnd, FindValueNextPrevious<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, wmId == IDM_ZOOM_IN ? 1 : -1));
                 break;
 
             case IDM_COPY_BITMAP:
-                CopySvgBitmapToClipboard(g_bitmap, hwnd);
+                CopyBitmapToClipboard(g_bitmap, hwnd);
                 break;
 
             case IDM_COLOR_GRAY_CHECKERBOARD:
@@ -2275,8 +1910,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_24:
             case IDM_GRID_SIZE_32:
                 g_gridVisible = true;
-                static_assert(IDM_GRID_SIZE_32 + 1 - IDM_GRID_SIZE_1 == _countof(g_gridSizes), "g_gridSizes is not the correct size");
-                g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_1];
+                static_assert(IDM_GRID_SIZE_1 == IDM_GRID_SIZE_FIRST);
+                static_assert(IDM_GRID_SIZE_32 == IDM_GRID_SIZE_LAST);
+                static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
+                g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
                 RedrawBitmapLater(hwnd);
                 break;
 
@@ -2297,12 +1934,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
     case WM_DROPFILES:
         {
-            // Get the filename.
+            // Get the filename(s).
             std::array<wchar_t, MAX_PATH> fileName;
             fileName[0] = '\0';
             HDROP dropHandle = reinterpret_cast<HDROP>(wParam);
             std::vector<std::wstring> filenameList;
 
+            // Load each file.
             uint32_t fileCount = DragQueryFile(dropHandle, 0xFFFFFFFF, nullptr, 0);
             for (uint32_t fileIndex = 0; fileIndex < fileCount; ++fileIndex)
             {
@@ -2375,7 +2013,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 }
 
 // Message handler for about box.
-INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK AboutDialogProcedure(HWND dialogHandle, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);
     switch (message)
@@ -2386,7 +2024,7 @@ INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LP
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
         {
-            EndDialog(hDlg, LOWORD(wParam));
+            EndDialog(dialogHandle, LOWORD(wParam));
             return (INT_PTR)TRUE;
         }
         break;

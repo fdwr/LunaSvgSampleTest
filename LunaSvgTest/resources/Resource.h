@@ -59,7 +59,7 @@
 #define IDM_EDIT                    156
 #define IDM_COLOR                   157
 #define IDM_SIZE                    158
-#define IDM_ZOOM                    159
+#define IDM_VIEW                    159
 #define IDM_GRID                    160
 #define IDM_HELP                    161
 #define IDM_FILE_RELOAD             162
@@ -93,6 +93,11 @@
 #define IDM_NAVIGATE_END            197
 #define IDM_ZOOM_IN                 200
 #define IDM_ZOOM_OUT                201
+#define IDM_SIZE_WRAPPED            202
+#define IDM_SIZE_FLOW_FIRST         203
+#define IDM_SIZE_FLOW_RIGHT_DOWN    203
+#define IDM_SIZE_FLOW_DOWN_RIGHT    204
+#define IDM_SIZE_FLOW_LAST          204
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC
