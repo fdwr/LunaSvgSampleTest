@@ -1,7 +1,6 @@
 Random thoughts for the future:
 
 TODO:
-    - Diagnose use-test.svg load failure
     - Display load failure message
     - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
     - Move these thoughts below to another file
