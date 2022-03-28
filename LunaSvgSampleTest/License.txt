@@ -1,3 +1,6 @@
+*Note this license only applies to LunaSvgSampleTest itself, not
+any external/ project code or SVG icons.
+
 Creative Commons Legal Code
 
 CC0 1.0 Universal

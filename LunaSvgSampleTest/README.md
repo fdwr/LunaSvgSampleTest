@@ -1,9 +1,9 @@
 # LunaSvgTest
 
-Dwayne Robinson 2022-03-21
+Dwayne Robinson 2022-03-27
 
 ## What
-Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (it's wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and if I can extend it to play around with SVG grid fitting possibilities.
+Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and also to see if I can extend it to play around with SVG grid fitting possibilities for crisper toolbar icons.
 
 ![Image of LunaSvgTest](SvgLunaTestScreenshot.png)
 
@@ -11,7 +11,7 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 - **OS**: Windows 7+
 - **Installation**: Portable app, and so just unzip the files into a folder where you want them - no bloated frameworks or dependencies needed.
 - **Running**: Double click LunaSvgTest.exe, and open the file(s) you want or drag&drop files.
-- **License**: [License.txt](License.txt) tldr: Do pretty much whatever you want with the binary at no cost, except the icons are copyrighted by others.
+- **License**: [License.txt](License.txt) tldr: Do whatever you want with the binary at no cost.
 
 ## Building
 - Open the CMake project with Visual Studio (confusingly to open a CMake project, you have to open the project via "Open Folder" instead of "Open Project").
