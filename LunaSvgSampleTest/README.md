@@ -23,7 +23,7 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 - Grid display ('g' key)
 
 ## Bug reports
-I'm unlikely to add more features to this app, because this is just a side project anyway, but let me know if you encounter bugs in the app itself. Any SVG loading or rendering issues are most likely in LunaSvg (hmm, I should at least display some file load message on error...).
+I'm unlikely to add more features to this app, because this is just a side project anyway, but let me know if you encounter bugs in the app itself. Any SVG loading or rendering issues are most likely in LunaSvg (sorry, I don't have more diagnostic info accessible to print out the specific error).
 
 ## Related
 - LunaSVG - https://github.com/sammycage/lunasvg
