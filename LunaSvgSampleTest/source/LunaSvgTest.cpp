@@ -1414,12 +1414,13 @@ void CopyBitmapToClipboard(
 }
 
 
-// StretchBlt has a bug with larger scales where the aspect ratio becomes distorted
-// if the total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale),
-// even if 95% of the content is clipped/off screen.
+// StretchBlt has a bug with larger scales where the aspect ratio becomes distorted if the
+// total extents are greater than 32768 (e.g. 4000 bitmap width x 16 scale), even if 95%
+// of the content is clipped/off screen. StretchDIBits instead just fails, and even for
+// the smaller window draws the pixels incorrectly adjusted for top down bitmaps.
 //
-// So this wrapper just virtually clips the stretch by adjusting the offsets and
-// size according to the clip rect. Windows *should* just do this itself :/.
+// So this near drop-in wrapper just virtually clips the stretch by adjusting the offsets
+// and size according to the clip rect. Windows *should* just do this itself :/.
 BOOL StretchBltFixed(
     HDC hdcDest,
     int destX,
@@ -1506,14 +1507,25 @@ void RepaintWindow(HWND hwnd)
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
 
+    // Buffer the drawing to avoid flickering.
+    HDC memoryDc = CreateCompatibleDC(ps.hdc);
+    
+    // Create the temporary composited bitmap.
+    // Note we can't just call CreateCompatibleBitmap, or else StretchDIBits incorrectly draws the content upside down.
+    HBITMAP memoryBitmap = CreateCompatibleBitmap(ps.hdc, clientRect.right, clientRect.bottom);
+
+    SelectObject(memoryDc, memoryBitmap);
+    SetStretchBltMode(memoryDc, COLORONCOLOR);
+    SetGraphicsMode(memoryDc, GM_ADVANCED);
+    SetBkMode(memoryDc, TRANSPARENT);
+
     // Display message if no SVG document loaded.
     if (!g_bitmap.valid())
     {
-        FillRect(ps.hdc, &clientRect, g_backgroundWindowBrush);
-        SetBkMode(ps.hdc, TRANSPARENT);
-        HFONT oldFont = static_cast<HFONT>(SelectObject(ps.hdc, GetStockObject(DEFAULT_GUI_FONT)));
-        DrawText(ps.hdc, g_defaultMessage.data(), int(g_defaultMessage.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
-        SelectObject(ps.hdc, oldFont);
+        FillRect(memoryDc, &clientRect, g_backgroundWindowBrush);
+        HFONT oldFont = static_cast<HFONT>(SelectObject(memoryDc, GetStockObject(DEFAULT_GUI_FONT)));
+        DrawText(memoryDc, g_defaultMessage.data(), int(g_defaultMessage.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
+        SelectObject(memoryDc, oldFont);
     }
     // Draw bitmap.
     else // g_bitmap.valid()
@@ -1530,13 +1542,13 @@ void RepaintWindow(HWND hwnd)
             LONG(effectiveBitmapWidth - g_bitmapOffsetX),
             LONG(effectiveBitmapHeight - g_bitmapOffsetY)
         };
-        DrawRectangleAroundRectangle(ps.hdc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
+        DrawRectangleAroundRectangle(memoryDc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
 
         // Draw the SVG bitmap.
         if (g_bitmapPixelZoom == 1)
         {
             SetDIBitsToDevice(
-                ps.hdc,
+                memoryDc,
                 -g_bitmapOffsetX,
                 -g_bitmapOffsetY,
                 g_bitmap.width(),
@@ -1565,11 +1577,9 @@ void RepaintWindow(HWND hwnd)
             );
             HDC sourceHdc = CreateCompatibleDC(ps.hdc);
             SelectObject(sourceHdc, bitmap);
-            SetStretchBltMode(ps.hdc, COLORONCOLOR);
-            SetGraphicsMode(ps.hdc, GM_ADVANCED);
 
             StretchBltFixed(
-                ps.hdc,
+                memoryDc,
                 -g_bitmapOffsetX,
                 -g_bitmapOffsetY,
                 g_bitmap.width() * g_bitmapPixelZoom,
@@ -1580,7 +1590,7 @@ void RepaintWindow(HWND hwnd)
                 g_bitmap.width(),
                 g_bitmap.height(),
                 SRCCOPY,
-                clientRect
+                ps.rcPaint// clientRect
             );
             DeleteDC(sourceHdc);
             DeleteObject(bitmap);
@@ -1592,7 +1602,7 @@ void RepaintWindow(HWND hwnd)
     if (g_gridVisible && gridSpacing > 1)
     {
         DrawBitmapGrid(
-            ps.hdc,
+            memoryDc,
             -g_bitmapOffsetX,
             -g_bitmapOffsetY,
             g_bitmap.width() * g_bitmapPixelZoom,
@@ -1602,6 +1612,11 @@ void RepaintWindow(HWND hwnd)
             reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH))
         );
     }
+
+    // Draw composited image to screen.
+    BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
+    DeleteDC(memoryDc);
+    DeleteObject(memoryBitmap);
 
     EndPaint(hwnd, &ps);
 }
