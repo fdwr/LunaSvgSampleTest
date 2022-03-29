@@ -11,6 +11,6 @@
              visibility="visible"
         />
     </defs>
-    <use href="#path20" x="0" y="0" />
-    <use href="#path20" x="30" y="20" />
+    <zuse zhref="#path20" x="0" y="0" />
+    <zuse zhref="#path20" x="30" y="20" />
 </svg>
