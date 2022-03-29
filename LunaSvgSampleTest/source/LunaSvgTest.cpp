@@ -427,18 +427,37 @@ void DrawBitmapGrid(
     HBRUSH brush
 )
 {
-    // Vertical lines left to right.
-    for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
-    {
-        RECT rect = { .left = x, .top = yOffset, .right = x + 1, .bottom = int32_t(yOffset + height) };
-        FillRect(hdc, &rect, brush);
-    }
+    xSpacing = std::max(xSpacing, 1u);
+    ySpacing = std::max(ySpacing, 1u);
 
-    // Horizontal lines top to bottom.
-    for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
+    const bool drawLines = true;
+    if (drawLines)
     {
-        RECT rect = { .left = xOffset, .top = y, .right = int32_t(xOffset + width), .bottom = y + 1 };
-        FillRect(hdc, &rect, brush);
+        // Vertical lines left to right.
+        for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
+        {
+            RECT rect = { .left = x, .top = yOffset, .right = x + 1, .bottom = int32_t(yOffset + height) };
+            FillRect(hdc, &rect, brush);
+        }
+
+        // Horizontal lines top to bottom.
+        for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
+        {
+            RECT rect = { .left = xOffset, .top = y, .right = int32_t(xOffset + width), .bottom = y + 1 };
+            FillRect(hdc, &rect, brush);
+        }
+    }
+    else
+    {
+        // SetPixel is really slow. Might need to use lines with dashes instead.
+        // Leave disabled for now.
+        for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
+        {
+            for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
+            {
+                SetPixel(hdc, x, y, 0x00000000);
+            }
+        }
     }
 }
 
@@ -1498,15 +1517,24 @@ void RepaintWindow(HWND hwnd)
     }
 
     // Draw the grid.
-    const int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
-    if (g_gridVisible && gridSpacing > 1)
+    int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
+    if (g_gridVisible)
     {
+        gridSpacing = std::max(gridSpacing, 2);
+        // Clamp the grid to the actual client area to avoid overdraw.
+        RECT gridRect =
+        {
+            g_bitmapOffsetX <= 0 ? -g_bitmapOffsetX : (-(g_bitmapOffsetX % gridSpacing)),
+            g_bitmapOffsetY <= 0 ? -g_bitmapOffsetY : (-(g_bitmapOffsetY % gridSpacing)),
+            std::min(LONG(g_bitmap.width() * g_bitmapPixelZoom - g_bitmapOffsetX), clientRect.right),
+            std::min(LONG(g_bitmap.height() * g_bitmapPixelZoom - g_bitmapOffsetY), clientRect.bottom),
+        };
         DrawBitmapGrid(
             ps.hdc,
-            -g_bitmapOffsetX,
-            -g_bitmapOffsetY,
-            g_bitmap.width() * g_bitmapPixelZoom,
-            g_bitmap.height() * g_bitmapPixelZoom,
+            gridRect.left,
+            gridRect.top,
+            gridRect.right - gridRect.left,
+            gridRect.bottom - gridRect.top,
             gridSpacing,
             gridSpacing,
             reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH))
