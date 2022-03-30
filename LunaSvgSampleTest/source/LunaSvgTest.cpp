@@ -151,8 +151,8 @@ struct BITMAPHEADERv3 // BITMAPINFOHEADER (not v3 is not backwards compatible wi
     DWORD        sizeImage;
     LONG         xPelsPerMeter;
     LONG         yPelsPerMeter;
-    DWORD        clrImportant;
     DWORD        clrUsed;
+    DWORD        clrImportant;
 };
 
 struct BITMAPHEADERv4 : BITMAPHEADERv3 // BITMAPV4HEADER
@@ -1629,6 +1629,27 @@ void RepaintWindow(HWND hwnd)
             std::min(LONG(g_bitmap.width() * g_bitmapPixelZoom - g_bitmapOffsetX), clientRect.right),
             std::min(LONG(g_bitmap.height() * g_bitmapPixelZoom - g_bitmapOffsetY), clientRect.bottom),
         };
+
+        #if 0 // TODO: Can I have a transparent pattern brush to draw faster than SetPixel?
+        BITMAPHEADERv3 patternBrushBitmapHeader =
+        {
+            .size = sizeof(bitmapInfo),
+            .width = bitmap.width(),
+            .height = -LONG(bitmap.height()),
+            .planes = 1,
+            .bitCount = 2,
+            .compression = BI_BITFIELDS,
+            .sizeImage = bitmap.stride() * bitmap.height(),
+            .xPelsPerMeter = 3780,
+            .yPelsPerMeter = 3780,
+            .clrUsed = 0,
+            .clrImportant = 0,
+        };
+        HBRUSH patternBrush = CreateDIBPatternBrushPt(
+            &patternBrushBitmapHeader,
+            DIB_RGB_COLORS
+        );
+        #endif
         DrawBitmapGrid(
             memoryDc,
             gridRect.left,
