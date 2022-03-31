@@ -116,6 +116,7 @@ CanvasItem::FlowDirection g_canvasFlowDirection = CanvasItem::FlowDirection::Rig
 bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
+bool g_pixelGridVisible = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
 int32_t g_previousMouseY = 0;
@@ -188,6 +189,7 @@ void LoadSvgFile(const wchar_t* filePath);
 void AppendSingleSvgFile(wchar_t const* filePath);
 void RedrawSvgLater(HWND hwnd);
 void RedrawSvg(HWND hwnd);
+void ShowLoadErrors();
 
 
 int APIENTRY wWinMain(
@@ -223,6 +225,7 @@ int APIENTRY wWinMain(
         {
             AppendSingleSvgFile(arguments[argumentIndex]);
         }
+        ShowLoadErrors();
         RedrawSvgLater(g_windowHandle);
     }
     LocalFree(arguments);
@@ -501,7 +504,7 @@ void ConstrainBitmapOffsetsLater()
 
 
 // Draw horizontal and vertical lines using the given color.
-void DrawBitmapGrid(
+void DrawGrid(
     HDC hdc,
     int32_t xOffset,
     int32_t yOffset,
@@ -509,26 +512,33 @@ void DrawBitmapGrid(
     uint32_t height,
     uint32_t xSpacing,
     uint32_t ySpacing,
-    HBRUSH brush
-)
+    RECT boundingRect,
+    HBRUSH brush,
+    bool drawLines
+    )
 {
     xSpacing = std::max(xSpacing, 1u);
     ySpacing = std::max(ySpacing, 1u);
 
-    const bool drawLines = true;
+    // Clamp the grid to the actual client area to avoid overdraw.
+    int32_t x0 = xOffset >= boundingRect.left ? xOffset : boundingRect.left - int32_t((boundingRect.left - xOffset) % xSpacing);
+    int32_t x1 = std::min(int32_t(xOffset + width), int32_t(boundingRect.right));
+    int32_t y0 = yOffset >= boundingRect.top ? yOffset : boundingRect.top - int32_t((boundingRect.top - yOffset) % ySpacing);
+    int32_t y1 = std::min(int32_t(yOffset + height), int32_t(boundingRect.bottom));
+
     if (drawLines)
     {
         // Vertical lines left to right.
-        for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
+        for (int32_t x = x0; x < x1; x += xSpacing)
         {
-            RECT rect = { .left = x, .top = yOffset, .right = x + 1, .bottom = int32_t(yOffset + height) };
+            RECT rect = { .left = x, .top = y0, .right = x + 1, .bottom = y1 };
             FillRect(hdc, &rect, brush);
         }
 
         // Horizontal lines top to bottom.
-        for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
+        for (int32_t y = y0; y < y1; y += ySpacing)
         {
-            RECT rect = { .left = xOffset, .top = y, .right = int32_t(xOffset + width), .bottom = y + 1 };
+            RECT rect = { .left = x0, .top = y, .right = x1, .bottom = y + 1 };
             FillRect(hdc, &rect, brush);
         }
     }
@@ -536,9 +546,9 @@ void DrawBitmapGrid(
     {
         // SetPixel is really slow. Might need to use lines with dashes instead.
         // Leave disabled for now.
-        for (int32_t y = yOffset; y < int32_t(yOffset + height); y += ySpacing)
+        for (int32_t y = y0; y < y1; y += ySpacing)
         {
-            for (int32_t x = xOffset; x < int32_t(xOffset + width); x += xSpacing)
+            for (int32_t x = x0; x < x1; x += xSpacing)
             {
                 SetPixel(hdc, x, y, 0x00000000);
             }
@@ -859,6 +869,16 @@ void LoadSvgFile(wchar_t const* fileName)
 }
 
 
+void ShowLoadErrors()
+{
+    if (!g_errorMessage.empty())
+    {
+        // Show error messages, after two second delay.
+        ShowToolTip(g_errorMessage.c_str());
+        SetTimer(g_windowHandle, IDM_OPEN_FILE, 2000, &HideToolTipTimerProc);
+    }
+}
+
 void LoadSvgFiles(std::vector<std::wstring>&& fileList)
 {
     auto movedFileList = std::move(fileList);
@@ -867,13 +887,7 @@ void LoadSvgFiles(std::vector<std::wstring>&& fileList)
     {
         AppendSingleSvgFile(fileName.c_str());
     }
-
-    if (!g_errorMessage.empty())
-    {
-        // Show error messages, after two second delay.
-        ShowToolTip(g_errorMessage.c_str());
-        SetTimer(g_windowHandle, IDM_OPEN_FILE, 2000, &HideToolTipTimerProc);
-    }
+    ShowLoadErrors();
 }
 
 
@@ -1143,6 +1157,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 }
 
 
+// Redraw grids atop all canvas items into the given bitmap.
 // Realign the offsets to the new bitmap size (typically after loading a new file)
 // so the bitmap is either centered in the window or anchored at the top left,
 // rather than randomly wherever it was last.
@@ -1618,18 +1633,10 @@ void RepaintWindow(HWND hwnd)
 
     // Draw the grid.
     int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
-    if (g_gridVisible)
+    if (g_gridVisible || g_pixelGridVisible)
     {
         gridSpacing = std::max(gridSpacing, 2);
-        // Clamp the grid to the actual client area to avoid overdraw.
-        RECT gridRect =
-        {
-            g_bitmapOffsetX <= 0 ? -g_bitmapOffsetX : (-(g_bitmapOffsetX % gridSpacing)),
-            g_bitmapOffsetY <= 0 ? -g_bitmapOffsetY : (-(g_bitmapOffsetY % gridSpacing)),
-            std::min(LONG(g_bitmap.width() * g_bitmapPixelZoom - g_bitmapOffsetX), clientRect.right),
-            std::min(LONG(g_bitmap.height() * g_bitmapPixelZoom - g_bitmapOffsetY), clientRect.bottom),
-        };
-
+        int32_t pixelGridSpacing = std::max(g_bitmapPixelZoom, 2u);
         #if 0 // TODO: Can I have a transparent pattern brush to draw faster than SetPixel?
         BITMAPHEADERv3 patternBrushBitmapHeader =
         {
@@ -1650,16 +1657,34 @@ void RepaintWindow(HWND hwnd)
             DIB_RGB_COLORS
         );
         #endif
-        DrawBitmapGrid(
-            memoryDc,
-            gridRect.left,
-            gridRect.top,
-            gridRect.right - gridRect.left,
-            gridRect.bottom - gridRect.top,
-            gridSpacing,
-            gridSpacing,
-            reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH))
-        );
+
+        HBRUSH borderBrush = CreateSolidBrush(0x00FF8000);
+        HBRUSH gridBrush = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
+        for (const auto& canvasItem : g_canvasItems)
+        {
+            switch (canvasItem.itemType)
+            {
+                case CanvasItem::ItemType::SvgDocument:
+                {
+                    int32_t x = -g_bitmapOffsetX + canvasItem.x * g_bitmapPixelZoom;
+                    int32_t y = -g_bitmapOffsetY + canvasItem.y * g_bitmapPixelZoom;
+                    int32_t w = canvasItem.w * g_bitmapPixelZoom;
+                    int32_t h = canvasItem.h * g_bitmapPixelZoom;
+                    if (g_gridVisible)
+                    {
+                        DrawGrid(memoryDc, x, y, w, h, gridSpacing, gridSpacing, clientRect, gridBrush, /*drawLines:*/true);
+                    }
+                    if (g_pixelGridVisible)
+                    {
+                        DrawGrid(memoryDc, x, y, w, h, pixelGridSpacing, pixelGridSpacing, clientRect, gridBrush, /*drawLines:*/false);
+                    }
+                    // Draw item outline.
+                    DrawGrid(memoryDc, x, y, w, h, w-1, h-1, clientRect, borderBrush, /*drawLines:*/true);
+                }
+                break;
+            }
+        }
+        DeleteObject(borderBrush);
     }
 
     // Draw composited image to screen.
@@ -1699,6 +1724,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
     const MenuItemData menuItemData[] =
     {
         {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
+        {IDM_GRID, IDM_PIXEL_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_pixelGridVisible); }},
         {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
         {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
         {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
@@ -2046,6 +2072,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_GRID_VISIBLE:
                 g_gridVisible = !g_gridVisible;
+                RedrawBitmapLater(hwnd);
+                break;
+
+            case IDM_PIXEL_GRID_VISIBLE:
+                g_pixelGridVisible = !g_pixelGridVisible;
                 RedrawBitmapLater(hwnd);
                 break;
 

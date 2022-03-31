@@ -40,7 +40,8 @@
 #define IDM_COLOR_OPAQUE_WHITE      133
 #define IDM_COLOR_OPAQUE_GRAY       134
 #define IDM_COLOR_LAST              134
-#define IDM_GRID_VISIBLE            142
+#define IDM_GRID_VISIBLE            141
+#define IDM_PIXEL_GRID_VISIBLE      142
 #define IDM_GRID_SIZE_FIRST         143
 #define IDM_GRID_SIZE_1             143
 #define IDM_GRID_SIZE_2             144
