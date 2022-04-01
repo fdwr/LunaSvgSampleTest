@@ -503,6 +503,9 @@ void ConstrainBitmapOffsetsLater()
 }
 
 
+#if 1
+// GDI SetPixel is really slow even on memory bitmaps.
+// So don't call this version.
 // Draw horizontal and vertical lines using the given color.
 void DrawGrid(
     HDC hdc,
@@ -551,6 +554,97 @@ void DrawGrid(
             for (int32_t x = x0; x < x1; x += xSpacing)
             {
                 SetPixel(hdc, x, y, 0x00000000);
+            }
+        }
+    }
+}
+#endif
+
+
+template<typename T>
+T RoundUp(T value, T multiple)
+{
+    if (multiple == 0)
+    {
+        return value;
+    }
+    else if (value > 0)
+    {
+        T remainder = value % multiple;
+        return value + (remainder ? multiple - remainder : T(0));
+    }
+    else // value <= 0
+    {
+        return value + (-value % multiple);
+    }
+}
+
+
+// Draw a grid of the given color, using either points or horizontal and vertical lines.
+// GDI SetPixel is sooo slow, even on memory bitmaps. So, just draw it ourselves :/.
+void DrawGridFast32bpp(
+    RECT const& gridRect,
+    uint32_t xSpacing,
+    uint32_t ySpacing,
+    uint32_t color, // B,G,R,A in byte memory order (no alpha blending done)
+    bool drawLines,
+    std::byte* pixels,
+    uint32_t rowByteStride,
+    RECT const& bitmapBoundingRect
+    )
+{
+    using PixelType = uint32_t;
+    assert(bitmapBoundingRect.left >= 0);
+    assert(bitmapBoundingRect.top >= 0);
+    assert(rowByteStride >= bitmapBoundingRect.right * sizeof(uint32_t));
+
+    xSpacing = std::max(xSpacing, 1u);
+    ySpacing = std::max(ySpacing, 1u);
+
+    // Clamp the grid to the actual client area to avoid overdraw.
+    // Adjust the starting pixel so the grid aligns correctly.
+    int32_t x0 = std::max(gridRect.left, bitmapBoundingRect.left);
+    int32_t y0 = std::max(gridRect.top, bitmapBoundingRect.top);
+    int32_t x1 = std::min(gridRect.right, bitmapBoundingRect.right);
+    int32_t y1 = std::min(gridRect.bottom, bitmapBoundingRect.bottom);
+    int32_t x0Adjusted = gridRect.left + RoundUp<int32_t>(x0 - gridRect.left, xSpacing);
+    int32_t y0Adjusted = gridRect.top + RoundUp<int32_t>(y0 - gridRect.top, ySpacing);
+    if (x0 > x1 || y0 > y1)
+    {
+        return;
+    }
+
+    if (drawLines)
+    {
+        // Vertical lines drawn left to right.
+        for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
+        {
+            std::byte* pixel = pixels + (y0 * rowByteStride) + (x * sizeof(PixelType));
+            for (int32_t y = y0; y < y1; ++y)
+            {
+                *reinterpret_cast<PixelType*>(pixel) = color;
+                pixel += rowByteStride;
+            }
+        }
+
+        // Horizontal lines drawn top to bottom.
+        for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
+        {
+            uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
+            for (int32_t x = x0; x < x1; ++x)
+            {
+                pixelRow[x] = color;
+            }
+        }
+    }
+    else
+    {
+        for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
+        {
+            uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
+            for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
+            {
+                pixelRow[x] = color;
             }
         }
     }
@@ -1535,6 +1629,10 @@ void RepaintWindow(HWND hwnd)
         UpdateBitmapScrollbars(hwnd);
     }
 
+    #if 0 // Enable for debugging entire screen drawing.
+    InvalidateRect(hwnd, nullptr, false);
+    #endif
+
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
 
@@ -1545,8 +1643,38 @@ void RepaintWindow(HWND hwnd)
     HDC memoryDc = CreateCompatibleDC(ps.hdc);
     
     // Create the temporary composited bitmap.
-    // Note we can't just call CreateCompatibleBitmap, or else StretchDIBits incorrectly draws the content upside down.
+    // Use a DIB section instead of CreateCompatibleBitmap because:
+    // a. StretchDIBits incorrectly draws the content upside-down because the source is top-down.
+    // b. SetPixel is very slow, leaving us to set the pixels directly instead.
+    #if 0
     HBITMAP memoryBitmap = CreateCompatibleBitmap(ps.hdc, clientRect.right, clientRect.bottom);
+    #else
+    BITMAPHEADERv3 memoryBitmapHeader =
+    {
+        .size = sizeof(memoryBitmapHeader),
+        .width = clientRect.right,
+        .height = -clientRect.bottom,
+        .planes = 1,
+        .bitCount = 32, // B,G,R,A
+        .compression = BI_RGB,
+        .sizeImage = clientRect.right * clientRect.bottom * sizeof(uint32_t),
+        .xPelsPerMeter = 3780,
+        .yPelsPerMeter = 3780,
+        .clrUsed = 0,
+        .clrImportant = 0,
+    };
+
+    std::byte* memoryBitmapPixels = nullptr;
+    HBITMAP memoryBitmap = CreateDIBSection(
+        memoryDc,
+        reinterpret_cast<BITMAPINFO const*>(&memoryBitmapHeader),
+        DIB_RGB_COLORS,
+        reinterpret_cast<void**>(&memoryBitmapPixels),
+        nullptr,
+        0
+    );
+    const uint32_t memoryBitmapRowByteStride = uint32_t(memoryBitmapHeader.width) * memoryBitmapHeader.bitCount / CHAR_BIT;
+    #endif
 
     SelectObject(memoryDc, memoryBitmap);
     SetStretchBltMode(memoryDc, COLORONCOLOR);
@@ -1624,7 +1752,7 @@ void RepaintWindow(HWND hwnd)
                 g_bitmap.width(),
                 g_bitmap.height(),
                 SRCCOPY,
-                ps.rcPaint// clientRect
+                ps.rcPaint
             );
             DeleteDC(sourceHdc);
             DeleteObject(bitmap);
@@ -1637,27 +1765,8 @@ void RepaintWindow(HWND hwnd)
     {
         gridSpacing = std::max(gridSpacing, 2);
         int32_t pixelGridSpacing = std::max(g_bitmapPixelZoom, 2u);
-        #if 0 // TODO: Can I have a transparent pattern brush to draw faster than SetPixel?
-        BITMAPHEADERv3 patternBrushBitmapHeader =
-        {
-            .size = sizeof(bitmapInfo),
-            .width = bitmap.width(),
-            .height = -LONG(bitmap.height()),
-            .planes = 1,
-            .bitCount = 2,
-            .compression = BI_BITFIELDS,
-            .sizeImage = bitmap.stride() * bitmap.height(),
-            .xPelsPerMeter = 3780,
-            .yPelsPerMeter = 3780,
-            .clrUsed = 0,
-            .clrImportant = 0,
-        };
-        HBRUSH patternBrush = CreateDIBPatternBrushPt(
-            &patternBrushBitmapHeader,
-            DIB_RGB_COLORS
-        );
-        #endif
 
+        #if 0
         HBRUSH borderBrush = CreateSolidBrush(0x00FF8000);
         HBRUSH gridBrush = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
         for (const auto& canvasItem : g_canvasItems)
@@ -1685,6 +1794,37 @@ void RepaintWindow(HWND hwnd)
             }
         }
         DeleteObject(borderBrush);
+        #else
+        GdiFlush();
+        RECT bitmapRect = { 0, 0, clientRect.right, clientRect.bottom };
+        for (const auto& canvasItem : g_canvasItems)
+        {
+            switch (canvasItem.itemType)
+            {
+                case CanvasItem::ItemType::SvgDocument:
+                {
+                    const int32_t x = -g_bitmapOffsetX + canvasItem.x * g_bitmapPixelZoom;
+                    const int32_t y = -g_bitmapOffsetY + canvasItem.y * g_bitmapPixelZoom;
+                    const int32_t w = canvasItem.w * g_bitmapPixelZoom;
+                    const int32_t h = canvasItem.h * g_bitmapPixelZoom;
+                    const RECT gridRect = { x, y, x + w, y + h };
+                    if (g_pixelGridVisible)
+                    {
+                        // Draw internal points.
+                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                    }
+                    if (g_gridVisible)
+                    {
+                        // Draw internal grid.
+                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                        // Draw item outline.
+                        DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                    }
+                }
+                break;
+            }
+        }
+        #endif
     }
 
     // Draw composited image to screen.
