@@ -86,7 +86,11 @@ std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
 std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
+HBITMAP g_cachedScreenBitmap;
+std::byte* g_cachedScreenBitmapPixels;
+SIZE g_cachedScreenBitmapSize;
 bool g_svgNeedsRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
+bool g_relayoutSvg = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
 bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
 std::wstring g_errorMessage;
@@ -192,6 +196,7 @@ INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LP
 void ClearSvgList();
 void LoadSvgFile(const wchar_t* filePath);
 void AppendSingleSvgFile(wchar_t const* filePath);
+void RelayoutSvgLater(HWND hwnd);
 void RedrawSvgLater(HWND hwnd);
 void RedrawSvg(HWND hwnd);
 void ShowLoadErrors();
@@ -231,7 +236,7 @@ int APIENTRY wWinMain(
             AppendSingleSvgFile(arguments[argumentIndex]);
         }
         ShowLoadErrors();
-        RedrawSvgLater(g_windowHandle);
+        RelayoutSvgLater(g_windowHandle);
     }
     LocalFree(arguments);
 
@@ -650,10 +655,9 @@ void DrawGridFast32bpp(
             for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
             {
                 PixelBgra p = {.i = pixelRow[x]};
-                p.r += (p.r >= 128) ? -96 : 96;
-                p.g += (p.g >= 128) ? -96 : 96;
-                p.b += (p.b >= 128) ? -96 : 96;
-                pixelRow[x] = p.i;
+                uint32_t shade = ((p.r + p.g + p.b) * 341) >> 10;
+                shade += (shade >= 128) ? -64 : 64;
+                pixelRow[x] = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000;
             }
         }
     }
@@ -1338,6 +1342,20 @@ void ConstrainBitmapOffsets(RECT const& clientRect)
 }
 
 
+bool IsBitmapSizingDisplayResizeable(BitmapSizingDisplay bitmapSizeDisplay)
+{
+    switch (bitmapSizeDisplay)
+    {
+    case BitmapSizingDisplay::FixedSize: return g_bitmapSizeWrapped;
+    case BitmapSizingDisplay::WindowSize: return true;
+    case BitmapSizingDisplay::WaterfallObjectThenSize: return g_bitmapSizeWrapped;
+    case BitmapSizingDisplay::WaterfallSizeThenObject: return g_bitmapSizeWrapped;
+    case BitmapSizingDisplay::Natural: return g_bitmapSizeWrapped;
+    default: return false;
+    }
+}
+
+
 // Redraw the background behind the SVG, such as transparent black or checkerboard.
 void RedrawSvgBackground()
 {
@@ -1368,11 +1386,15 @@ void RedrawSvg(RECT const& clientRect)
         return;
     }
 
-    RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
-    GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
-    LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
-    RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
-    g_bitmap.reset(boundingRect.right, boundingRect.bottom);
+    if (g_relayoutSvg)
+    {
+        RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
+        GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
+        LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
+        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
+        g_bitmap.reset(boundingRect.right, boundingRect.bottom);
+        g_relayoutSvg = false;
+    }
     RedrawSvgBackground();
     RedrawCanvasItems(g_canvasItems, g_bitmap);
 
@@ -1416,6 +1438,15 @@ void RedrawBitmapLater(HWND hwnd)
 // Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
 void RedrawSvgLater(HWND hwnd)
 {
+    g_svgNeedsRedrawing = true;
+    InvalidateRect(hwnd, nullptr, true);
+}
+
+
+// Enqueue relayout and redrawing the SVG to the bitmap later in WM_PAINT.
+void RelayoutSvgLater(HWND hwnd)
+{
+    g_relayoutSvg = true;
     g_svgNeedsRedrawing = true;
     InvalidateRect(hwnd, nullptr, true);
 }
@@ -1672,6 +1703,49 @@ BOOL StretchBltFixed(
 }
 
 
+/*TIMERPROC*/void CALLBACK ReclaimCachedBitmapMemory(HWND hwnd, UINT uElapse, UINT_PTR uIDEvent, DWORD dwTime)
+{
+    KillTimer(hwnd, uIDEvent);
+    DeleteObject(g_cachedScreenBitmap);
+    g_cachedScreenBitmap = nullptr;
+}
+
+
+std::tuple<
+    HBITMAP /*bitmap*/,
+    std::byte* /*pixels*/
+>
+CreateDIBSection32bpp(HDC memoryDc, SIZE size)
+{
+    BITMAPHEADERv3 memoryBitmapHeader =
+    {
+        .size = sizeof(memoryBitmapHeader),
+        .width = size.cx,
+        .height = -size.cy,
+        .planes = 1,
+        .bitCount = 32, // B,G,R,A
+        .compression = BI_RGB,
+        .sizeImage = size.cx * size.cy * sizeof(uint32_t),
+        .xPelsPerMeter = 3780,
+        .yPelsPerMeter = 3780,
+        .clrUsed = 0,
+        .clrImportant = 0,
+    };
+
+    std::byte* bitmapPixels = nullptr;
+    HBITMAP bitmap = CreateDIBSection(
+        nullptr, // memoryDc,
+        reinterpret_cast<BITMAPINFO const*>(&memoryBitmapHeader),
+        DIB_RGB_COLORS,
+        reinterpret_cast<void**>(&bitmapPixels),
+        nullptr,
+        0
+    );
+
+    return {bitmap, bitmapPixels};
+}
+
+
 void RepaintWindow(HWND hwnd)
 {
     if (g_svgNeedsRedrawing)
@@ -1680,19 +1754,26 @@ void RepaintWindow(HWND hwnd)
         UpdateBitmapScrollbars(hwnd);
     }
 
-    #if 0 // Enable for debugging entire screen drawing.
-    InvalidateRect(hwnd, nullptr, false);
-    #endif
-
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
 
-    // Buffer the drawing to avoid flickering.
-    HDC memoryDc = CreateCompatibleDC(ps.hdc);
-    
+    // Clear the existing bitmap if a bigger one is needed.
+    if (clientRect.right > g_cachedScreenBitmapSize.cx
+    ||  clientRect.bottom > g_cachedScreenBitmapSize.cy)
+    {
+        if (g_cachedScreenBitmap != nullptr)
+        {
+            DeleteObject(g_cachedScreenBitmap);
+            g_cachedScreenBitmap = nullptr;
+        }
+        g_cachedScreenBitmapSize.cx = (clientRect.right + 15) & ~15;
+        g_cachedScreenBitmapSize.cy = (clientRect.bottom + 15) & ~15;
+    }
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+    HDC memoryDc = CreateCompatibleDC(hdc); // Buffer the drawing to avoid flickering.
+
     // Create the temporary composited bitmap.
     // Use a DIB section instead of CreateCompatibleBitmap because:
     // a. StretchDIBits incorrectly draws the content upside-down because the source is top-down.
@@ -1700,36 +1781,23 @@ void RepaintWindow(HWND hwnd)
     #if 0
     HBITMAP memoryBitmap = CreateCompatibleBitmap(ps.hdc, clientRect.right, clientRect.bottom);
     #else
-    BITMAPHEADERv3 memoryBitmapHeader =
+    
+    if (g_cachedScreenBitmap == nullptr)
     {
-        .size = sizeof(memoryBitmapHeader),
-        .width = clientRect.right,
-        .height = -clientRect.bottom,
-        .planes = 1,
-        .bitCount = 32, // B,G,R,A
-        .compression = BI_RGB,
-        .sizeImage = clientRect.right * clientRect.bottom * sizeof(uint32_t),
-        .xPelsPerMeter = 3780,
-        .yPelsPerMeter = 3780,
-        .clrUsed = 0,
-        .clrImportant = 0,
-    };
-
-    std::byte* memoryBitmapPixels = nullptr;
-    HBITMAP memoryBitmap = CreateDIBSection(
-        memoryDc,
-        reinterpret_cast<BITMAPINFO const*>(&memoryBitmapHeader),
-        DIB_RGB_COLORS,
-        reinterpret_cast<void**>(&memoryBitmapPixels),
-        nullptr,
-        0
-    );
-    const uint32_t memoryBitmapRowByteStride = uint32_t(memoryBitmapHeader.width) * memoryBitmapHeader.bitCount / CHAR_BIT;
+        std::tie(g_cachedScreenBitmap, g_cachedScreenBitmapPixels) = CreateDIBSection32bpp(memoryDc, g_cachedScreenBitmapSize);
+        if (g_cachedScreenBitmap == nullptr)
+        {
+            return; // Can't do anything about it. So at least don't crash.
+        }
+    }
+    HBITMAP memoryBitmap = g_cachedScreenBitmap;
+    std::byte* memoryBitmapPixels = g_cachedScreenBitmapPixels;
+    const uint32_t memoryBitmapRowByteStride = uint32_t(g_cachedScreenBitmapSize.cx) * sizeof(PixelBgra);
     #endif
 
     SelectObject(memoryDc, memoryBitmap);
     SetStretchBltMode(memoryDc, COLORONCOLOR);
-    SetGraphicsMode(memoryDc, GM_ADVANCED);
+    SetGraphicsMode(memoryDc, GM_COMPATIBLE);
     SetBkMode(memoryDc, TRANSPARENT);
 
     // Display message if no SVG document loaded.
@@ -1749,7 +1817,8 @@ void RepaintWindow(HWND hwnd)
         // Erase background around drawing.
         const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
         const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-        RECT bitmapRect = {
+        RECT bitmapRect =
+        {
             LONG(-g_bitmapOffsetX),
             LONG(-g_bitmapOffsetY),
             LONG(effectiveBitmapWidth - g_bitmapOffsetX),
@@ -1881,9 +1950,13 @@ void RepaintWindow(HWND hwnd)
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
     DeleteDC(memoryDc);
-    DeleteObject(memoryBitmap);
 
     EndPaint(hwnd, &ps);
+
+    // Don't call DeleteObject(memoryBitmap) immediately, in case the user
+    // is actively panning or resizing the window. Rather, delete this object later
+    // after 1 second.
+    SetTimer(hwnd, WM_PAINT, 1000, &ReclaimCachedBitmapMemory);
 }
 
 
@@ -2130,7 +2203,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         }
 
                         LoadSvgFiles(std::move(filenameList));
-                        RedrawSvgLater(hwnd);
+                        RelayoutSvgLater(hwnd);
                     }
                 }
                 break;
@@ -2140,13 +2213,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 if (!g_filenameList.empty())
                 {
                     LoadSvgFiles(std::move(g_filenameList));
-                    RedrawSvgLater(hwnd);
+                    RelayoutSvgLater(hwnd);
                 }
                 break;
 
             case IDM_FILE_UNLOAD:
                 ClearSvgList();
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 break;
 
             case IDM_SIZE0:
@@ -2171,56 +2244,56 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FIXED:
                 // Leave g_bitmapSizePerDocument as previous value.
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_NATURAL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WRAPPED:
                 g_bitmapSizeWrapped = !g_bitmapSizeWrapped;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FLOW_DOWN_RIGHT:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
@@ -2297,14 +2370,18 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawBitmapLater(hwnd);
                 break;
 
-            case IDM_NAVIGATE_UP: HandleBitmapScrolling(hwnd, SB_LINEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_DOWN: HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_LEFT: HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_RIGHT: HandleBitmapScrolling(hwnd, SB_LINERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_PRIOR: HandleBitmapScrolling(hwnd, SB_PAGEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_NEXT: HandleBitmapScrolling(hwnd, SB_PAGEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_HOME: HandleBitmapScrolling(hwnd, SB_PAGELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_END: HandleBitmapScrolling(hwnd, SB_PAGERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_LINE_LEFT:  HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_LINE_RIGHT: HandleBitmapScrolling(hwnd, SB_LINERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_LINE_UP:    HandleBitmapScrolling(hwnd, SB_LINEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_LINE_DOWN:  HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_PAGE_LEFT:  HandleBitmapScrolling(hwnd, SB_PAGELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_PAGE_RIGHT: HandleBitmapScrolling(hwnd, SB_PAGERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_PAGE_UP:    HandleBitmapScrolling(hwnd, SB_PAGEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_PAGE_DOWN:  HandleBitmapScrolling(hwnd, SB_PAGEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_END_LEFT:   HandleBitmapScrolling(hwnd, SB_LEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_END_RIGHT:  HandleBitmapScrolling(hwnd, SB_RIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM, g_bitmapScrollStep, /*isHorizontal*/ false); break;
 
             default:
                 return DefWindowProc(hwnd, message, wParam, lParam);
@@ -2333,7 +2410,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             {
                 RedrawSvgLater(hwnd);
                 LoadSvgFiles(std::move(filenameList));
-                RedrawSvgLater(hwnd);
+                RelayoutSvgLater(hwnd);
             }
         }
         break;
@@ -2345,7 +2422,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_WINDOWPOSCHANGED:
         if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE))
         {
-            RedrawSvgLater(hwnd);
+            if (IsBitmapSizingDisplayResizeable(g_bitmapSizingDisplay))
+            {
+                RelayoutSvgLater(hwnd);
+            }
+            else
+            {
+                RedrawBitmapLater(hwnd);
+            }
             ConstrainBitmapOffsetsLater();
         }
         break;
