@@ -33,10 +33,12 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
 
 Read:
-    A vector format for Flutter by Google
-    https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
-    http://people.redhat.com/otaylor/grid-fitting/ Rendering good looking text with resolution-independent layout
+    
+    A vector format for Flutter by Google - https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
+    Rendering good looking text with resolution-independent layout - http://people.redhat.com/otaylor/grid-fitting/
     https://yqnn.github.io/svg-path-editor/
+    https://svg-path-visualizer.netlify.app/
+    Understanding grid sizes of (SVG) icons - https://makandracards.com/makandra/467222-understanding-grid-sizes-of-svg-icons
 
 Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path * path, const plutovg_matrix_t * matrix) Line 128	C
@@ -69,7 +71,7 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
 
 Elements:
-    anchor
+    anchor - invisible point used for other shapes to align/fit to.
 
 Attribute:
     grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
@@ -78,10 +80,11 @@ Attribute:
     grid-offset - adjustment in device pixels, such as shifting to a half pixel.
     grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
     grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
-    anchors - list of relative anchors for a path
+    path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
+    path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
 
 Example:
-    Grid alignment cannot be part of transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" ignores the translate).
+    Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
@@ -140,16 +143,70 @@ Example:
     Minimum stroke:
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
 
-Related:
-    WPF SnapsToDevicePixels and UseLayoutRounding. https://blog.benoitblanchon.fr/wpf-blurry-images/
-    WPF GuidelineSets https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
-    Images and Icons for Visual Studio https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
-    
-    Microsoft W3C rep for SVG https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
-    SVG specification https://github.com/w3c/svgwg/tree/master
-    TrueType hinting is overkill https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
+    Using the art picture frame:
+
+    <!-- booth.pm assets arts 144-4b309d4dce8b848ec7713199ba3b782ec1915a1550f7efd179de4332d54040bd.svg -->
+    <svg ...>
+        <!-- top left outer, top left inner -->
+        <anchor x="2" y="10" name="clipboardTLO" grid-round="up left">
+        <anchor x="8" y="16" name="clipboardTLI" grid-align="clipboardTLO" grid-round="down right">
+        <anchor x="38" y="10" name="clipboardBLO" grid-round="down left">
+        <anchor x="32" y="16" name="clipboardBLI" grid-align="clipboardBLO" grid-round="up right">
+        <anchor x="2" y="38" name="clipboardTRO" grid-round="up right">
+        <anchor x="8" y="32" name="clipboardTRI" grid-align="clipboardTRO" grid-round="down left">
+        <anchor x="38" y="38" name="clipboardBRO" grid-round="down right">
+        <anchor x="32" y="32" name="clipboardBRI" grid-align="clipboardBRO" grid-round="up left">
+
+        <!-- alternately use the edges instead -->
+        <anchor y="10" name="clipboardTopOuter"    grid-round="up">
+        <anchor y="16" name="clipboardTopInner"    grid-align="clipboardTopOuter" grid-round="down">
+        <anchor y="38" name="clipboardBottomOuter" grid-round="down">
+        <anchor y="32" name="clipboardBottomInner" grid-align="clipboardBottomOuter" grid-round="up">
+        <anchor x="2"  name="clipboardLeftOuter"   grid-round="left">
+        <anchor x="8"  name="clipboardLeftInner"   grid-align="clipboardLeftOuter" grid-round="right">
+        <anchor x="38" name="clipboardRightOuter"  grid-round="left">
+        <anchor x="32" name="clipboardRightInner"  grid-align="clipboardRightOuter" grid-round="right">
+
+        <!-- starting from top right corner of picture frame, use top outer and right outer, then preceeding counter-clockwise use just top outer, then top and right... -->
+        <path
+            anchors="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
+            d="ga 0 6 M 38,11 C 38 10.9 38 10.7 37.9 10.6 .. ga 0 H 33.3 L 22.8 2.8 C 21.1 1.6 18.8 1.6 17.1 2.8 ... g 0 2"
+        >
+    </svg>
+
+    Interaction with elements:
+        circle cx cy rx ry - rounded how exactly?
+        ellipse cx cy rx ry - rounded how exactly?
+        line x1 y1 x2 y2 - each point is rounded
+        polygon points="0,100 50,25" - each point is rounded
+        polyline points="0,100 50,25" - each point is rounded
+        rect x y width height rx ry - rounded how exactly?
+        path - all points in "d" attribute rounded
+        pattern x y width height viewBox - rounded after any patternTransform
+        text/textPath x y dx dy - the final pixel position x+dx is rounded, not individually. If you want them separately rounded, wrap it in a <g>.
+        use x y - rounded
+        image x y width height - rounded
+        clipPath - not affected, just subelements (e.g. the circle <clipPath id="someClip"><circle cx="40" cy="35" r="35"/></clipPath>)
+        linearGradient - not affected
+        radialGradient - not affected
+
+    <switch requiredFeatures="http://www.w3.org/TR/SVG11/feature#GridFitting">
+    <switch><g requiredPpuc="0 2"><g requiredPpuc="2 10"><g requiredPpuc="10"></switch>
 
     For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
       Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
       Possibly use eigen vector?
       Possibly just check x and y after rotating the transform back to axis alignment?
+
+Related:
+    SVG
+        SVG specification - https://github.com/w3c/svgwg/tree/master, https://www.w3.org/TR/SVG2/
+        SVG Hinting Proposals - https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting
+        Microsoft W3C rep for SVG - https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
+    WPF
+        WPF SnapsToDevicePixels and UseLayoutRounding - https://blog.benoitblanchon.fr/wpf-blurry-images/
+        WPF GuidelineSets - https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
+        Images and Icons for Visual Studio - https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
+    TrueType
+        TrueType hinting is overkill - https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
+        Pushing Pixels About those vector icons - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html

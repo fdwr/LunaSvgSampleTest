@@ -81,9 +81,10 @@
 #define IDM_SIZE_DISPLAY_FIRST      180
 #define IDM_SIZE_FIXED              180
 #define IDM_SIZE_WINDOW             181
-#define IDM_SIZE_WATERFALL          182
-#define IDM_SIZE_NATURAL            183
-#define IDM_SIZE_DISPLAY_LAST       183
+#define IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE 182
+#define IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT 183
+#define IDM_SIZE_NATURAL            184
+#define IDM_SIZE_DISPLAY_LAST       185
 #define IDM_NAVIGATE_DOWN           190
 #define IDM_NAVIGATE_UP             191
 #define IDM_NAVIGATE_LEFT           192
