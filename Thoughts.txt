@@ -33,7 +33,6 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
 
 Read:
-    
     A vector format for Flutter by Google - https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
     Rendering good looking text with resolution-independent layout - http://people.redhat.com/otaylor/grid-fitting/
     https://yqnn.github.io/svg-path-editor/
