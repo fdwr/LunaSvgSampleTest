@@ -1886,35 +1886,6 @@ void RepaintWindow(HWND hwnd)
         gridSpacing = std::max(gridSpacing, 2);
         int32_t pixelGridSpacing = std::max(g_bitmapPixelZoom, 2u);
 
-        #if 0
-        HBRUSH borderBrush = CreateSolidBrush(0x00FF8000);
-        HBRUSH gridBrush = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
-        for (const auto& canvasItem : g_canvasItems)
-        {
-            switch (canvasItem.itemType)
-            {
-                case CanvasItem::ItemType::SvgDocument:
-                {
-                    int32_t x = -g_bitmapOffsetX + canvasItem.x * g_bitmapPixelZoom;
-                    int32_t y = -g_bitmapOffsetY + canvasItem.y * g_bitmapPixelZoom;
-                    int32_t w = canvasItem.w * g_bitmapPixelZoom;
-                    int32_t h = canvasItem.h * g_bitmapPixelZoom;
-                    if (g_gridVisible)
-                    {
-                        DrawGrid(memoryDc, x, y, w, h, gridSpacing, gridSpacing, clientRect, gridBrush, /*drawLines:*/true);
-                    }
-                    if (g_pixelGridVisible)
-                    {
-                        DrawGrid(memoryDc, x, y, w, h, pixelGridSpacing, pixelGridSpacing, clientRect, gridBrush, /*drawLines:*/false);
-                    }
-                    // Draw item outline.
-                    DrawGrid(memoryDc, x, y, w, h, w-1, h-1, clientRect, borderBrush, /*drawLines:*/true);
-                }
-                break;
-            }
-        }
-        DeleteObject(borderBrush);
-        #else
         GdiFlush();
         RECT bitmapRect = { 0, 0, clientRect.right, clientRect.bottom };
         for (const auto& canvasItem : g_canvasItems)
@@ -1944,7 +1915,6 @@ void RepaintWindow(HWND hwnd)
                 break;
             }
         }
-        #endif
     }
 
     // Draw composited image to screen.
@@ -2420,7 +2390,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         break;
 
     case WM_WINDOWPOSCHANGED:
-        if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_NOSIZE))
+        if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & (SWP_SHOWWINDOW | SWP_HIDEWINDOW | SWP_NOSIZE)))
         {
             if (IsBitmapSizingDisplayResizeable(g_bitmapSizingDisplay))
             {
