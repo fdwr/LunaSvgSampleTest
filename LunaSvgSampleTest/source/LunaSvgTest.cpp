@@ -30,7 +30,8 @@ enum class BitmapSizingDisplay
 {
     FixedSize,
     WindowSize,
-    Waterfall,
+    WaterfallObjectThenSize,
+    WaterfallSizeThenObject,
     Natural,
 };
 
@@ -105,7 +106,7 @@ const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
 
-BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
+BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapSizePerDocument = 64; // in pixels
 uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
@@ -121,12 +122,16 @@ bool g_pixelGridVisible = false; // Display points per pixel.
 int32_t g_previousMouseX = 0; // Used for middle drag.
 int32_t g_previousMouseY = 0;
 
-struct PixelBgra
+union PixelBgra
 {
-    uint8_t b;
-    uint8_t g;
-    uint8_t r;
-    uint8_t a;
+    struct
+    {
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
+        uint8_t a;
+    };
+    uint32_t i;
 };
 
 // Redefine the bitmap header structs so inheritance works.
@@ -259,7 +264,7 @@ ATOM RegisterMainWindowClass(HINSTANCE instanceHandle)
         .cbWndExtra     = 0,
         .hInstance      = instanceHandle,
         .hIcon          = LoadIcon(instanceHandle, MAKEINTRESOURCE(IDI_LUNASVGTEST)),
-        .hCursor        = LoadCursor(nullptr, IDC_ARROW),
+        .hCursor        = LoadCursor(nullptr, IDC_SIZEALL),
         .hbrBackground  = g_backgroundWindowBrush,
         .lpszMenuName   = MAKEINTRESOURCEW(IDC_LUNASVGTEST),
         .lpszClassName  = g_windowClassName,
@@ -644,7 +649,11 @@ void DrawGridFast32bpp(
             uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
             for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
             {
-                pixelRow[x] = color;
+                PixelBgra p = {.i = pixelRow[x]};
+                p.r += (p.r >= 128) ? -96 : 96;
+                p.g += (p.g >= 128) ? -96 : 96;
+                p.b += (p.b >= 128) ? -96 : 96;
+                pixelRow[x] = p.i;
             }
         }
     }
@@ -1028,7 +1037,7 @@ void GenerateCanvasItems(
         AppendCanvasItemsGivenSize(canvasItems, g_bitmapSizePerDocument);
         break;
 
-    case BitmapSizingDisplay::Waterfall:
+    case BitmapSizingDisplay::WaterfallObjectThenSize:
         {
             for (uint32_t bitmapSize : g_waterfallBitmapSizes)
             {
@@ -1056,6 +1065,48 @@ void GenerateCanvasItems(
                         .h = bitmapSize,
                     };
                     canvasItems.push_back(std::move(svgCanvasItem));
+                }
+            }
+        }
+        break;
+
+    case BitmapSizingDisplay::WaterfallSizeThenObject:
+        {
+            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            {
+                CanvasItem::Flags flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
+
+                // Append all labels, one for each size.
+                for (uint32_t bitmapSize : g_waterfallBitmapSizes)
+                {
+                    CanvasItem labelCanvasItem =
+                    {
+                        .itemType = CanvasItem::ItemType::SizeLabel,
+                        .flags = flags,
+                        .value = {.labelSize = bitmapSize},
+                        .w = !isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
+                        .h = !isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
+                    };
+                    canvasItems.push_back(std::move(labelCanvasItem));
+                    flags = CanvasItem::Flags::Default;
+                }
+
+                flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
+
+                // Append all SVG documents at the current size.
+                for (uint32_t bitmapSize : g_waterfallBitmapSizes)
+                {
+                    auto& document = g_svgDocuments[documentIndex];
+                    CanvasItem svgCanvasItem =
+                    {
+                        .itemType = CanvasItem::ItemType::SvgDocument,
+                        .flags = flags,
+                        .value = {.svgDocumentIndex = documentIndex},
+                        .w = bitmapSize,
+                        .h = bitmapSize,
+                    };
+                    canvasItems.push_back(std::move(svgCanvasItem));
+                    flags = CanvasItem::Flags::Default;
                 }
             }
         }
@@ -1808,17 +1859,17 @@ void RepaintWindow(HWND hwnd)
                     const int32_t w = canvasItem.w * g_bitmapPixelZoom;
                     const int32_t h = canvasItem.h * g_bitmapPixelZoom;
                     const RECT gridRect = { x, y, x + w, y + h };
-                    if (g_pixelGridVisible)
-                    {
-                        // Draw internal points.
-                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
-                    }
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
                         DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
                         // Draw item outline.
                         DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                    }
+                    if (g_pixelGridVisible)
+                    {
+                        // Draw internal points.
+                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
                     }
                 }
                 break;
@@ -2137,8 +2188,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RealignBitmapOffsetsLater();
                 break;
 
-            case IDM_SIZE_WATERFALL:
-                g_bitmapSizingDisplay = BitmapSizingDisplay::Waterfall;
+            case IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE:
+                g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
+                RedrawSvgLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT:
+                g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
                 RedrawSvgLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
@@ -2309,13 +2366,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         OnMouseWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), GET_WHEEL_DELTA_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam));
         break;
 
-    case WM_MBUTTONDOWN:
+    case WM_LBUTTONDOWN:
         g_previousMouseX = LOWORD(lParam);
         g_previousMouseY = HIWORD(lParam);
         break;
 
     case WM_MOUSEMOVE:
-        if (wParam & MK_MBUTTON)
+        if (wParam & MK_LBUTTON)
         {
             int32_t x = LOWORD(lParam);
             int32_t y = HIWORD(lParam);
