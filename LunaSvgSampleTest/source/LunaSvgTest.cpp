@@ -316,7 +316,7 @@ void ShowToolTip(
     // auto {toolTipScreenX, toolTipScreenY} = toolTipPoint; // Why C++, why? Be self-consistent, using curly braces.
     auto [toolTipScreenX, toolTipScreenY] = toolTipPoint;
 
-    //SendMessage(TtHwnd, TTM_SETMAXTIPWIDTH, 0, sz.cx); // No wrapping. Just let it be as wide as it needs to be.
+    SendMessage(g_toolTipWindowHandle, TTM_SETMAXTIPWIDTH, 0, 1024); // No wrapping. Just let it be as wide as it needs to be.
     g_toolTipInfo.lpszText = const_cast<LPWSTR>(message);
     SendMessage(g_toolTipWindowHandle, TTM_UPDATETIPTEXT, 0, (LPARAM)&g_toolTipInfo);
     SendMessage(g_toolTipWindowHandle, TTM_TRACKPOSITION, 0, (LPARAM)(toolTipScreenX | toolTipScreenY << 16)); // reposition one last time
@@ -2183,6 +2183,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 if (!g_filenameList.empty())
                 {
                     LoadSvgFiles(std::move(g_filenameList));
+                    ShowLoadErrors();
                     RelayoutSvgLater(hwnd);
                 }
                 break;
