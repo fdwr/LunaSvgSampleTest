@@ -222,6 +222,7 @@ public:
 private:
     std::vector<PathCommand> m_commands;
     std::vector<Point> m_points;
+    // TODO: GRIDFIT HERE
 };
 
 class PathIterator
@@ -238,6 +239,7 @@ private:
    const std::vector<PathCommand>& m_commands;
    const Point* m_points{nullptr};
    unsigned int m_index{0};
+   // TODO: GRIDFIT HERE
 };
 
 enum class LengthUnits

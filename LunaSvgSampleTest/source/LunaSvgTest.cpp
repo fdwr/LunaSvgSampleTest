@@ -649,6 +649,9 @@ void DrawGridFast32bpp(
     }
     else
     {
+        // This is several times faster than GDI SetPixel,
+        // where drawing a full page of dots on my 1920x1080
+        // screen takes 6ms vs 166ms with SetPixel.
         for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
         {
             uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
@@ -1392,6 +1395,8 @@ void RedrawSvg(RECT const& clientRect)
         GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
+        boundingRect.right = std::min(boundingRect.right, 65536L); // GDI has issues with large bitmaps.
+        boundingRect.bottom = std::min(boundingRect.bottom, 65536L);
         g_bitmap.reset(boundingRect.right, boundingRect.bottom);
         g_relayoutSvg = false;
     }
@@ -2409,7 +2414,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         return 1;
 
     case WM_PAINT:
-        RepaintWindow(hwnd);
+        try
+        {
+            RepaintWindow(hwnd);
+        }
+        catch (...) // std::bad_alloc can happen if the bitmap is too large.
+        {
+            ValidateRect(hwnd, nullptr);
+        }
         break;
 
     case WM_HSCROLL:

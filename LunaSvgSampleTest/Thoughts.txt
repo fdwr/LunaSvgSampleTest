@@ -78,6 +78,7 @@ Attribute:
     grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
     grid-offset - adjustment in device pixels, such as shifting to a half pixel.
     grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
+    grid-transform - apply multiple transformation matrix operations (scale, offset, shear).
     grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
     path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
     path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
@@ -117,12 +118,15 @@ Example:
         <path id="topComponent" anchors="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor -->
         <path id="bottomComponent" anchors="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
 
-    todo: Can you just declare values inline with shorthand, rather than require anchor?
+    You can supply a scale and bias directly in the rounding mode. floor((x-bias)/scale)*scale+bias
 
-        <g grid-align="37.5 37.5 halves-up fraction-left">
+        <g grid-rounding="floor-x(1 0.5)"><!-- round down to pixel centers -->
+        <g grid-rounding="floor-x(2 0.0)"><!-- scale grid by 2x -->
+        <g grid-rounding="floor-x(2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="floor-x(0.5)"><!-- round to every half a pixel -->
 
     Referring to the same anchor twice in a nested group will be a nop, since the outer group
-    already aligned the anchor.
+    already aligned the anchor. (but how to achieve this? how to know the outer one applied?)
 
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
         <g grid-align="plusSignTopLeftCorner">
@@ -139,6 +143,30 @@ Example:
             <circle cx="50" cy="50" r="10"/>
         </g>
 
+    grid-fit should accept 1, 2, or 3 anchors for points, which is translation, scaling along x and y, or arbitrary scaling/rotation/shear.
+    1 point is equivalent to 3 points repeating the same value.
+    2 points is equivalent to 3 points with the 3rd point holding an x and y value from the other 2 points.
+
+    Inline anchors Would a be convenient shorthand rather than needing a separate anchor each time with a unique id.
+    Instead of:
+
+        <anchor id="RectAnchor" x="23" y="42" grid-point-rounding="nearest-up nearest-left">
+        <rect x1="23" y1="42" width="20" height="10" grid-align="RectAnchor">
+
+    Just say:
+        <rect x1="23" y1="42" grid-align="anchor(23 42 nearest-up nearest-left)">
+
+    Note aligning the anchor is different from aligning all the points individually, which would change the height/width:
+        <rect x1="23" y1="42" grid-point-rounding="nearest-up nearest-left">
+
+    Naming?
+        nearest-up - preferring this one
+        halves-up?
+        fraction-up?
+
+        "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down",
+        whereas "halves up" means to round toward positive infinity.
+
     Minimum stroke:
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
 
@@ -147,24 +175,24 @@ Example:
     <!-- booth.pm assets arts 144-4b309d4dce8b848ec7713199ba3b782ec1915a1550f7efd179de4332d54040bd.svg -->
     <svg ...>
         <!-- top left outer, top left inner -->
-        <anchor x="2" y="10" name="clipboardTLO" grid-round="up left">
-        <anchor x="8" y="16" name="clipboardTLI" grid-align="clipboardTLO" grid-round="down right">
-        <anchor x="38" y="10" name="clipboardBLO" grid-round="down left">
-        <anchor x="32" y="16" name="clipboardBLI" grid-align="clipboardBLO" grid-round="up right">
-        <anchor x="2" y="38" name="clipboardTRO" grid-round="up right">
-        <anchor x="8" y="32" name="clipboardTRI" grid-align="clipboardTRO" grid-round="down left">
-        <anchor x="38" y="38" name="clipboardBRO" grid-round="down right">
-        <anchor x="32" y="32" name="clipboardBRI" grid-align="clipboardBRO" grid-round="up left">
+        <anchor x="2"  y="10" id="clipboardTLO" grid-round="up left">
+        <anchor x="8"  y="16" id="clipboardTLI" grid-align="clipboardTLO" grid-round="down right">
+        <anchor x="38" y="10" id="clipboardBLO" grid-round="down left">
+        <anchor x="32" y="16" id="clipboardBLI" grid-align="clipboardBLO" grid-round="up right">
+        <anchor x="2"  y="38" id="clipboardTRO" grid-round="up right">
+        <anchor x="8"  y="32" id="clipboardTRI" grid-align="clipboardTRO" grid-round="down left">
+        <anchor x="38" y="38" id="clipboardBRO" grid-round="down right">
+        <anchor x="32" y="32" id="clipboardBRI" grid-align="clipboardBRO" grid-round="up left">
 
         <!-- alternately use the edges instead -->
-        <anchor y="10" name="clipboardTopOuter"    grid-round="up">
-        <anchor y="16" name="clipboardTopInner"    grid-align="clipboardTopOuter" grid-round="down">
-        <anchor y="38" name="clipboardBottomOuter" grid-round="down">
-        <anchor y="32" name="clipboardBottomInner" grid-align="clipboardBottomOuter" grid-round="up">
-        <anchor x="2"  name="clipboardLeftOuter"   grid-round="left">
-        <anchor x="8"  name="clipboardLeftInner"   grid-align="clipboardLeftOuter" grid-round="right">
-        <anchor x="38" name="clipboardRightOuter"  grid-round="left">
-        <anchor x="32" name="clipboardRightInner"  grid-align="clipboardRightOuter" grid-round="right">
+        <anchor y="10" id="clipboardTopOuter"    grid-round="up">
+        <anchor y="16" id="clipboardTopInner"    grid-align="clipboardTopOuter" grid-round="down">
+        <anchor y="38" id="clipboardBottomOuter" grid-round="down">
+        <anchor y="32" id="clipboardBottomInner" grid-align="clipboardBottomOuter" grid-round="up">
+        <anchor x="2"  id="clipboardLeftOuter"   grid-round="left">
+        <anchor x="8"  id="clipboardLeftInner"   grid-align="clipboardLeftOuter" grid-round="right">
+        <anchor x="38" id="clipboardRightOuter"  grid-round="left">
+        <anchor x="32" id="clipboardRightInner"  grid-align="clipboardRightOuter" grid-round="right">
 
         <!-- starting from top right corner of picture frame, use top outer and right outer, then preceeding counter-clockwise use just top outer, then top and right... -->
         <path
