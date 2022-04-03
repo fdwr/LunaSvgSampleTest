@@ -34,6 +34,7 @@ void plutovg_dash_destroy(plutovg_dash_t* dash)
 
 plutovg_path_t* plutovg_dash_path(const plutovg_dash_t* dash, const plutovg_path_t* path)
 {
+    // TODO: GRIDFIT HERE
     if(dash->data==NULL || dash->size==0)
         return plutovg_path_clone(path);
 

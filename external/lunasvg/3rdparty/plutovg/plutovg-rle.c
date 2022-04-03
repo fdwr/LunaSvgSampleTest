@@ -95,6 +95,7 @@ static void sw_ft_outline_end(SW_FT_Outline* ft)
 
 static SW_FT_Outline* sw_ft_outline_convert(const plutovg_path_t* path, const plutovg_matrix_t* matrix)
 {
+    // TODO: GRIDFIT HERE
     SW_FT_Outline* outline = sw_ft_outline_create(path->points.size, path->contours);
     plutovg_path_element_t* elements = path->elements.data;
     plutovg_point_t* points = path->points.data;
@@ -197,6 +198,7 @@ void plutovg_rle_rasterize(plutovg_rle_t* rle, const plutovg_path_t* path, const
 
     if(stroke)
     {
+        // TODO: GRIDFIT HERE
         SW_FT_Outline* outline = stroke->dash ? sw_ft_outline_convert_dash(path, matrix, stroke->dash) : sw_ft_outline_convert(path, matrix);
         SW_FT_Stroker_LineCap ftCap;
         SW_FT_Stroker_LineJoin ftJoin;
@@ -265,6 +267,7 @@ void plutovg_rle_rasterize(plutovg_rle_t* rle, const plutovg_path_t* path, const
     }
     else
     {
+        // TODO: GRIDFIT HERE
         SW_FT_Outline* outline = sw_ft_outline_convert(path, matrix);
         outline->flags = winding == plutovg_fill_rule_even_odd ? SW_FT_OUTLINE_EVEN_ODD_FILL : SW_FT_OUTLINE_NONE;
         params.source = outline;

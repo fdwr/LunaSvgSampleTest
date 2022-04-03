@@ -100,6 +100,7 @@ void Canvas::setTexture(const Canvas* source, TextureType type, const Transform&
 
 void Canvas::fill(const Path& path, const Transform& transform, WindRule winding, BlendMode mode, double opacity)
 {
+    // TODO: GRIDFIT HERE
     auto matrix = to_plutovg_matrix(transform);
     plutovg_matrix_multiply(&matrix, &matrix, &translation);
     to_plutovg_path(pluto, path);
@@ -112,6 +113,7 @@ void Canvas::fill(const Path& path, const Transform& transform, WindRule winding
 
 void Canvas::stroke(const Path& path, const Transform& transform, double width, LineCap cap, LineJoin join, double miterlimit, const DashData& dash, BlendMode mode, double opacity)
 {
+    // TODO: GRIDFIT HERE
     auto matrix = to_plutovg_matrix(transform);
     plutovg_matrix_multiply(&matrix, &matrix, &translation);
     to_plutovg_path(pluto, path);
@@ -288,6 +290,7 @@ static void to_plutovg_stops(plutovg_gradient_t* gradient, const GradientStops& 
 
 void to_plutovg_path(plutovg_t* pluto, const Path& path)
 {
+    // TODO: GRIDFIT HERE
     PathIterator it(path);
     std::array<Point, 3> p;
     while(!it.isDone())

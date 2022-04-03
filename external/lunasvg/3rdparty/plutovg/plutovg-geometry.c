@@ -118,12 +118,15 @@ int plutovg_matrix_invert(plutovg_matrix_t* matrix)
 
 void plutovg_matrix_map(const plutovg_matrix_t* matrix, double x, double y, double* _x, double* _y)
 {
+    // TODO: GRIDFIT HERE
+    // HACK:::
     *_x = x * matrix->m00 + y * matrix->m01 + matrix->m02;
     *_y = x * matrix->m10 + y * matrix->m11 + matrix->m12;
 }
 
 void plutovg_matrix_map_point(const plutovg_matrix_t* matrix, const plutovg_point_t* src, plutovg_point_t* dst)
 {
+    // TODO: GRIDFIT HERE
     plutovg_matrix_map(matrix, src->x, src->y, &dst->x, &dst->y);
 }
 

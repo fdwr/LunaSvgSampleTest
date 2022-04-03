@@ -296,6 +296,7 @@ public:
 
 public:
     Path path;
+    // TODO: GRIDFIT HERE (adjust transform based on anchors?)
     Transform transform;
     FillData fillData;
     StrokeData strokeData;
