@@ -79,6 +79,21 @@ struct CanvasItem
     uint32_t h; // Height
 };
 
+RECT ToRect(CanvasItem const& canvasItem)
+{
+    return {
+        LONG(canvasItem.x),
+        LONG(canvasItem.y),
+        LONG(canvasItem.x + canvasItem.w),
+        LONG(canvasItem.y + canvasItem.h)
+    };
+}
+
+SIZE ToSize(RECT const& rect)
+{
+    return { LONG(rect.right - rect.left), LONG(rect.bottom - rect.top) };
+}
+
 DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 
 // Horrible assortment of (gasp) global variables rather than a proper class instance.
@@ -120,6 +135,7 @@ int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmap
 CanvasItem::FlowDirection g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
 bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
+bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
 bool g_pixelGridVisible = false; // Display points per pixel.
 
@@ -698,6 +714,29 @@ void NegateBitmap(lunasvg::Bitmap& bitmap)
 }
 
 
+void AlphaToGrayscale(lunasvg::Bitmap& bitmap)
+{
+    const uint32_t width = bitmap.width();
+    const uint32_t height = bitmap.height();
+    const uint32_t stride = bitmap.stride();
+    auto rowData = bitmap.data();
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        auto data = rowData;
+        for (uint32_t x = 0; x < width; ++x)
+        {
+            auto a = data[3];
+            data[0] = a;
+            data[1] = a;
+            data[2] = a;
+            data += sizeof(uint32_t);
+        }
+        rowData += stride;
+    }
+}
+
+
 // Tiny 5x7 digits for the pixel labels.
 // 0 = transparent
 // 1 = black
@@ -1199,9 +1238,9 @@ void LayoutCanvasItems(
                 if (lineRect.bottom > int32_t(indentY))
                 {
                     y = indentY;
-                    x = lineRect.right;
-                    nextX = x;
-                    lineRect = {};
+					x = lineRect.right;
+					nextX = x;
+					lineRect = {};
                 }
             }
             nextY = y + canvasItem.h;
@@ -1258,6 +1297,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 {
     constexpr uint32_t maximumSmallDigitNumbers = 4;
     lunasvg::Bitmap subbitmap;
+    const RECT bitmapRect = { 0, 0, LONG(bitmap.width()), LONG(bitmap.height()) };
 
     for (const auto& canvasItem : canvasItems)
     {
@@ -1296,12 +1336,22 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
                 // Draw the icon into a subrect of the larger atlas texture,
                 // adjusting the pointer offset while keeping the correct stride.
                 // This will also force clipping into the item's window.
-                uint32_t pixelOffset = canvasItem.y * g_bitmap.stride() + canvasItem.x * sizeof(uint32_t);
-                subbitmap.reset(bitmap.data() + pixelOffset, canvasItem.w, canvasItem.h, bitmap.stride());
+                RECT subbitmapRect = ToRect(canvasItem);
+                if (IntersectRect(/*out*/&subbitmapRect, &subbitmapRect, &bitmapRect))
+                {
+                    uint32_t pixelOffset = subbitmapRect.top * g_bitmap.stride() + subbitmapRect.left * sizeof(PixelBgra);
+                    SIZE subbitmapSize = ToSize(subbitmapRect);
+                    subbitmap.reset(
+                        bitmap.data() + pixelOffset,
+                        subbitmapSize.cx,
+                        subbitmapSize.cy,
+                        bitmap.stride()
+                    );
 
-                uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
-                auto matrix = GetMatrixForSize(*document, pixelSize);
-                document->render(subbitmap, matrix);
+                    uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
+                    auto matrix = GetMatrixForSize(*document, pixelSize);
+                    document->render(subbitmap, matrix);
+                }
             }
             break;
         }
@@ -1362,6 +1412,13 @@ bool IsBitmapSizingDisplayResizeable(BitmapSizingDisplay bitmapSizeDisplay)
 // Redraw the background behind the SVG, such as transparent black or checkerboard.
 void RedrawSvgBackground()
 {
+    // Do not draw the opaque background, which would otherwise show nothing but whiteness.
+    if (g_showAlphaChannel)
+    {
+        g_bitmap.clear(0x00000000);
+        return;
+    }
+
     switch (g_backgroundColorMode)
     {
     case BackgroundColorMode::TransparentBlack:
@@ -1395,8 +1452,10 @@ void RedrawSvg(RECT const& clientRect)
         GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
-        boundingRect.right = std::min(boundingRect.right, 65536L); // GDI has issues with large bitmaps.
-        boundingRect.bottom = std::min(boundingRect.bottom, 65536L);
+        // Limit bitmap size to avoid std::bad_alloc in case too many SVG files loaded.
+        // Plus GDI has issues with large bitmaps in StretchBlt.
+        boundingRect.right = std::min(boundingRect.right, 32768L);
+        boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
         g_bitmap.reset(boundingRect.right, boundingRect.bottom);
         g_relayoutSvg = false;
     }
@@ -1484,6 +1543,10 @@ void RedrawSvg(HWND hwnd)
     if (g_invertColors)
     {
         NegateBitmap(g_bitmap);
+    }
+    if (g_showAlphaChannel)
+    {
+        AlphaToGrayscale(g_bitmap);
     }
 
     RedrawBitmapLater(hwnd);
@@ -1966,6 +2029,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_GRID, IDM_PIXEL_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_pixelGridVisible); }},
         {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
         {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
+        {IDM_COLOR, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
         {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
         {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
         {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
@@ -2307,13 +2371,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
                 RedrawSvgLater(hwnd);
-                ConstrainBitmapOffsetsLater();
                 break;
 
             case IDM_INVERT_COLORS:
                 g_invertColors = !g_invertColors;
                 RedrawSvgLater(hwnd);
-                ConstrainBitmapOffsetsLater();
+                break;
+
+            case IDM_SHOW_ALPHA_CHANNEL:
+                g_showAlphaChannel = !g_showAlphaChannel;
+                RedrawSvgLater(hwnd);
                 break;
 
             case IDM_GRID_VISIBLE:

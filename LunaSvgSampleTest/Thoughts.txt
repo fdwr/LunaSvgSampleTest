@@ -1,10 +1,11 @@
 Random thoughts for the future:
 
 TODO:
-    - Do not resize canvas upon merely changing background color
     - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
-    - Move these thoughts below to another file
-    - Upload to GitHub
+    - Load a directory of PNG's too
+    - Add option to display size label or not
+    - Separate grid item outline from interior grid
+    - Wrap labels correctly if too narrow, paired with image
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
