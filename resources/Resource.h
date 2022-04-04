@@ -66,6 +66,7 @@
 #define IDM_FILE_RELOAD             162
 #define IDM_FILE_UNLOAD             163
 #define IDM_INVERT_COLORS           164
+#define IDM_SHOW_ALPHA_CHANNEL      165
 #define IDM_ZOOM_FIRST              170
 #define IDM_ZOOM0                   170
 #define IDM_ZOOM1                   171
