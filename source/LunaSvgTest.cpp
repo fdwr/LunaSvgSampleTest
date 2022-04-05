@@ -2501,15 +2501,20 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         break;
 
     case WM_LBUTTONDOWN:
-        g_previousMouseX = LOWORD(lParam);
-        g_previousMouseY = HIWORD(lParam);
+        g_previousMouseX = GET_X_LPARAM(lParam);
+        g_previousMouseY = GET_Y_LPARAM(lParam);
+        SetCapture(hwnd);
+        break;
+
+    case WM_LBUTTONUP:
+        ReleaseCapture();
         break;
 
     case WM_MOUSEMOVE:
         if (wParam & MK_LBUTTON)
         {
-            int32_t x = LOWORD(lParam);
-            int32_t y = HIWORD(lParam);
+            int32_t x = GET_X_LPARAM(lParam);
+            int32_t y = GET_Y_LPARAM(lParam);
             HandleBitmapScrolling(hwnd, g_previousMouseX - x, g_previousMouseY - y);
             g_previousMouseX = x;
             g_previousMouseY = y;
