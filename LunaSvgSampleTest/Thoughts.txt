@@ -79,13 +79,65 @@ Attribute:
     grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
     grid-offset - adjustment in device pixels, such as shifting to a half pixel.
     grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
-    grid-transform - apply multiple transformation matrix operations (scale, offset, shear).
-    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero
+    grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
+    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
+    grid-transformation-interaction - whether to reinterpret the rounding mode based on rotation/mirroring (defaults true).
     path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
     path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
 
+Attribute details:
+    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left`
+        primitives:
+            none - no grid rounding along x or y. none(x) none(y)
+            floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: x(floor 0.5 2 -0.5) y(ceil)
+            ceil -  round to nearest integer toward positive infinity
+            to-infinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
+            to-zero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Equals iif(x > 0, floor(x), ceil(x)).
+            even - todo: somehow turn this into evenodd scaled by current ppuc (pixels per user coordinate).
+            odd - todo: somehow turn this into evenodd scaled by current ppuc (pixels per user coordinate).
+            min? - todo: somehow integrate minimum distance from other anchors into this
+        aliases:
+            left - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x).
+            right - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x).
+            up - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
+            down - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
+            nearest-low - round to nearest integer with halves down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
+            nearest-high - round to nearest integer with halves down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
+            nearest-left - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
+            nearest-right - Equals `floor(x+.5)`.
+            nearest-up - ...
+            nearest-down - ...
+            center - snap to pixel center. Halves default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
+            center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
+            center-right
+            center-up
+            center-down
+            nearest-center-left
+            nearest-center-right
+            nearest-center-up
+            nearest-center-down
+            in-cw - snap pixel inward along clockwise shape (equivalent to outward on counter-clockwise shape). e.g. in(x) out(y)
+            in-ccw - snap pixel inward along counter-clockwise shape (equivalent to outward on clockwise shape).
+            out-cw - ...
+            out-ccw - ...
+            in-center-cw - ...
+            in-center-ccw - ...
+            out-center-cw - ...
+            out-center-ccw - ...
+            in-nearest-center-cw - ...
+            in-nearest-center-ccw - ...
+            out-nearest-center-cw - ...
+            out-nearest-center-ccw - ...
+            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppuc. e.g. `evenodd(xy 2)`
+            evenodd-high
+            evenodd-left
+            evenodd-right
+            evenodd-up
+            evenodd-down
+            oddeven for strokes?
+
 Example:
-    Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seenig any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
+    Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
@@ -147,6 +199,11 @@ Example:
     grid-fit should accept 1, 2, or 3 anchors for points, which is translation, scaling along x and y, or arbitrary scaling/rotation/shear.
     1 point is equivalent to 3 points repeating the same value.
     2 points is equivalent to 3 points with the 3rd point holding an x and y value from the other 2 points.
+
+    Rotation should reinterpret rounding modes, so that the final bitmap looks identical when rotated in-place as it would if it was
+    graphically rotated. There are however times where disabling that reinterpretation is useful, such as when rotating a petal
+    around a flower or mirroring slats of a fence, where having consistent rounding across mirrored segments looks better.
+    Attribute grid-transformation-interaction?
 
     Inline anchors Would a be convenient shorthand rather than needing a separate anchor each time with a unique id.
     Instead of:
