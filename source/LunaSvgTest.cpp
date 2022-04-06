@@ -1441,7 +1441,7 @@ void RedrawSvgBackground()
 
 void RedrawSvg(RECT const& clientRect)
 {
-    if (g_svgDocuments.empty() || !g_svgDocuments.front())
+    if (g_svgDocuments.empty())
     {
         return;
     }
@@ -1451,26 +1451,18 @@ void RedrawSvg(RECT const& clientRect)
         RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
         GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
-        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
+
         // Limit bitmap size to avoid std::bad_alloc in case too many SVG files loaded.
         // Plus GDI has issues with large bitmaps in StretchBlt.
+        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
         boundingRect.right = std::min(boundingRect.right, 32768L);
         boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
+
         g_bitmap.reset(boundingRect.right, boundingRect.bottom);
         g_relayoutSvg = false;
     }
     RedrawSvgBackground();
     RedrawCanvasItems(g_canvasItems, g_bitmap);
-
-    if (g_realignBitmap)
-    {
-        RealignBitmapOffsets(clientRect);
-    }
-
-    if (g_constrainBitmapOffsets)
-    {
-        ConstrainBitmapOffsets(clientRect);
-    }
 }
 
 
@@ -1816,14 +1808,30 @@ CreateDIBSection32bpp(HDC memoryDc, SIZE size)
 
 void RepaintWindow(HWND hwnd)
 {
+    RECT clientRect;
+    GetClientRect(hwnd, &clientRect);
+
+    const bool shouldUpdateScrollBars = g_svgNeedsRedrawing | g_realignBitmap | g_constrainBitmapOffsets;
+
     if (g_svgNeedsRedrawing)
     {
         RedrawSvg(hwnd);
-        UpdateBitmapScrollbars(hwnd);
     }
 
-    RECT clientRect;
-    GetClientRect(hwnd, &clientRect);
+    if (g_realignBitmap)
+    {
+        RealignBitmapOffsets(clientRect);
+    }
+
+    if (g_constrainBitmapOffsets)
+    {
+        ConstrainBitmapOffsets(clientRect);
+    }
+
+    if (shouldUpdateScrollBars)
+    {
+        UpdateBitmapScrollbars(hwnd);
+    }
 
     // Clear the existing bitmap if a bigger one is needed.
     if (clientRect.right > g_cachedScreenBitmapSize.cx

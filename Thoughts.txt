@@ -27,6 +27,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Round relative another point
         Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)"
         Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
+        No halves toward even numbers (also called "convergent").
     Conditional details
         Conditional visibility based on device pixels per canvas unit (PPU)
     Minimum constraints
@@ -84,30 +85,34 @@ Attribute:
     grid-transformation-interaction - whether to reinterpret the rounding mode based on rotation/mirroring (defaults true).
     path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
     path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
+    required-ppu - valid inside switch statement
+
+    todo: like-this or likeThis? SVG is a goofy mix of the two.
 
 Attribute details:
     grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left`
+        todo: should "nearest" be avoided because Nearest may also mean rounded away from zero?
         primitives:
             none - no grid rounding along x or y. none(x) none(y)
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: x(floor 0.5 2 -0.5) y(ceil)
             ceil -  round to nearest integer toward positive infinity
             to-infinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
-            to-zero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Equals iif(x > 0, floor(x), ceil(x)).
-            even - todo: somehow turn this into evenodd scaled by current ppuc (pixels per user coordinate).
-            odd - todo: somehow turn this into evenodd scaled by current ppuc (pixels per user coordinate).
+            to-zero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
+            even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
+            odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             min? - todo: somehow integrate minimum distance from other anchors into this
         aliases:
             left - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x).
             right - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x).
             up - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
             down - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
-            nearest-low - round to nearest integer with halves down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
-            nearest-high - round to nearest integer with halves down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
+            nearest-low - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
+            nearest-high - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
             nearest-left - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
             nearest-right - Equals `floor(x+.5)`.
             nearest-up - ...
             nearest-down - ...
-            center - snap to pixel center. Halves default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
+            center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
             center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
             center-right
             center-up
@@ -128,13 +133,13 @@ Attribute details:
             in-nearest-center-ccw - ...
             out-nearest-center-cw - ...
             out-nearest-center-ccw - ...
-            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppuc. e.g. `evenodd(xy 2)`
+            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(xy 2)`
             evenodd-high
             evenodd-left
             evenodd-right
             evenodd-up
             evenodd-down
-            oddeven for strokes?
+            odd-shift?
 
 Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
@@ -256,7 +261,7 @@ Example:
         <path
             anchors="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
             d="ga 0 6 M 38,11 C 38 10.9 38 10.7 37.9 10.6 .. ga 0 H 33.3 L 22.8 2.8 C 21.1 1.6 18.8 1.6 17.1 2.8 ... g 0 2"
-        >
+        />
     </svg>
 
     Interaction with elements:
@@ -276,7 +281,7 @@ Example:
         radialGradient - not affected
 
     <switch requiredFeatures="http://www.w3.org/TR/SVG11/feature#GridFitting">
-    <switch><g requiredPpuc="0 2"><g requiredPpuc="2 10"><g requiredPpuc="10"></switch>
+    <switch><g required-ppu="0 2"><g required-ppu="2 10"><g required-ppu="10"></switch>
 
     For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
       Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
