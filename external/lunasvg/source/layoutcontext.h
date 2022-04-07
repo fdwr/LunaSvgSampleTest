@@ -296,7 +296,7 @@ public:
 
 public:
     Path path;
-    // TODO: GRIDFIT HERE (adjust transform based on anchors?)
+    // TODO: GRIDFIT HERE (include anchors, pointers or indices)
     Transform transform;
     FillData fillData;
     StrokeData strokeData;
@@ -343,6 +343,7 @@ public:
     Transform transform;
 
 private:
+    // TODO: GRIDFIT HERE (add RenderOptions flags)
     const LayoutObject* m_object;
     RenderMode m_mode;
 };
