@@ -400,6 +400,8 @@ void LayoutShape::render(RenderState& state) const
 
     BlendInfo info{clipper, masker, opacity, Rect::Invalid};
     RenderState newState(this, state.mode());
+    // TODO: GRIDFIT HERE (adjust transform based on anchors?)
+    // newState.transform = gridFitTransform * transform * state.transform;
     newState.transform = transform * state.transform;
     newState.beginGroup(state, info);
 

@@ -203,6 +203,7 @@ public:
 
     void moveTo(double x, double y);
     void lineTo(double x, double y);
+    // TODO: GRIDFIT HERE (add more parameters for grid fitting points)
     void cubicTo(double x1, double y1, double x2, double y2, double x3, double y3);
     void close();
     void reset();
