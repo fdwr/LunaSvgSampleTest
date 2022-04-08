@@ -85,7 +85,7 @@ Attribute:
     grid-transformation-interaction - whether to reinterpret the rounding mode based on rotation/mirroring (defaults true).
     path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
     path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
-    required-ppu - valid inside switch statement
+    ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?).
 
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
@@ -145,7 +145,7 @@ Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
-        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left" />
         <g grid-align="plusSignTopLeftCorner">
             <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
             <g grid-align="plusSignCenter">
@@ -160,6 +160,27 @@ Example:
                 <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
             </g>
         </g>
+
+        <svg xmlns="http://www.w3.org/2000/svg">
+          ...
+          <anchor id="plusSignCenter" x="38" y="38" grid-rounding="up left" />
+          ...
+          <g grid-align="plusSignCenter">
+            <circle cx="38" cy="38" r="10"/>
+            <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
+            <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
+          </g>
+          ...
+          <switch>
+            <g ppu-range="0 16">
+              <!-- less detailed version for less than 16 pixels per unit... -->
+            </g>
+            <g ppu-range="16">
+   	          <!-- tiny details visible at higher ppu, at least 16 PPU... -->
+            </g>
+          </switch>
+        </svg>
+
 
     One anchor can be defined relative to another one.
     Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
@@ -262,6 +283,19 @@ Example:
             anchors="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
             d="ga 0 6 M 38,11 C 38 10.9 38 10.7 37.9 10.6 .. ga 0 H 33.3 L 22.8 2.8 C 21.1 1.6 18.8 1.6 17.1 2.8 ... g 0 2"
         />
+
+        <!--
+            Can you pass anchors to rect/circle/ellipse?
+            If so, should they be relative to the corners or the edges?
+            If using corners, what does it mean to pass 4 anchors if the 4th point would create a trapezoid?
+            Edges may be cleaner?
+            Maybe there should be no "anchors" and only a "grid-fit" (or "grid-align"/"grid-adjust").
+        -->
+        <anchor x="20" y="20" id="boxTopLeft" grid-round="nearest-ties-low">
+        <anchor x="38" y="38" id="cicrleCenter" grid-round="odd-shift-ties-low(xy 20)">
+
+        <rect x="20" y="20" width="10" height="10" anchors="boxTopLeft boxTopRight boxBottomLeft boxBottomRight"/>
+        <circle cx="38" cy="38" r="10" anchors="circleCenter circleTopLeft circleTopRight circleBottomLeft circleBottomRight"/>
     </svg>
 
     Interaction with elements:
@@ -281,12 +315,34 @@ Example:
         radialGradient - not affected
 
     <switch requiredFeatures="http://www.w3.org/TR/SVG11/feature#GridFitting">
-    <switch><g required-ppu="0 2"><g required-ppu="2 10"><g required-ppu="10"></switch>
+    <switch><g ppu-range="0 2"><g ppu-range="2 10"><g ppu-range="10"></switch>
 
     For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
-      Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-      Possibly use eigen vector?
+        Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+        Possibly use eigen vector?
+            numpy.set_printoptions(precision=3, floatmode='fixed', suppress=True)
+            angle = math.tau * 45 / 360
+            r = numpy.array([[cos(angle), -sin(angle)], [sin(angle), cos(angle)]])
+            sx = numpy.array([[0.5, 0], [0, 1]])
+            sy = numpy.array([[1, 0], [0, 0.5]])
+            sxy = numpy.array([[0.5, 0], [0, 0.5]])
+            M = R; a = M[0][0]; b = M[0][1]; c = M[1][0]; d = M[1][1]; sqrt(b*b + d*d); sqrt(a*a + c*c)
       Possibly just check x and y after rotating the transform back to axis alignment?
+      Unfortunately just transforming 2 unit vectors of axis aligned x and y don't seem robust to all transformations, such as scaling along the diagonal, such as numpy.array([[ 0.707, -0.707], [ 0.354,  0.354]]).
+
+Code snippets
+    Determine winding order: https://stackoverflow.com/a/18472899/937938
+    Note this won't work with the infinity sign (8) shape.
+
+        double sum = 0.0;
+        Vector v1 = vertices[vertices.Count - 1]; // or vertices[^1] with
+                                                  // C# 8.0+ and .NET Core
+        for (int i = 0; i < vertices.Count; i++) {
+            Vector v2 = vertices[i];
+            sum += (v2.X - v1.X) * (v2.Y + v1.Y);
+            v1 = v2;
+        }
+        return sum > 0.0;
 
 Related:
     SVG
@@ -300,3 +356,7 @@ Related:
     TrueType
         TrueType hinting is overkill - https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
         Pushing Pixels About those vector icons - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html
+    Tools
+        https://inkscape.org/
+        https://cairosvg.org/
+        https://cairographics.org/download/
