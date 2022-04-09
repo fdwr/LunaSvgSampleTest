@@ -6,6 +6,7 @@ TODO:
     - Add option to display size label or not
     - Separate grid item outline from interior grid
     - Wrap labels correctly if too narrow, paired with image
+    - Draw outlines
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -16,6 +17,7 @@ Fix void Canvas::rgba() to use macros. canvas.cpp line 195
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
+        Invisible points solely for anchoring other shape's points to
     Grid fitting
         Align group of objects to adjusted/aligned point
         Translate anchor and entire grouped object and then stretch by other anchor
