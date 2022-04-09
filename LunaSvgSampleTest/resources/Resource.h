@@ -105,6 +105,7 @@
 #define IDM_SIZE_FLOW_RIGHT_DOWN    213
 #define IDM_SIZE_FLOW_DOWN_RIGHT    214
 #define IDM_SIZE_FLOW_LAST          214
+#define IDM_OUTLINES_VISIBLE        220
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC

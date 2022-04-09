@@ -188,7 +188,7 @@ public:
     double m12{0};
 };
 
-enum class PathCommand
+enum class PathCommand : uint8_t
 {
     MoveTo,
     LineTo,
