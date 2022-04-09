@@ -33,6 +33,7 @@ public:
     virtual ~LayoutObject();
     virtual void render(RenderState&) const;
     virtual void apply(RenderState&) const;
+    virtual void recordContour(Path&) const;
     virtual Rect map(const Rect&) const;
 
     virtual const Rect& fillBoundingBox() const { return Rect::Invalid;}
@@ -290,6 +291,7 @@ public:
     LayoutShape();
 
     void render(RenderState& state) const;
+    void recordContour(Path& path) const;
     Rect map(const Rect& rect) const;
     const Rect& fillBoundingBox() const;
     const Rect& strokeBoundingBox() const;

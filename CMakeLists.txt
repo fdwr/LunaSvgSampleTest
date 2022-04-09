@@ -12,7 +12,7 @@ add_subdirectory(external/lunasvg)
 
 add_executable(LunaSvgTest source/LunaSvgTest.cpp source/LunaSvgTest.h resources/LunaSvgTest.rc resources/LunaSvgTest.manifest)
 add_dependencies(LunaSvgTest lunasvg)
-target_link_libraries(LunaSvgTest lunasvg)
+target_link_libraries(LunaSvgTest lunasvg gdiplus.lib)
 set_target_properties(LunaSvgTest PROPERTIES WIN32_EXECUTABLE TRUE)
 set_property(TARGET LunaSvgTest PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 target_include_directories(LunaSvgTest PRIVATE resources)

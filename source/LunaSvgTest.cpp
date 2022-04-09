@@ -103,9 +103,11 @@ std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
 HBITMAP g_cachedScreenBitmap;
 std::byte* g_cachedScreenBitmapPixels;
+ULONG_PTR g_gdiplusStartupToken;
+Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
 SIZE g_cachedScreenBitmapSize;
-bool g_svgNeedsRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
-bool g_relayoutSvg = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
+bool g_canvasItemsNeedRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
+bool g_relayoutCanvasItems = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
 bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
 std::wstring g_errorMessage;
@@ -137,6 +139,7 @@ bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
+bool g_outlinesVisible = false; // TODO:!!! Display path outlines of each document.
 bool g_pixelGridVisible = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
@@ -212,9 +215,9 @@ INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LP
 void ClearSvgList();
 void LoadSvgFile(const wchar_t* filePath);
 void AppendSingleSvgFile(wchar_t const* filePath);
-void RelayoutSvgLater(HWND hwnd);
-void RedrawSvgLater(HWND hwnd);
-void RedrawSvg(HWND hwnd);
+void RelayoutCanvasItemsLater(HWND hwnd);
+void RedrawCanvasItemsLater(HWND hwnd);
+void RedrawCanvasBackgroundAndItems(HWND hwnd);
 void ShowLoadErrors();
 
 
@@ -252,7 +255,7 @@ int APIENTRY wWinMain(
             AppendSingleSvgFile(arguments[argumentIndex]);
         }
         ShowLoadErrors();
-        RelayoutSvgLater(g_windowHandle);
+        RelayoutCanvasItemsLater(g_windowHandle);
     }
     LocalFree(arguments);
 
@@ -358,6 +361,9 @@ void HideToolTip()
 BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow)
 {
     g_instanceHandle = instanceHandle; // Store instance handle in our global variable
+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput(nullptr, true, true);
+    Gdiplus::GdiplusStartup(&g_gdiplusStartupToken, &gdiplusStartupInput, &g_gdiplusStartupOutput);
 
     HWND hwnd = CreateWindowExW(
         WS_EX_ACCEPTFILES,
@@ -1410,7 +1416,7 @@ bool IsBitmapSizingDisplayResizeable(BitmapSizingDisplay bitmapSizeDisplay)
 
 
 // Redraw the background behind the SVG, such as transparent black or checkerboard.
-void RedrawSvgBackground()
+void RedrawBackground()
 {
     // Do not draw the opaque background, which would otherwise show nothing but whiteness.
     if (g_showAlphaChannel)
@@ -1439,14 +1445,17 @@ void RedrawSvgBackground()
 }
 
 
-void RedrawSvg(RECT const& clientRect)
+void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
 {
     if (g_svgDocuments.empty())
     {
         return;
     }
 
-    if (g_relayoutSvg)
+    // If any significant change happened, such as loading new SVG files,
+    // recompute the positions of all the items, and recreate the bitmap
+    // with the new size.
+    if (g_relayoutCanvasItems)
     {
         RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
         GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
@@ -1459,9 +1468,10 @@ void RedrawSvg(RECT const& clientRect)
         boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
 
         g_bitmap.reset(boundingRect.right, boundingRect.bottom);
-        g_relayoutSvg = false;
+        g_relayoutCanvasItems = false;
     }
-    RedrawSvgBackground();
+
+    RedrawBackground();
     RedrawCanvasItems(g_canvasItems, g_bitmap);
 }
 
@@ -1492,23 +1502,23 @@ void RedrawBitmapLater(HWND hwnd)
 
 
 // Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
-void RedrawSvgLater(HWND hwnd)
+void RedrawCanvasItemsLater(HWND hwnd)
 {
-    g_svgNeedsRedrawing = true;
+    g_canvasItemsNeedRedrawing = true;
     InvalidateRect(hwnd, nullptr, true);
 }
 
 
 // Enqueue relayout and redrawing the SVG to the bitmap later in WM_PAINT.
-void RelayoutSvgLater(HWND hwnd)
+void RelayoutCanvasItemsLater(HWND hwnd)
 {
-    g_relayoutSvg = true;
-    g_svgNeedsRedrawing = true;
+    g_relayoutCanvasItems = true;
+    g_canvasItemsNeedRedrawing = true;
     InvalidateRect(hwnd, nullptr, true);
 }
 
 
-void RedrawSvg(HWND hwnd)
+void RedrawCanvasBackgroundAndItems(HWND hwnd)
 {
     // Redraw the SVG document(s) into the bitmap, computing the new bitmap size.
 
@@ -1521,7 +1531,7 @@ void RedrawSvg(HWND hwnd)
     QueryPerformanceFrequency(&cpuFrequency);
     QueryPerformanceCounter(&startTime);
 
-    RedrawSvg(clientRect);
+    RedrawCanvasBackgroundAndItems(clientRect);
 
     QueryPerformanceCounter(&endTime);
     double durationMs = static_cast<double>(endTime.QuadPart - startTime.QuadPart);
@@ -1542,7 +1552,7 @@ void RedrawSvg(HWND hwnd)
     }
 
     RedrawBitmapLater(hwnd);
-    g_svgNeedsRedrawing = false;
+    g_canvasItemsNeedRedrawing = false;
 }
 
 
@@ -1811,11 +1821,11 @@ void RepaintWindow(HWND hwnd)
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
 
-    const bool shouldUpdateScrollBars = g_svgNeedsRedrawing | g_realignBitmap | g_constrainBitmapOffsets;
+    const bool shouldUpdateScrollBars = g_canvasItemsNeedRedrawing | g_realignBitmap | g_constrainBitmapOffsets;
 
-    if (g_svgNeedsRedrawing)
+    if (g_canvasItemsNeedRedrawing)
     {
-        RedrawSvg(hwnd);
+        RedrawCanvasBackgroundAndItems(hwnd);
     }
 
     if (g_realignBitmap)
@@ -1854,10 +1864,6 @@ void RepaintWindow(HWND hwnd)
     // Use a DIB section instead of CreateCompatibleBitmap because:
     // a. StretchDIBits incorrectly draws the content upside-down because the source is top-down.
     // b. SetPixel is very slow, leaving us to set the pixels directly instead.
-    #if 0
-    HBITMAP memoryBitmap = CreateCompatibleBitmap(ps.hdc, clientRect.right, clientRect.bottom);
-    #else
-    
     if (g_cachedScreenBitmap == nullptr)
     {
         std::tie(g_cachedScreenBitmap, g_cachedScreenBitmapPixels) = CreateDIBSection32bpp(memoryDc, g_cachedScreenBitmapSize);
@@ -1869,7 +1875,6 @@ void RepaintWindow(HWND hwnd)
     HBITMAP memoryBitmap = g_cachedScreenBitmap;
     std::byte* memoryBitmapPixels = g_cachedScreenBitmapPixels;
     const uint32_t memoryBitmapRowByteStride = uint32_t(g_cachedScreenBitmapSize.cx) * sizeof(PixelBgra);
-    #endif
 
     SelectObject(memoryDc, memoryBitmap);
     SetStretchBltMode(memoryDc, COLORONCOLOR);
@@ -1924,7 +1929,8 @@ void RepaintWindow(HWND hwnd)
         {
             // todo:
             // This would be faster if cached, but shrug, it's fast enough.
-            // Could alternately call StretchDIBits instead.
+            // Unfortunately StretchDIBits has issues when the image size
+            // and scale factor exceed 32767, even when it's clipped.
             HBITMAP bitmap = CreateDIBitmap(
                 hdc,
                 reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
@@ -1955,6 +1961,15 @@ void RepaintWindow(HWND hwnd)
         }
     }
 
+    auto GetCanvasItemRect = [](CanvasItem const& canvasItem)->RECT
+    {
+        const int32_t x = -g_bitmapOffsetX + canvasItem.x * g_bitmapPixelZoom;
+        const int32_t y = -g_bitmapOffsetY + canvasItem.y * g_bitmapPixelZoom;
+        const int32_t w = canvasItem.w * g_bitmapPixelZoom;
+        const int32_t h = canvasItem.h * g_bitmapPixelZoom;
+        return RECT{ x, y, x + w, y + h };
+    };
+
     // Draw the grid.
     int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
     if (g_gridVisible || g_pixelGridVisible)
@@ -1963,35 +1978,86 @@ void RepaintWindow(HWND hwnd)
         int32_t pixelGridSpacing = std::max(g_bitmapPixelZoom, 2u);
 
         GdiFlush();
-        RECT bitmapRect = { 0, 0, clientRect.right, clientRect.bottom };
         for (const auto& canvasItem : g_canvasItems)
         {
             switch (canvasItem.itemType)
             {
                 case CanvasItem::ItemType::SvgDocument:
                 {
-                    const int32_t x = -g_bitmapOffsetX + canvasItem.x * g_bitmapPixelZoom;
-                    const int32_t y = -g_bitmapOffsetY + canvasItem.y * g_bitmapPixelZoom;
-                    const int32_t w = canvasItem.w * g_bitmapPixelZoom;
-                    const int32_t h = canvasItem.h * g_bitmapPixelZoom;
-                    const RECT gridRect = { x, y, x + w, y + h };
+                    const RECT gridRect = GetCanvasItemRect(canvasItem);
+                    const uint32_t w = gridRect.right - gridRect.left;
+                    const uint32_t h = gridRect.bottom - gridRect.top;
+                    RECT gridRectCopy;
+                    if (!IntersectRect(/*out*/&gridRectCopy, &gridRect, &clientRect))
+                    {
+                        continue; // Off-screen.
+                    }
+
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                         // Draw item outline.
-                        DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                        DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible)
                     {
                         // Draw internal points.
-                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, bitmapRect);
+                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
             }
         }
     }
+
+    // TODO:!!!
+    // Draw outlines of each document.
+#if 1
+    if (g_outlinesVisible)
+    {
+        GdiFlush();
+        Gdiplus::Graphics graphics(memoryDc);
+        //lunasvg::ContourList contours;
+
+        for (const auto& canvasItem : g_canvasItems)
+        {
+            switch (canvasItem.itemType)
+            {
+            case CanvasItem::ItemType::SvgDocument:
+                {
+                    const RECT itemRect = GetCanvasItemRect(canvasItem);
+                    RECT itemRectCopy;
+                    if (!IntersectRect(/*out*/&itemRectCopy, &itemRect, &clientRect))
+                    {
+                        continue; // Off-screen.
+                    }
+
+#if 1
+                    //contours.reset();
+                    assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
+                    auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
+
+                    uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
+                    auto svgMatrix = GetMatrixForSize(*document, pixelSize);
+                    //document->renderContours(contours);
+
+                    Gdiplus::GraphicsPath path;
+                    // TODO: Map contours to GDI+ calls.
+                    path.AddBezier(0, 0, 50, 0, 0, 50, 100, 100);
+                    path.AddLine(0, 0, 100, 100);
+                    path.CloseFigure();
+                    Gdiplus::Matrix matrix(float(svgMatrix.a * g_bitmapPixelZoom), 0, 0, float(svgMatrix.d * g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
+                    graphics.SetTransform(&matrix);
+                    Gdiplus::Pen pen(Gdiplus::Color(0xFF0000FF), 0);
+                    graphics.DrawPath(&pen, &path);
+#endif
+                }
+                break;
+            }
+        }
+    }
+#endif
 
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
@@ -2043,6 +2109,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
         {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(g_canvasFlowDirection); }},
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
+        {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
         {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, g_gridSize)); }},
     };
 
@@ -2250,7 +2317,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         }
 
                         LoadSvgFiles(std::move(filenameList));
-                        RelayoutSvgLater(hwnd);
+                        RelayoutCanvasItemsLater(hwnd);
                     }
                 }
                 break;
@@ -2261,13 +2328,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 {
                     LoadSvgFiles(std::move(g_filenameList));
                     ShowLoadErrors();
-                    RelayoutSvgLater(hwnd);
+                    RelayoutCanvasItemsLater(hwnd);
                 }
                 break;
 
             case IDM_FILE_UNLOAD:
                 ClearSvgList();
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 break;
 
             case IDM_SIZE0:
@@ -2292,56 +2359,61 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FIXED:
                 // Leave g_bitmapSizePerDocument as previous value.
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_NATURAL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WRAPPED:
                 g_bitmapSizeWrapped = !g_bitmapSizeWrapped;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_OUTLINES_VISIBLE:
+                g_outlinesVisible = !g_outlinesVisible;
+                RedrawBitmapLater(hwnd);
                 break;
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FLOW_DOWN_RIGHT:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
@@ -2378,17 +2450,17 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_COLOR_OPAQUE_GRAY - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueGray));
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
-                RedrawSvgLater(hwnd);
+                RedrawCanvasItemsLater(hwnd);
                 break;
 
             case IDM_INVERT_COLORS:
                 g_invertColors = !g_invertColors;
-                RedrawSvgLater(hwnd);
+                RedrawCanvasItemsLater(hwnd);
                 break;
 
             case IDM_SHOW_ALPHA_CHANNEL:
                 g_showAlphaChannel = !g_showAlphaChannel;
-                RedrawSvgLater(hwnd);
+                RedrawCanvasItemsLater(hwnd);
                 break;
 
             case IDM_GRID_VISIBLE:
@@ -2459,9 +2531,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             }
             if (!filenameList.empty())
             {
-                RedrawSvgLater(hwnd);
+                RedrawCanvasItemsLater(hwnd);
                 LoadSvgFiles(std::move(filenameList));
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
             }
         }
         break;
@@ -2475,7 +2547,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         {
             if (IsBitmapSizingDisplayResizeable(g_bitmapSizingDisplay))
             {
-                RelayoutSvgLater(hwnd);
+                RelayoutCanvasItemsLater(hwnd);
             }
             else
             {
@@ -2529,7 +2601,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         }
         break;
 
-    case WM_DESTROY:
+    case WM_NCDESTROY:
+        Gdiplus::GdiplusShutdown(g_gdiplusStartupToken);
         PostQuitMessage(0);
         break;
 

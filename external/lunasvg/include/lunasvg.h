@@ -124,6 +124,48 @@ private:
     std::shared_ptr<Impl> m_impl;
 };
 
+template <typename T>
+struct Span
+{
+    T* elements;
+    size_t elementCount;
+};
+
+class LUNASVG_API ContourList
+{
+public:
+    enum class Command : std::uint8_t
+    {
+        MoveTo,
+        LineTo,
+        CubicTo,
+        Close
+    };
+
+    class Point
+    {
+    public:
+        Point() = default;
+        Point(double x, double y);
+
+    public:
+        double x{0};
+        double y{0};
+    };
+
+    ContourList();
+    void reset();
+
+    Span<const Command> getCommands() const;
+    Span<const Point> getPoints() const;
+
+    bool valid() const { return !!m_impl; }
+
+private:
+    struct Impl;
+    std::shared_ptr<Impl> m_impl;
+};
+
 class LayoutSymbol;
 
 class LUNASVG_API Document

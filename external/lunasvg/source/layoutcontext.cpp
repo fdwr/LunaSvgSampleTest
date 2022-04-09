@@ -28,6 +28,10 @@ void LayoutObject::apply(RenderState&) const
 {
 }
 
+void LayoutObject::recordContour(Path&) const
+{
+}
+
 Rect LayoutObject::map(const Rect&) const
 {
     return Rect::Invalid;
@@ -418,6 +422,19 @@ void LayoutShape::render(RenderState& state) const
     }
 
     newState.endGroup(state, info);
+}
+
+void LayoutShape::recordContour(/*Transform& parentTransform,*/ Path& path) const
+{
+    if (visibility == Visibility::Hidden)
+        return;
+
+    //TODO:!!!newState.transform = transform * parentTransform;
+
+    //if (newState.mode() == RenderMode::Display)
+    //{
+    //    //!!!fillData.fill(newState, path);
+    //}
 }
 
 Rect LayoutShape::map(const Rect& rect) const
