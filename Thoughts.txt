@@ -346,6 +346,32 @@ Code snippets
         }
         return sum > 0.0;
 
+    https://stackoverflow.com/questions/22954239/given-three-points-compute-affine-transformation
+
+        void AffineSolver(float* AtoF, float* a, float* b)
+        {
+            AtoF[0] = ( b[1].x * a[0].y - b[2].x * a[0].y - b[0].x * a[1].y + b[2].x * a[1].y + b[0].x * a[2].y - b[1].x * a[2].y) / 
+                      ( a[1].x * a[0].y - a[2].x * a[0].y - a[0].x * a[1].y + a[2].x * a[1].y + a[0].x * a[2].y - a[1].x * a[2].y);
+
+            AtoF[1] = ( b[1].x * a[0].x - b[2].x * a[0].x - b[0].x * a[1].x + b[2].x * a[1].x + b[0].x * a[2].x - b[1].x * a[2].x) / 
+                      (-a[1].x * a[0].y + a[2].x * a[0].y + a[0].x * a[1].y - a[2].x * a[1].y - a[0].x * a[2].y + a[1].x * a[2].y);
+
+            AtoF[2] = ( b[1].y * a[0].y - b[2].y * a[0].y - b[0].y * a[1].y + b[2].y * a[1].y + b[0].y * a[2].y - b[1].y * a[2].y) / 
+                      ( a[1].x * a[0].y - a[2].x * a[0].y - a[0].x * a[1].y + a[2].x * a[1].y + a[0].x * a[2].y - a[1].x * a[2].y);
+
+            AtoF[3] = ( b[1].y * a[0].x - b[2].y * a[0].x - b[0].y * a[1].x + b[2].y * a[1].x + b[0].y * a[2].x - b[1].y * a[2].x) / 
+                      (-a[1].x * a[0].y + a[2].x * a[0].y + a[0].x * a[1].y - a[2].x * a[1].y - a[0].x * a[2].y + a[1].x * a[2].y);
+
+            AtoF[4] = ( b[2].x * a[1].x * a[0].y - b[1].x * a[2].x * a[0].y - b[2].x * a[0].x * a[1].y +
+                        b[0].x * a[2].x * a[1].y + b[1].x * a[0].x * a[2].y - b[0].x * a[1].x * a[2].y) / 
+                      ( a[1].x * a[0].y - a[2].x * a[0].y - a[0].x * a[1].y + a[2].x * a[1].y + a[0].x * a[2].y - a[1].x * a[2].y);
+
+            AtoF[5] = ( b[2].y * a[1].x * a[0].y - b[1].y * a[2].x * a[0].y - b[2].y * a[0].x * a[1].y +
+                        b[0].y * a[2].x * a[1].y + b[1].y * a[0].x * a[2].y - b[0].y * a[1].x * a[2].y) / 
+                      ( a[1].x * a[0].y - a[2].x * a[0].y - a[0].x * a[1].y + a[2].x * a[1].y + a[0].x * a[2].y - a[1].x * a[2].y);
+        }
+
+
 Related:
     SVG
         SVG specification - https://github.com/w3c/svgwg/tree/master, https://www.w3.org/TR/SVG2/
