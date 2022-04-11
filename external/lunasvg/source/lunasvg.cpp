@@ -76,6 +76,9 @@ std::uint32_t Bitmap::stride() const
 
 void Bitmap::clear(std::uint32_t color)
 {
+    if (!m_impl)
+        return;
+
     auto r = (color >> 24) & 0xFF;
     auto g = (color >> 16) & 0xFF;
     auto b = (color >> 8) & 0xFF;
@@ -85,6 +88,9 @@ void Bitmap::clear(std::uint32_t color)
     auto pg = (g * a) / 255;
     auto pb = (b * a) / 255;
 
+    std::uint8_t colorAsBytes[4] = { std::uint8_t(pb), std::uint8_t(pg), std::uint8_t(pr), std::uint8_t(a) };
+    memcpy(&color, &colorAsBytes, 4);
+
     auto width = this->width();
     auto height = this->height();
     auto stride = this->stride();
@@ -92,14 +98,10 @@ void Bitmap::clear(std::uint32_t color)
 
     for(std::uint32_t y = 0;y < height;y++)
     {
-        auto data = rowData;
+        uint32_t* columnData = reinterpret_cast<uint32_t*>(rowData);
         for(unsigned int x = 0;x < width;x++)
         {
-            data[0] = pb;
-            data[1] = pg;
-            data[2] = pr;
-            data[3] = a;
-            data += 4;
+            columnData[x] = color;
         }
         rowData += stride;
     }
@@ -107,6 +109,9 @@ void Bitmap::clear(std::uint32_t color)
 
 void Bitmap::convert(int ri, int gi, int bi, int ai, bool unpremultiply)
 {
+    if (!m_impl)
+        return;
+
     auto width = this->width();
     auto height = this->height();
     auto stride = this->stride();
