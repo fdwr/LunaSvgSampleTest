@@ -991,6 +991,7 @@ bool Parser::parseTransform(const char*& ptr, const char* end, TransformType& ty
 }
 
 static const std::map<std::string, ElementId> elementmap = {
+    // TODO: GRIDFIT HERE Add anchor element.
     {"circle", ElementId::Circle},
     {"clipPath", ElementId::ClipPath},
     {"defs", ElementId::Defs},
@@ -1015,6 +1016,7 @@ static const std::map<std::string, ElementId> elementmap = {
 };
 
 static const std::map<std::string, PropertyId> propertymap = {
+    // TODO: GRIDFIT HERE Add grid fitting properties.
     {"class", PropertyId::Class},
     {"clipPathUnits", PropertyId::ClipPathUnits},
     {"cx", PropertyId::Cx},
