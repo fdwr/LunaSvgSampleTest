@@ -123,8 +123,8 @@ const std::wstring_view g_defaultMessage =
     L"arrow keys/home/end/pgup/pgdn = pan\r\n";
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
-const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32};
-const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32};
+const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64};
+const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32,INT_MAX/2};
 const uint32_t g_bitmapScrollStep = 64;
 
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
@@ -1501,6 +1501,12 @@ void RedrawBitmapLater(HWND hwnd)
 }
 
 
+void RedrawWholeCanvasLater(HWND hwnd)
+{
+    InvalidateRect(hwnd, nullptr, true);
+}
+
+
 // Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
 void RedrawCanvasItemsLater(HWND hwnd)
 {
@@ -1816,6 +1822,119 @@ CreateDIBSection32bpp(HDC memoryDc, SIZE size)
 }
 
 
+class GdiplusEnumerateContoursSink : public lunasvg::EnumerateContoursSink
+{
+private:
+    Gdiplus::Graphics& graphics_;
+    Gdiplus::Pen contourPen_{ Gdiplus::Color(0xFF0000FF), 0.0f }; // Blue
+    Gdiplus::Pen nodePen_{ Gdiplus::Color(0xFFFFFF00), 0.0f }; // yellow
+    Gdiplus::Pen handlePen_{ Gdiplus::Color(0xFFFF8000), 0.0f }; // orange
+    Gdiplus::Matrix const& baseTransform_;
+    Gdiplus::Matrix currentTransform_;
+    Gdiplus::GraphicsPath contourPath_;
+    Gdiplus::GraphicsPath nodePath_;
+    Gdiplus::GraphicsPath handlePath_;
+
+public:
+    GdiplusEnumerateContoursSink(
+        Gdiplus::Graphics& graphics,
+        Gdiplus::Matrix const& transform
+        )
+    :   graphics_(graphics),
+        baseTransform_(transform)
+    {
+    }
+
+    void DrawPointIndicator(double x, double y)
+    {
+        const float ellipseRadius = 0.5f;
+        Gdiplus::PointF point = {float(x), float(y)};
+        currentTransform_.TransformPoints(&point);
+        nodePath_.AddEllipse(
+            float(point.X - ellipseRadius),
+            float(point.Y - ellipseRadius),
+            ellipseRadius * 2,
+            ellipseRadius * 2
+        );
+    }
+
+    void SetTransform(const lunasvg::Matrix& transform) override
+    {
+        currentTransform_.SetElements(float(transform.a), float(transform.b), float(transform.c), float(transform.d), float(transform.e), float(transform.f));
+        currentTransform_.Multiply(&baseTransform_, Gdiplus::MatrixOrderAppend);
+        graphics_.SetTransform(&currentTransform_);
+    }
+
+    void Begin() override
+    {
+        contourPath_.StartFigure();
+    }
+
+    void Move(double x, double y) override
+    {
+        DrawPointIndicator(x, y);
+    }
+
+    void Line(double x1, double y1, double x2, double y2) override
+    {
+        contourPath_.AddLine(float(x1), float(y1), float(x2), float(y2));
+        DrawPointIndicator(x2, y2);
+    }
+
+    void Cubic(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) override
+    {
+        contourPath_.AddBezier(float(x1), float(y1), float(x2), float(y2), float(x3), float(y3), float(x4), float(y4));
+
+        // Draw handles
+        handlePath_.StartFigure();
+        handlePath_.AddLine(float(x1), float(y1), float(x2), float(y2));
+        handlePath_.CloseFigure();
+        handlePath_.StartFigure();
+        handlePath_.AddLine(float(x3), float(y3), float(x4), float(y4));
+        handlePath_.CloseFigure();
+
+        // Draw nodes.
+        DrawPointIndicator(x2, y2);
+        DrawPointIndicator(x3, y3);
+        DrawPointIndicator(x4, y4);
+    }
+
+    void Anchor(double x, double y) override
+    {
+        const float ellipseRadius = 2;
+        Gdiplus::PointF point = { float(x), float(y) };
+        currentTransform_.TransformPoints(&point);
+        nodePath_.AddEllipse(float(x - ellipseRadius), float(y - ellipseRadius), ellipseRadius * 2, ellipseRadius * 2);
+    }
+
+    void Close() override
+    {
+        contourPath_.CloseFigure();
+    }
+
+    void End() override
+    {
+        if (contourPath_.GetPointCount() > 0
+        ||  nodePath_.GetPointCount() > 0
+        ||  handlePath_.GetPointCount() > 0)
+        {
+            graphics_.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
+
+            graphics_.SetTransform(&currentTransform_);
+            graphics_.DrawPath(&contourPen_, &contourPath_);
+            graphics_.DrawPath(&handlePen_, &handlePath_);
+            graphics_.ResetTransform();
+            graphics_.DrawPath(&nodePen_, &nodePath_);
+
+            // Clear all accumulated paths.
+            contourPath_.Reset();
+            nodePath_.Reset();
+            handlePath_.Reset();
+        }
+    }
+};
+
+
 void RepaintWindow(HWND hwnd)
 {
     RECT clientRect;
@@ -1971,7 +2090,7 @@ void RepaintWindow(HWND hwnd)
     };
 
     // Draw the grid.
-    int32_t gridSpacing = g_gridSize * g_bitmapPixelZoom;
+    int32_t gridSpacing = std::min(LONG(g_gridSize), clientRect.right) * g_bitmapPixelZoom;
     if (g_gridVisible || g_pixelGridVisible)
     {
         gridSpacing = std::max(gridSpacing, 2);
@@ -1997,7 +2116,7 @@ void RepaintWindow(HWND hwnd)
                     {
                         // Draw internal grid.
                         DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
-                        // Draw item outline.
+                        // Draw item border.
                         DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible)
@@ -2011,14 +2130,11 @@ void RepaintWindow(HWND hwnd)
         }
     }
 
-    // TODO:!!!
     // Draw outlines of each document.
-#if 1
     if (g_outlinesVisible)
     {
         GdiFlush();
         Gdiplus::Graphics graphics(memoryDc);
-        //lunasvg::ContourList contours;
 
         for (const auto& canvasItem : g_canvasItems)
         {
@@ -2033,31 +2149,20 @@ void RepaintWindow(HWND hwnd)
                         continue; // Off-screen.
                     }
 
-#if 1
-                    //contours.reset();
+                    Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
+                    GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
+
                     assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
-                    auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
+                    auto const& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
 
-                    uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
-                    auto svgMatrix = GetMatrixForSize(*document, pixelSize);
-                    //document->renderContours(contours);
-
-                    Gdiplus::GraphicsPath path;
-                    // TODO: Map contours to GDI+ calls.
-                    path.AddBezier(0, 0, 50, 0, 0, 50, 100, 100);
-                    path.AddLine(0, 0, 100, 100);
-                    path.CloseFigure();
-                    Gdiplus::Matrix matrix(float(svgMatrix.a * g_bitmapPixelZoom), 0, 0, float(svgMatrix.d * g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
-                    graphics.SetTransform(&matrix);
-                    Gdiplus::Pen pen(Gdiplus::Color(0xFF0000FF), 0);
-                    graphics.DrawPath(&pen, &path);
-#endif
+                    uint32_t const pixelSize = std::min(canvasItem.w, canvasItem.h);
+                    auto const svgMatrix = GetMatrixForSize(*document, pixelSize);
+                    document->enumerateContours(contourSink, svgMatrix);
                 }
                 break;
             }
         }
     }
-#endif
 
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
@@ -2402,7 +2507,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_OUTLINES_VISIBLE:
                 g_outlinesVisible = !g_outlinesVisible;
-                RedrawBitmapLater(hwnd);
+                RedrawWholeCanvasLater(hwnd);
                 break;
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:
@@ -2427,7 +2532,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM7:
             case IDM_ZOOM8:
             case IDM_ZOOM9:
-                static_assert(IDM_ZOOM9 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM10:
+            case IDM_ZOOM11:
+                static_assert(IDM_ZOOM11 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 ChangeBitmapZoomCentered(hwnd, g_zoomFactors[wmId - IDM_ZOOM0]);
                 break;
 
@@ -2485,9 +2592,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_16:
             case IDM_GRID_SIZE_24:
             case IDM_GRID_SIZE_32:
+            case IDM_GRID_SIZE_INFINITE:
                 g_gridVisible = true;
                 static_assert(IDM_GRID_SIZE_1 == IDM_GRID_SIZE_FIRST);
-                static_assert(IDM_GRID_SIZE_32 == IDM_GRID_SIZE_LAST);
+                static_assert(IDM_GRID_SIZE_INFINITE == IDM_GRID_SIZE_LAST);
                 static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
                 g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
                 RedrawBitmapLater(hwnd);

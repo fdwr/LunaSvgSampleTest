@@ -2,9 +2,15 @@
 // Microsoft Visual C++ generated include file.
 // Used by LunaSvgTest.rc
 
-#define IDS_APP_TITLE           103
+#define IDS_APP_TITLE               103
 
-#define IDR_MAINFRAME               128
+#define IDM_FILE                     90
+#define IDM_EDIT                     91
+#define IDM_COLOR                    92
+#define IDM_SIZE                     93
+#define IDM_VIEW                     94
+#define IDM_GRID                     95
+#define IDM_HELP                     96
 #define IDD_LUNASVGTEST_DIALOG      102
 #define IDD_ABOUTBOX                103
 #define IDM_ABOUT                   104
@@ -55,14 +61,8 @@
 #define IDM_GRID_SIZE_16            152
 #define IDM_GRID_SIZE_24            153
 #define IDM_GRID_SIZE_32            154
-#define IDM_GRID_SIZE_LAST          154
-#define IDM_FILE                    155
-#define IDM_EDIT                    156
-#define IDM_COLOR                   157
-#define IDM_SIZE                    158
-#define IDM_VIEW                    159
-#define IDM_GRID                    160
-#define IDM_HELP                    161
+#define IDM_GRID_SIZE_INFINITE      155
+#define IDM_GRID_SIZE_LAST          155
 #define IDM_FILE_RELOAD             162
 #define IDM_FILE_UNLOAD             163
 #define IDM_INVERT_COLORS           164
@@ -78,14 +78,9 @@
 #define IDM_ZOOM7                   177
 #define IDM_ZOOM8                   178
 #define IDM_ZOOM9                   179
-#define IDM_ZOOM_LAST               179
-#define IDM_SIZE_DISPLAY_FIRST      180
-#define IDM_SIZE_FIXED              180
-#define IDM_SIZE_WINDOW             181
-#define IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE 182
-#define IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT 183
-#define IDM_SIZE_NATURAL            184
-#define IDM_SIZE_DISPLAY_LAST       185
+#define IDM_ZOOM10                  180
+#define IDM_ZOOM11                  181
+#define IDM_ZOOM_LAST               181
 #define IDM_NAVIGATE_LINE_LEFT      190
 #define IDM_NAVIGATE_LINE_RIGHT     191
 #define IDM_NAVIGATE_LINE_DOWN      192
@@ -106,6 +101,13 @@
 #define IDM_SIZE_FLOW_DOWN_RIGHT    214
 #define IDM_SIZE_FLOW_LAST          214
 #define IDM_OUTLINES_VISIBLE        220
+#define IDM_SIZE_DISPLAY_FIRST      230
+#define IDM_SIZE_FIXED              230
+#define IDM_SIZE_WINDOW             231
+#define IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE 232
+#define IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT 233
+#define IDM_SIZE_NATURAL            234
+#define IDM_SIZE_DISPLAY_LAST       235
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC
