@@ -6,7 +6,7 @@ TODO:
     - Add option to display size label or not
     - Separate grid item outline from interior grid
     - Wrap labels correctly if too narrow, paired with image
-    - Draw outlines
+    - Add 'switch' element too.
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -18,20 +18,38 @@ Fix void Canvas::rgba() to use macros. canvas.cpp line 195
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
         Invisible points solely for anchoring other shape's points to
+        It has no fill, stroke, or visibility.
+        Bounding box and clipping path calculations do not apply.
+        Pointer or keyboard events do not apply.
+        1 point is translation
+        2 points is scaling (uniformly along both axes - for asymmetric scaling, use 3)
+        2 points along a single axis is uniform scaling (e.g. x=10,y=20 to x=30,y=20)
+        3 points is arbitrary transformation (asymmetric scaling, shear, rotation)
+        4+ points are unsupported, but a future version could treat them like a mesh warp.
     Grid fitting
         Align group of objects to adjusted/aligned point
         Translate anchor and entire grouped object and then stretch by other anchor
         transform-grid(translate(...) scale(...)
     Rounding
-        Grid alignment rounding: fraction/halves + up, down, left, right, floor, ceil, toZero, toInfinity, in, out (so halves-up, fraction-toZero...)
-        rounding-origin for in (toward zero) and out (toward infinity) rounding
+        Modes:
+            floor, ceil
+            halves to nearest floor or ceil
+            toZero, toInfinity
+            in, out
+            up, down, left, right
+        rounding-origin for in (toward zero) and out (toward infinity) rounding, or maybe an offset inside the rounding mode. e.g. to-zero(x 0 -23 0)
         inward and outward rounding based on path direction clockwise vs counterclockwise
         Round relative another point
-        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)"
+        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)" or odd-shift(2)
         Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
-        No halves toward even numbers (also called "convergent").
+        No rounding mode supported for halves toward even numbers (also called "banker's rounding" or "convergent").
+        Round conditionally depending on whether axis aligned. e.g. grid-rounding="axis-aligned(x) non-axis-aligned(y)" 
+        Reinterpret rounding direction depending on rotation or mirroring, such that a mirrored/rotated graphic looked the same as a rotated/mirrored bitmap. reinterpet-on-transform(true)
+        At the lower level, these resolve to bit flags: enabled/disabled per axis, floor/ceil, enabled when axis aligned true/false, flip on winding orientation, reinterpret on transform (default true) 
     Conditional details
         Conditional visibility based on device pixels per canvas unit (PPU)
+        If the condition is false, all children are hidden too (more like display:none than visibility:hidden).
+        If applied to an anchor, that anchor is not considered part of the rendering tree, and any children depending on it behave like a nop.
     Minimum constraints
         Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
@@ -103,6 +121,14 @@ Attribute details:
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             min? - todo: somehow integrate minimum distance from other anchors into this
+            axis-alignment-matters - only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+            axis-alignment-ignored - apply the rounding even when not axis aligned
+            direction-inverted - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive).
+            direction-ignored - the line direction does not matter. floor is floor, ceil is ceil.
+            winding-inverted - treat direction-inverted so that lines going down reverse interpretation.
+            winding-ignored - ignores the winding direction
+            ?round along a given vector
+            ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
             left - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x).
             right - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x).
