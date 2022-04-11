@@ -578,6 +578,12 @@ double Length::value(double max) const
         return m_value * dpi / 6.0;
     case LengthUnits::Percent:
         return m_value * max / 100.0;
+    case LengthUnits::Em:
+        // 1em simply equals the current DPI.
+        return m_value * dpi;
+    case LengthUnits::Ex:
+        // 1ex equals half an em.
+        return m_value * dpi / 2.0;
     default:
         break;
     }
