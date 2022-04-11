@@ -1,7 +1,6 @@
 Random thoughts for the future:
 
 TODO:
-    - Make LunaSvg Bitmap.clear faster by writing 32-bits each pixel and create GH PR.
     - Load a directory of PNG's too
     - Add option to display size label or not
     - Separate grid item outline from interior grid
