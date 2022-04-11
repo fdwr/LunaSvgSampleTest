@@ -7,6 +7,7 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 
 ![Image of LunaSvgTest](LunaSvgTestScreenshot.png)
 ![Image of LunaSvgTest](LunaSvgTestScreenshot2.png)
+![Image of LunaSvgTest](LunaSvgTestScreenshot3.png)
 
 ## Usage
 - **OS**: Windows 7+
