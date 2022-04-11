@@ -21,7 +21,8 @@ enum class LayoutId
     LinearGradient,
     RadialGradient,
     Pattern,
-    SolidColor
+    SolidColor,
+    // TODO: GRIDFIT HERE Add anchor element.
 };
 
 class RenderState;
@@ -119,6 +120,8 @@ public:
     double opacity;
     const LayoutMask* masker;
     const LayoutClipPath* clipper;
+    // TODO: Gridfit here - include all anchors to compute transforms at render time.
+    std::vector<LayoutAnchor*> anchors;
 };
 
 class LayoutGroup : public LayoutContainer
@@ -318,6 +321,24 @@ private:
     mutable Rect m_strokeBoundingBox{Rect::Invalid};
 };
 
+// TODO: GRIDFIT HERE (anchor)
+#if 1
+class LayoutAnchor : public LayoutObject
+{
+public:
+    LayoutAnchor();
+
+    // No render method, because invisible, but it does respond to the contour
+    // enumeration so the anchors can be displayed.
+    void enumerateContours(RenderState& state, EnumerateContoursSink& sink) const;
+
+public:
+    // The points are used to compute a transform at render time.
+    std::vector<Point> m_points;
+    // TODO: Gridfit here - store rounding mode
+};
+#endif
+
 enum class RenderMode
 {
     Display,
@@ -349,7 +370,11 @@ public:
     Transform transform;
 
 private:
-    // TODO: GRIDFIT HERE (add RenderOptions flags)
+    // TODO: GRIDFIT HERE - add RenderOptions flags
+    // TODO: GRIDFIT HERE - add grid fit anchor transforms
+    // There is one transform per anchor.
+    // std::shared_ptr<std::vector<Transform>> m_anchorTransforms;
+
     const LayoutObject* m_object;
     RenderMode m_mode;
 };

@@ -190,6 +190,17 @@ Transform& Transform::identity()
     return *this;
 }
 
+bool Transform::isIdentity() const
+{
+    return
+        this->m00 == 1.0 &&
+        this->m01 == 0.0 &&
+        this->m10 == 0.0 &&
+        this->m11 == 1.0 &&
+        this->m02 == 0.0 &&
+        this->m12 == 0.0;
+}
+
 Transform& Transform::invert()
 {
     *this = inverted();

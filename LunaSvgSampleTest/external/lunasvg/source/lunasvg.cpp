@@ -392,6 +392,8 @@ double Document::height() const
 
 void Document::render(Bitmap bitmap, const Matrix& matrix) const
 {
+    // TODO: GRIDFIT HERE - add anchor list, a shared std::vector<Transform>.
+    // Or possibly inside the render state, or possibly inside LayoutSymbol::render
     RenderState state(nullptr, RenderMode::Display);
     state.canvas = Canvas::create(bitmap.data(), bitmap.width(), bitmap.height(), bitmap.stride());
     state.transform = Transform(matrix);

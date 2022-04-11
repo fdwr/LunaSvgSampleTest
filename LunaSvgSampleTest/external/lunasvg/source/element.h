@@ -32,7 +32,10 @@ enum class ElementId
     Style,
     Svg,
     Symbol,
-    Use
+    Use,
+    // TODO: GRIDFIT HERE add anchor elements
+    // Anchor,
+    // AnchorSet?
 };
 
 enum class PropertyId
@@ -104,6 +107,7 @@ enum class PropertyId
     Y,
     Y1,
     Y2
+    // TODO: GRIDFIT HERE with new properties
 };
 
 struct Property

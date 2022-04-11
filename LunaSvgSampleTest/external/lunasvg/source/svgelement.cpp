@@ -77,6 +77,8 @@ std::unique_ptr<LayoutSymbol> SVGElement::layoutDocument(const ParseDocument* do
     root->masker = context.getMasker(mask());
     root->clipper = context.getClipper(clip_path());
     layoutChildren(&context, root.get());
+
+    // TODO: Gridfit here - record anchors from the ParseDocument into the root.
     return root;
 }
 
