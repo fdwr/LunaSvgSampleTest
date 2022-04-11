@@ -168,6 +168,8 @@ public:
     Transform& identity();
     Transform& invert();
 
+    bool isIdentity() const;
+
     void map(double x, double y, double* _x, double* _y) const;
     Point map(double x, double y) const;
     Point map(const Point& point) const;
