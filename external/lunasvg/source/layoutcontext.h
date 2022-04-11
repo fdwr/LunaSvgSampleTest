@@ -25,6 +25,7 @@ enum class LayoutId
 };
 
 class RenderState;
+struct EnumerateContoursSink;
 
 class LayoutObject
 {
@@ -33,7 +34,7 @@ public:
     virtual ~LayoutObject();
     virtual void render(RenderState&) const;
     virtual void apply(RenderState&) const;
-    virtual void recordContour(Path&) const;
+    virtual void enumerateContours(RenderState&, EnumerateContoursSink&) const;
     virtual Rect map(const Rect&) const;
 
     virtual const Rect& fillBoundingBox() const { return Rect::Invalid;}
@@ -59,6 +60,7 @@ public:
     LayoutObject* addChild(std::unique_ptr<LayoutObject> child);
     LayoutObject* addChildIfNotEmpty(std::unique_ptr<LayoutContainer> child);
     void renderChildren(RenderState& state) const;
+    void enumerateContoursChildren(RenderState& state, EnumerateContoursSink& sink) const;
 
 public:
     LayoutList children;
@@ -106,6 +108,7 @@ public:
     LayoutSymbol();
 
     void render(RenderState& state) const;
+    void enumerateContours(RenderState& state, EnumerateContoursSink& sink) const;
     Rect map(const Rect& rect) const;
 
 public:
@@ -124,6 +127,7 @@ public:
     LayoutGroup();
 
     void render(RenderState& state) const;
+    void enumerateContours(RenderState& state, EnumerateContoursSink& sink) const;
     Rect map(const Rect& rect) const;
 
 public:
@@ -291,7 +295,7 @@ public:
     LayoutShape();
 
     void render(RenderState& state) const;
-    void recordContour(Path& path) const;
+    void enumerateContours(RenderState& state, EnumerateContoursSink& sink) const;
     Rect map(const Rect& rect) const;
     const Rect& fillBoundingBox() const;
     const Rect& strokeBoundingBox() const;

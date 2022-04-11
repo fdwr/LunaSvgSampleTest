@@ -419,6 +419,15 @@ Bitmap Document::renderToBitmap(std::uint32_t width, std::uint32_t height, std::
     return bitmap;
 }
 
+void Document::enumerateContours(EnumerateContoursSink& sink, const Matrix& matrix) const
+{
+    RenderState state(nullptr, RenderMode::Display);
+    // Do not waste time and space allocating a canvas (unlike render) since pixels are not needed.
+    state.transform = Transform(matrix);
+    sink.SetTransform(state.transform);
+    root->enumerateContours(state, sink);
+}
+
 Document::Document()
 {
 }

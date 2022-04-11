@@ -131,39 +131,16 @@ struct Span
     size_t elementCount;
 };
 
-class LUNASVG_API ContourList
+struct LUNASVG_API EnumerateContoursSink
 {
-public:
-    enum class Command : std::uint8_t
-    {
-        MoveTo,
-        LineTo,
-        CubicTo,
-        Close
-    };
-
-    class Point
-    {
-    public:
-        Point() = default;
-        Point(double x, double y);
-
-    public:
-        double x{0};
-        double y{0};
-    };
-
-    ContourList();
-    void reset();
-
-    Span<const Command> getCommands() const;
-    Span<const Point> getPoints() const;
-
-    bool valid() const { return !!m_impl; }
-
-private:
-    struct Impl;
-    std::shared_ptr<Impl> m_impl;
+    virtual void SetTransform(const Matrix& matrix) = 0;
+    virtual void Begin() = 0;
+    virtual void Move(double x, double y) = 0;
+    virtual void Line(double x1, double y1, double x2, double y2) = 0;
+    virtual void Cubic(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) = 0;
+    virtual void Anchor(double x, double y) = 0;
+    virtual void Close() = 0;
+    virtual void End() = 0; // Closes any open figures too.
 };
 
 class LayoutSymbol;
@@ -291,8 +268,8 @@ public:
 
     /**
      * @brief Renders the document to a bitmap
-     * @param matrix - the current transformation matrix
      * @param bitmap - target image on which the content will be drawn
+     * @param matrix - the current transformation matrix
      */
     void render(Bitmap bitmap, const Matrix& matrix = Matrix{}) const;
 
@@ -304,6 +281,13 @@ public:
      * @return the raster representation of the document
      */
     Bitmap renderToBitmap(std::uint32_t width = 0, std::uint32_t height = 0, std::uint32_t backgroundColor = 0x00000000) const;
+
+    /**
+     * @brief Enumerates all the contours (lines, beziers...) inside the SVG via callback sink.
+     * @param sink - interface to receive geometry calls
+     * @param matrix - the current transformation matrix
+     */
+    void enumerateContours(EnumerateContoursSink& sink, const Matrix& matrix = {}) const;
 
     ~Document();
 private:

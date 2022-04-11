@@ -1,3 +1,4 @@
+#include "lunasvg.h"
 #include "layoutcontext.h"
 #include "parser.h"
 
@@ -28,7 +29,7 @@ void LayoutObject::apply(RenderState&) const
 {
 }
 
-void LayoutObject::recordContour(Path&) const
+void LayoutObject::enumerateContours(RenderState& state, EnumerateContoursSink& sink) const
 {
 }
 
@@ -90,6 +91,12 @@ void LayoutContainer::renderChildren(RenderState& state) const
 {
     for(const auto& child : children)
         child->render(state);
+}
+
+void LayoutContainer::enumerateContoursChildren(RenderState& state, EnumerateContoursSink& sink) const
+{
+    for (const auto& child : children)
+        child->enumerateContours(state, sink);
 }
 
 LayoutClipPath::LayoutClipPath()
@@ -164,6 +171,13 @@ void LayoutSymbol::render(RenderState& state) const
     newState.endGroup(state, info);
 }
 
+void LayoutSymbol::enumerateContours(RenderState& state, EnumerateContoursSink& sink) const
+{
+    RenderState newState(this, state.mode());
+    newState.transform = transform * state.transform;
+    enumerateContoursChildren(newState, sink);
+}
+
 Rect LayoutSymbol::map(const Rect& rect) const
 {
     return transform.map(rect);
@@ -182,6 +196,13 @@ void LayoutGroup::render(RenderState& state) const
     newState.beginGroup(state, info);
     renderChildren(newState);
     newState.endGroup(state, info);
+}
+
+void LayoutGroup::enumerateContours(RenderState& state, EnumerateContoursSink& sink) const
+{
+    RenderState newState(this, state.mode());
+    newState.transform = transform * state.transform;
+    enumerateContoursChildren(newState, sink);
 }
 
 Rect LayoutGroup::map(const Rect& rect) const
@@ -424,17 +445,48 @@ void LayoutShape::render(RenderState& state) const
     newState.endGroup(state, info);
 }
 
-void LayoutShape::recordContour(/*Transform& parentTransform,*/ Path& path) const
+void LayoutShape::enumerateContours(RenderState& state, EnumerateContoursSink& sink) const
 {
-    if (visibility == Visibility::Hidden)
+    if (visibility == Visibility::Hidden || path.empty())
         return;
 
-    //TODO:!!!newState.transform = transform * parentTransform;
+    RenderState newState(this, state.mode());
+    newState.transform = transform * state.transform;
 
-    //if (newState.mode() == RenderMode::Display)
-    //{
-    //    //!!!fillData.fill(newState, path);
-    //}
+    PathIterator it(path);
+    Point startPoint;
+    Point currentPoint;
+    std::array<Point, 3> points;
+
+    sink.SetTransform(reinterpret_cast<Matrix&>(newState.transform));
+
+    sink.Begin();
+    while (!it.isDone())
+    {
+        switch (it.currentSegment(points)) {
+        case PathCommand::MoveTo:
+            startPoint = points[0];
+            currentPoint = startPoint;
+            sink.Move(startPoint.x, startPoint.y);
+            break;
+        case PathCommand::LineTo:
+            sink.Line(currentPoint.x, currentPoint.y, points[0].x, points[0].y);
+            currentPoint = points[0];
+            break;
+        case PathCommand::CubicTo:
+            sink.Cubic(currentPoint.x, currentPoint.y, points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
+            currentPoint = points[2];
+            break;
+        case PathCommand::Close:
+            sink.Close();
+            currentPoint = startPoint;
+            startPoint = Point{};
+            break;
+        }
+
+        it.next();
+    }
+    sink.End();
 }
 
 Rect LayoutShape::map(const Rect& rect) const
