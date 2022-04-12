@@ -103,6 +103,8 @@ public:
     const LayoutClipPath* clipper;
 };
 
+class LayoutAnchor;
+
 class LayoutSymbol : public LayoutContainer
 {
 public:

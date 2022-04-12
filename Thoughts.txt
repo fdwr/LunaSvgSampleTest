@@ -109,8 +109,13 @@ Attribute:
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
 Attribute details:
-    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left`
+    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5) min(1 otherAnchor) y ceil`, `up left`
         todo: should "nearest" be avoided because Nearest may also mean rounded away from zero?
+        main equation:
+            if line direction negative
+                reverse mode function
+            if does not require axis aligment or if axis aligned
+                roundedValued = modeFunction((value - prebias) / scale) * scale - postbias)
         primitives:
             none - no grid rounding along x or y. none(x) none(y)
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: x(floor 0.5 2 -0.5) y(ceil)
@@ -124,9 +129,12 @@ Attribute details:
             axis-alignment-ignored - apply the rounding even when not axis aligned
             direction-inverted - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive).
             direction-ignored - the line direction does not matter. floor is floor, ceil is ceil.
-            winding-inverted - treat direction-inverted so that lines going down reverse interpretation.
+            winding-inverted - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed.
             winding-ignored - ignores the winding direction
-            ?round along a given vector
+            proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. The letter A's T-junction on the horizontal bar. proportional(x)
+            ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
+            ?round one axis proportionally to the other. Consider the letter 'A' horizontal midline, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+            ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
             left - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x).
@@ -167,6 +175,8 @@ Attribute details:
             evenodd-up
             evenodd-down
             odd-shift?
+        interactions
+            calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
 
 Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
@@ -396,12 +406,16 @@ Code snippets
                       ( a[1].x * a[0].y - a[2].x * a[0].y - a[0].x * a[1].y + a[2].x * a[1].y + a[0].x * a[2].y - a[1].x * a[2].y);
         }
 
+        https://www.w3.org/TR/SVG11/intro.html#TermConditionalProcessingAttribute
+
 
 Related:
     SVG
         SVG specification - https://github.com/w3c/svgwg/tree/master, https://www.w3.org/TR/SVG2/
         SVG Hinting Proposals - https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting
         Microsoft W3C rep for SVG - https://github.com/atanassov, https://www.w3.org/groups/wg/svg/participants
+        https://svgwg.org/specs/svg-native/
+        https://svgwg.org/svg2-draft/conform.html#secure-static-mode
     WPF
         WPF SnapsToDevicePixels and UseLayoutRounding - https://blog.benoitblanchon.fr/wpf-blurry-images/
         WPF GuidelineSets - https://www.wpftutorial.net/DrawOnPhysicalDevicePixels.html
@@ -410,6 +424,8 @@ Related:
         TrueType hinting is overkill - https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
         Pushing Pixels About those vector icons - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html
     Tools
-        https://inkscape.org/
-        https://cairosvg.org/
-        https://cairographics.org/download/
+        Inkscape SVG editor - https://inkscape.org/
+        Cairo based convertor for SVG to PNG - https://cairosvg.org/
+        Cairo rendering API - https://cairographics.org/download/
+        SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
+        SVG Native Viewer - https://github.com/adobe/svg-native-viewer
