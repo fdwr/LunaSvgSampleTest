@@ -13,6 +13,9 @@ WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
 WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
 
+#define RETURN_IF_FAILED(expression) {auto hr = (expression); return hr;}
+#define RETURN_IF_FAILED_V(expression, returnValue) if (FAILED(expression)) return (returnValue);
+
 TOOLINFO g_toolTipInfo =
 {
     .cbSize = sizeof(TOOLINFO),
@@ -97,14 +100,16 @@ SIZE ToSize(RECT const& rect)
 DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 
 // Horrible assortment of (gasp) global variables rather than a proper class instance.
+ULONG_PTR g_gdiplusStartupToken;
+Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
+Microsoft::WRL::ComPtr<IWICImagingFactory> g_wicFactory;
+
 std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
 std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
 lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
 HBITMAP g_cachedScreenBitmap;
 std::byte* g_cachedScreenBitmapPixels;
-ULONG_PTR g_gdiplusStartupToken;
-Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
 SIZE g_cachedScreenBitmapSize;
 bool g_canvasItemsNeedRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
 bool g_relayoutCanvasItems = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
@@ -364,6 +369,8 @@ BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow)
 
     Gdiplus::GdiplusStartupInput gdiplusStartupInput(nullptr, true, true);
     Gdiplus::GdiplusStartup(&g_gdiplusStartupToken, &gdiplusStartupInput, &g_gdiplusStartupOutput);
+
+    RETURN_IF_FAILED_V(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT &g_wicFactory), false);
 
     HWND hwnd = CreateWindowExW(
         WS_EX_ACCEPTFILES,
@@ -988,6 +995,196 @@ void DrawBackgroundColorUnderneath(
         pixel += rowByteDelta;
     }
 }
+
+
+#if 0
+void LoadImageData(
+    _In_z_ wchar_t const* inputFilename, // Alternately could specify a span<const uint8_t>.
+    std::u8string_view pixelFormatString,
+    onnx::TensorProto::DataType& dataType,
+    /*out*/ std::vector<int32_t>& dimensions,
+    /*out*/ std::vector<std::byte>& pixelBytes
+)
+{
+    pixelBytes.clear();
+
+    WICPixelFormatGUID const* resolvedPixelFormatGuid = nullptr;
+    uint32_t channelCount, bytesPerChannel;
+    ResolvePixelFormat(pixelFormatString, /*out*/ resolvedPixelFormatGuid, /*out*/ channelCount, /*out*/ bytesPerChannel, /*out*/ dataType);
+
+    ComPtr<IWICImagingFactory> wicFactory;
+    THROW_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT & wicFactory));
+
+    // Decompress the image using WIC.
+    ComPtr<IWICStream> stream;
+    ComPtr<IWICBitmapDecoder> decoder;
+    ComPtr<IWICBitmapFrameDecode> bitmapFrame;
+    ComPtr<IWICFormatConverter> converter;
+    IWICBitmapSource* pixelSource = nullptr;
+
+    THROW_IF_FAILED(wicFactory->CreateStream(&stream));
+    THROW_IF_FAILED(stream->InitializeFromFilename(inputFilename, GENERIC_READ));
+#if 0
+    THROW_IF_FAILED(stream->InitializeFromMemory(
+        const_cast<uint8_t*>(fileBytes.data()),
+        static_cast<uint32_t>(fileBytes.size_bytes()))
+    );
+#endif
+    THROW_IF_FAILED(wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, OUT & decoder));
+    THROW_IF_FAILED(decoder->GetFrame(0, OUT & bitmapFrame));
+
+    WICPixelFormatGUID actualPixelFormatGuid;
+    THROW_IF_FAILED(bitmapFrame->GetPixelFormat(/*out*/ &actualPixelFormatGuid));
+
+    WICPixelFormatGUID const* resolvedPixelFormatGuid = GUID_WICPixelFormat32bppPBGRA
+    // Convert format to 32bppPBGRA - which D2D uses and the test's blend function expects.
+    if (resolvedPixelFormatGuid != nullptr && actualPixelFormatGuid != *resolvedPixelFormatGuid)
+    {
+        THROW_IF_FAILED(wicFactory->CreateFormatConverter(&converter));
+        THROW_IF_FAILED(converter->Initialize(
+            bitmapFrame.Get(),
+            *resolvedPixelFormatGuid,
+            WICBitmapDitherTypeNone,
+            nullptr,
+            0.f,
+            WICBitmapPaletteTypeMedianCut
+        ));
+        pixelSource = converter.Get();
+    }
+    // Just use the type in the image, but verify that it's a type we actually recognize.
+    else
+    {
+        if (!ResolvePixelFormat(actualPixelFormatGuid, /*out*/ pixelFormatString, /*out*/ channelCount, /*out*/ bytesPerChannel, /*out*/ dataType))
+        {
+            throw std::invalid_argument("Pixel format in image is not recognized for reading.");
+        }
+        pixelSource = bitmapFrame.Get();
+    }
+
+    // Copy the pixels out of the IWICBitmapSource.
+    uint32_t width, height;
+    THROW_IF_FAILED(pixelSource->GetSize(/*out*/ &width, /*out*/ &height));
+    const uint32_t bytesPerPixel = channelCount * bytesPerChannel;
+    const uint32_t rowByteStride = width * bytesPerPixel;
+    const uint32_t bufferByteSize = rowByteStride * height;
+    pixelBytes.resize(bufferByteSize);
+    WICRect rect = { 0, 0, static_cast<INT>(width), static_cast<INT>(height) };
+    THROW_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, OUT ToUChar(pixelBytes.data())));
+
+    dimensions.assign({ 1, int32_t(channelCount), int32_t(height), int32_t(width) });
+}
+
+void StoreImageData(
+    span<const uint8_t> pixelBytes,
+    std::u8string_view pixelFormatString, // currently only supports "b8g8r8".
+    onnx::TensorProto::DataType dataType,
+    span<int32_t const> dimensions,
+    _In_z_ wchar_t const* outputFilename
+)
+{
+    std::wstring_view filename = std::wstring_view(outputFilename);
+    std::wstring_view filenameExtension = filename.substr(filename.find_last_of(L".") + 1);
+    if (filenameExtension != L"png")
+    {
+        throw std::invalid_argument("Only .png is supported for writing files.");
+    }
+    if (dimensions.empty())
+    {
+        throw std::invalid_argument("Dimensions are empty. They must be at least 1D for images.");
+    }
+    std::vector<int32_t> reshapedDimensions;
+    if (dimensions.size() < 2)
+    {
+        reshapedDimensions.assign(dimensions.begin(), dimensions.end());
+        reshapedDimensions.insert(reshapedDimensions.begin(), 2 - reshapedDimensions.size(), 1);
+        dimensions = reshapedDimensions;
+    }
+    // TODO: Support non-8bit pixel types.
+    if (pixelFormatString != u8"b8g8r8")
+    {
+        throw std::invalid_argument("Only supported pixelFormatString is b8g8r8.");
+    }
+
+    // TODO: Support non-8bit pixel types.
+    // For now, convert any format larger than 8-bits to 8-bit.
+    std::vector<uint8_t> pixelBytesBuffer;
+    if (dataType != onnx::TensorProto::DataType::TensorProto_DataType_UINT8)
+    {
+        const uint32_t sourceElementCount = GetElementCountFromByteSpan(dataType, pixelBytes);
+        pixelBytesBuffer.resize(sourceElementCount);
+        ConvertElementTypeToUInt8Clamped(dataType, pixelBytes, /*out*/ pixelBytesBuffer);
+        pixelBytes = pixelBytesBuffer;
+        dataType = onnx::TensorProto::DataType::TensorProto_DataType_UINT8;
+    }
+
+    WICPixelFormatGUID const* resolvedPixelFormatGuid = nullptr;
+    const uint32_t channelCount = dimensions.size() >= 3 ? dimensions[dimensions.size() - 3] : 1;
+    uint32_t bytesPerChannel;
+    if (!ResolvePixelFormat(channelCount, dataType, /*out*/ pixelFormatString, /*out*/ resolvedPixelFormatGuid, /*out*/ bytesPerChannel))
+    {
+        printf("Channel count = %d\n", channelCount);
+        throw std::invalid_argument("Pixel format is not supported for writing. Verify the channel layout.");
+    };
+
+    ComPtr<IWICImagingFactory> wicFactory;
+    THROW_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT & wicFactory));
+
+    // Decompress the image using WIC.
+    ComPtr<IWICStream> stream;
+    ComPtr<IWICBitmapEncoder> encoder;
+    ComPtr<IWICBitmapFrameEncode> bitmapFrame;
+    ComPtr<IPropertyBag2> propertybag;
+
+    THROW_IF_FAILED(wicFactory->CreateStream(&stream));
+    THROW_IF_FAILED(stream->InitializeFromFilename(outputFilename, GENERIC_WRITE));
+    THROW_IF_FAILED(wicFactory->CreateEncoder(GUID_ContainerFormatPng, nullptr, OUT & encoder));
+    THROW_IF_FAILED(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache));
+    THROW_IF_FAILED(encoder->CreateNewFrame(OUT & bitmapFrame, &propertybag));
+
+#if 0
+    // This is how you customize the TIFF output.
+    {
+        PROPBAG2 option = {};
+        option.pstrName = L"TiffCompressionMethod";
+        VARIANT varValue;
+        VariantInit(&varValue);
+        varValue.vt = VT_UI1;
+        varValue.bVal = WICTiffCompressionZIP;
+        THROW_IF_FAILED(propertybag->Write(1, &option, &varValue));
+        THROW_IF_FAILED(bitmapFrame->Initialize(propertybag));
+    }
+#endif
+    THROW_IF_FAILED(bitmapFrame->Initialize(propertybag.Get()));
+
+    const span<int32_t const> hwDimensions = dimensions.subspan(dimensions.size() - 2, 2);
+    const uint32_t height = hwDimensions[0];
+    const uint32_t width = hwDimensions[1];
+    const uint32_t bytesPerPixel = channelCount * bytesPerChannel;
+    const uint32_t rowByteStride = width * bytesPerPixel;
+    const uint32_t bufferByteSize = rowByteStride * height;
+
+    THROW_IF_FAILED(bitmapFrame->SetSize(width, height));
+
+    WICPixelFormatGUID actualPixelFormatGuid = *resolvedPixelFormatGuid;
+    THROW_IF_FAILED(bitmapFrame->SetPixelFormat(/*inout*/ &actualPixelFormatGuid));
+
+    // Assign to a temporary large buffer if the specified dimensions are larger than the passed
+    // pixel content. The remaining pixels will just be empty blackness.
+    if (bufferByteSize > pixelBytes.size_bytes())
+    {
+        pixelBytesBuffer.reserve(bufferByteSize);
+        pixelBytesBuffer.assign(pixelBytes.begin(), pixelBytes.end());
+        pixelBytesBuffer.resize(bufferByteSize);
+        pixelBytes = pixelBytesBuffer;
+    }
+
+    // Why is the WritePixels input parameter not const??
+    BYTE* recastPixelBytes = const_cast<BYTE*>(reinterpret_cast<BYTE const*>(pixelBytes.data()));
+    THROW_IF_FAILED(bitmapFrame->WritePixels(height, rowByteStride, bufferByteSize, recastPixelBytes));
+    THROW_IF_FAILED(bitmapFrame->Commit());
+    THROW_IF_FAILED(encoder->Commit());
+}
+#endif
 
 
 void ClearSvgList()
