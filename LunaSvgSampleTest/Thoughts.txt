@@ -6,6 +6,7 @@ TODO:
     - Separate grid item outline from interior grid
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
+    - Support non-square SVG's
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
