@@ -25,8 +25,20 @@
 #include <shellapi.h> // DragQueryFile
 #include <rpcndr.h> // for GDI+
 #include <gdiplus.h>
+#include <WinCodec.h>
+#include <wrl/client.h>
 #undef min // Need to leave defined above for gdiplus which uses the bad macros :/.
 #undef max
+
+
+// WinCodec_Proxy.h appears to be missing from Visual Studio's include path??
+extern "C"
+{
+    HRESULT WINAPI WICCreateImagingFactory_Proxy(
+        __in UINT32 sdkVersion,
+        __deref_out IWICImagingFactory** wicImagingFactory
+    );
+}
 
 /*
 
