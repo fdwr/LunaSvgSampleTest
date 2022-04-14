@@ -4,6 +4,8 @@
 #include "LunaSvgTest.h"
 #include "lunasvg.h"
 
+using Microsoft::WRL::ComPtr;
+
 // Global Variables:
 constexpr size_t MAX_LOADSTRING = 100;
 HINSTANCE g_instanceHandle;                     // Current process base memory address.
@@ -13,7 +15,7 @@ WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
 WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
 
-#define RETURN_IF_FAILED(expression) {auto hr = (expression); return hr;}
+#define RETURN_IF_FAILED(expression) {auto hr_ = (expression); if (FAILED(hr_)) {return hr_;}}
 #define RETURN_IF_FAILED_V(expression, returnValue) if (FAILED(expression)) return (returnValue);
 
 TOOLINFO g_toolTipInfo =
@@ -53,6 +55,7 @@ struct CanvasItem
     {
         SizeLabel,
         SvgDocument,
+        Image,
     };
     enum class Flags : uint8_t
     {
@@ -75,11 +78,20 @@ struct CanvasItem
     {
         uint32_t labelSize;
         uint32_t svgDocumentIndex;
+        uint32_t imageIndex;
     } value;
     uint32_t x; // Left edge of item box
     uint32_t y; // Top edge of item box
     uint32_t w; // Width
     uint32_t h; // Height
+};
+
+struct Image
+{
+    uint32_t width;
+    uint32_t height;
+    // uint32_t bitdepth implicitly 32-bit BGRA.
+    std::unique_ptr<std::byte[]> pixels;
 };
 
 RECT ToRect(CanvasItem const& canvasItem)
@@ -102,15 +114,17 @@ DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 // Horrible assortment of (gasp) global variables rather than a proper class instance.
 ULONG_PTR g_gdiplusStartupToken;
 Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
-Microsoft::WRL::ComPtr<IWICImagingFactory> g_wicFactory;
+ComPtr<IWICImagingFactory> g_wicFactory;
 
 std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
+std::vector<Image> g_images;
 std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
+
 lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
 HBITMAP g_cachedScreenBitmap;
 std::byte* g_cachedScreenBitmapPixels;
-SIZE g_cachedScreenBitmapSize;
+SIZE g_cachedScreenBitmapSize; // Most recent size of cached bitmap (may be slightly larger than the actual bitmap area).
 bool g_canvasItemsNeedRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
 bool g_relayoutCanvasItems = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
 bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
@@ -217,9 +231,8 @@ ATOM RegisterMainWindowClass(HINSTANCE instanceHandle);
 BOOL InitializeWindowInstance(HINSTANCE instanceHandle, int commandShow);
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-void ClearSvgList();
-void LoadSvgFile(const wchar_t* filePath);
-void AppendSingleSvgFile(wchar_t const* filePath);
+void ClearDocumentList();
+void AppendSingleDocumentFile(wchar_t const* filePath);
 void RelayoutCanvasItemsLater(HWND hwnd);
 void RedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasBackgroundAndItems(HWND hwnd);
@@ -254,10 +267,10 @@ int APIENTRY wWinMain(
     // Load the file names if given.
     if (argumentCount > 1)
     {
-        ClearSvgList();
+        ClearDocumentList();
         for (int argumentIndex = 1; argumentIndex < argumentCount; ++argumentIndex)
         {
-            AppendSingleSvgFile(arguments[argumentIndex]);
+            AppendSingleDocumentFile(arguments[argumentIndex]);
         }
         ShowLoadErrors();
         RelayoutCanvasItemsLater(g_windowHandle);
@@ -865,6 +878,8 @@ void DrawSmallDigits(
     uint32_t bitmapByteStridePerRow
     )
 {
+	static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
+
     // Cheap clipping (whole clip, not partial)
     if (y < 0 || y + g_smallDigitHeight > bitmapHeight)
     {
@@ -903,7 +918,7 @@ void DrawSmallDigits(
                     assert(digitPixelValue < std::size(digitPixelColors));
                     *reinterpret_cast<uint32_t*>(pixel) = digitPixelColors[digitPixelValue];
                 }
-                pixel += sizeof(uint32_t);
+                pixel += sizeof(PixelBgra);
                 ++digitPixels;
             }
             pixel += rowByteDelta;
@@ -939,8 +954,9 @@ void DrawCheckerboardBackground(
     uint32_t byteStridePerRow
     )
 {
-    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
-    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
+    static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
+    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(PixelBgra));
+    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(PixelBgra);
 
     for (uint32_t j = 0; j < height; ++j)
     {
@@ -949,7 +965,7 @@ void DrawCheckerboardBackground(
             const uint32_t backgroundColor = ((i & 8) ^ (j & 8)) ? 0xFF202020 : 0xFF404040;
             assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
             *reinterpret_cast<uint32_t*>(pixel) = backgroundColor;
-            pixel += sizeof(uint32_t);
+            pixel += sizeof(PixelBgra);
         }
         pixel += rowByteDelta;
     }
@@ -967,11 +983,12 @@ void DrawBackgroundColorUnderneath(
     uint32_t backgroundColor // BGRA
     )
 {
+    static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
     PixelBgra bgraColor = *reinterpret_cast<PixelBgra*>(&backgroundColor);
 
     //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
-    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(uint32_t));
-    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(uint32_t);
+    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(PixelBgra));
+    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(PixelBgra);
 
     for (uint32_t j = 0; j < height; ++j)
     {
@@ -990,30 +1007,94 @@ void DrawBackgroundColorUnderneath(
             // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
             assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
             *reinterpret_cast<uint32_t*>(pixel) = pixelValue;
-            pixel += sizeof(uint32_t);
+            pixel += sizeof(PixelBgra);
         }
         pixel += rowByteDelta;
     }
 }
 
 
-#if 0
-void LoadImageData(
-    _In_z_ wchar_t const* inputFilename, // Alternately could specify a span<const uint8_t>.
-    std::u8string_view pixelFormatString,
-    onnx::TensorProto::DataType& dataType,
-    /*out*/ std::vector<int32_t>& dimensions,
-    /*out*/ std::vector<std::byte>& pixelBytes
-)
+// Draw dark gray/light gray checkerboard of 8x8 pixels.
+void DrawBitmap32Bit(
+    uint8_t* destPixels, // 32-bits of {B,G,R,A}.
+    int32_t destX,
+    int32_t destY,
+    uint32_t destWidth,
+    uint32_t destHeight,
+    uint32_t destByteStridePerRow,
+    uint8_t const* sourcePixels, // 32-bits of {B,G,R,A}.
+    uint32_t sourceWidth,
+    uint32_t sourceHeight
+    )
 {
-    pixelBytes.clear();
+    static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
+    uint32_t const sourceByteStridePerRow = sourceWidth * sizeof(PixelBgra);
+    uint32_t width = sourceWidth;
+    uint32_t height = sourceHeight;
 
-    WICPixelFormatGUID const* resolvedPixelFormatGuid = nullptr;
-    uint32_t channelCount, bytesPerChannel;
-    ResolvePixelFormat(pixelFormatString, /*out*/ resolvedPixelFormatGuid, /*out*/ channelCount, /*out*/ bytesPerChannel, /*out*/ dataType);
+    if (destX < 0)
+    {
+        width += destX;
+        sourcePixels += uint32_t(-destX) * sizeof(PixelBgra);
+        destX = 0;
+    }
+    if (uint32_t(destX) + width > destWidth)
+    {
+        width = destWidth - destX;
+    }
+    if (int32_t(width) <= 0)
+    {
+        return;
+    }
 
-    ComPtr<IWICImagingFactory> wicFactory;
-    THROW_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT & wicFactory));
+    if (destY < 0)
+    {
+        height += destY;
+        sourcePixels += uint32_t(-destY) * sourceWidth * sizeof(PixelBgra);
+        destY = 0;
+    }
+    if (uint32_t(destY) + height > destHeight)
+    {
+        height = destHeight - destY;
+    }
+    if (int32_t(height) <= 0)
+    {
+        return;
+    }
+
+    const uint32_t destRowByteDelta = destByteStridePerRow - (width * sizeof(PixelBgra));
+    const uint32_t sourceRowByteDelta = sourceByteStridePerRow - (width * sizeof(PixelBgra));
+    uint8_t const* sourcePixel = sourcePixels;
+    uint8_t* destPixel = destPixels + destY * destByteStridePerRow + destX * sizeof(PixelBgra);
+
+    for (uint32_t j = 0; j < height; ++j)
+    {
+        for (uint32_t i = 0; i < width; ++i)
+        {
+            assert(destPixel >= destPixels && destPixel < destPixels + destHeight * destByteStridePerRow);
+            assert(sourcePixel >= sourcePixels && sourcePixel < sourcePixels + sourceHeight * sourceByteStridePerRow);
+            *reinterpret_cast<uint32_t*>(destPixel) = *reinterpret_cast<uint32_t const*>(sourcePixel);
+            sourcePixel += sizeof(PixelBgra);
+            destPixel += sizeof(PixelBgra);
+        }
+        destPixel += destRowByteDelta;
+    }
+}
+
+
+HRESULT LoadImageData(
+    _In_z_ wchar_t const* inputFilename,
+    /*out*/ std::array<uint32_t, 4>& dimensions,
+    /*out*/ std::unique_ptr<std::byte[]>& pixelBytes
+    )
+{
+    pixelBytes.reset();
+
+    uint32_t const channelCount = 4;
+    uint32_t const bytesPerChannel = 1;
+
+    IWICImagingFactory* wicFactory = g_wicFactory.Get();
+    //RETURN_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT &wicFactory));
 
     // Decompress the image using WIC.
     ComPtr<IWICStream> stream;
@@ -1022,26 +1103,22 @@ void LoadImageData(
     ComPtr<IWICFormatConverter> converter;
     IWICBitmapSource* pixelSource = nullptr;
 
-    THROW_IF_FAILED(wicFactory->CreateStream(&stream));
-    THROW_IF_FAILED(stream->InitializeFromFilename(inputFilename, GENERIC_READ));
-#if 0
-    THROW_IF_FAILED(stream->InitializeFromMemory(
-        const_cast<uint8_t*>(fileBytes.data()),
-        static_cast<uint32_t>(fileBytes.size_bytes()))
-    );
-#endif
-    THROW_IF_FAILED(wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, OUT & decoder));
-    THROW_IF_FAILED(decoder->GetFrame(0, OUT & bitmapFrame));
+    RETURN_IF_FAILED(wicFactory->CreateStream(&stream));
+    RETURN_IF_FAILED(stream->InitializeFromFilename(inputFilename, GENERIC_READ));
+    // If from memory instead: RETURN_IF_FAILED(stream->InitializeFromMemory(const_cast<uint8_t*>(fileBytes.data()), static_cast<uint32_t>(fileBytes.size_bytes())));
+    RETURN_IF_FAILED(wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, OUT & decoder));
+    RETURN_IF_FAILED(decoder->GetFrame(0, OUT & bitmapFrame));
 
     WICPixelFormatGUID actualPixelFormatGuid;
-    THROW_IF_FAILED(bitmapFrame->GetPixelFormat(/*out*/ &actualPixelFormatGuid));
+    RETURN_IF_FAILED(bitmapFrame->GetPixelFormat(/*out*/ &actualPixelFormatGuid));
 
-    WICPixelFormatGUID const* resolvedPixelFormatGuid = GUID_WICPixelFormat32bppPBGRA
-    // Convert format to 32bppPBGRA - which D2D uses and the test's blend function expects.
-    if (resolvedPixelFormatGuid != nullptr && actualPixelFormatGuid != *resolvedPixelFormatGuid)
+    // Convert the image if not the needed format.
+    // 32bppPBGRA is what Direct2D uses.
+    WICPixelFormatGUID const* resolvedPixelFormatGuid = &GUID_WICPixelFormat32bppPBGRA;
+    if (actualPixelFormatGuid != *resolvedPixelFormatGuid)
     {
-        THROW_IF_FAILED(wicFactory->CreateFormatConverter(&converter));
-        THROW_IF_FAILED(converter->Initialize(
+        RETURN_IF_FAILED(wicFactory->CreateFormatConverter(&converter));
+        RETURN_IF_FAILED(converter->Initialize(
             bitmapFrame.Get(),
             *resolvedPixelFormatGuid,
             WICBitmapDitherTypeNone,
@@ -1054,26 +1131,26 @@ void LoadImageData(
     // Just use the type in the image, but verify that it's a type we actually recognize.
     else
     {
-        if (!ResolvePixelFormat(actualPixelFormatGuid, /*out*/ pixelFormatString, /*out*/ channelCount, /*out*/ bytesPerChannel, /*out*/ dataType))
-        {
-            throw std::invalid_argument("Pixel format in image is not recognized for reading.");
-        }
         pixelSource = bitmapFrame.Get();
     }
 
     // Copy the pixels out of the IWICBitmapSource.
     uint32_t width, height;
-    THROW_IF_FAILED(pixelSource->GetSize(/*out*/ &width, /*out*/ &height));
+    RETURN_IF_FAILED(pixelSource->GetSize(/*out*/ &width, /*out*/ &height));
     const uint32_t bytesPerPixel = channelCount * bytesPerChannel;
     const uint32_t rowByteStride = width * bytesPerPixel;
     const uint32_t bufferByteSize = rowByteStride * height;
-    pixelBytes.resize(bufferByteSize);
+    pixelBytes.reset(new std::byte[bufferByteSize]);
     WICRect rect = { 0, 0, static_cast<INT>(width), static_cast<INT>(height) };
-    THROW_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, OUT ToUChar(pixelBytes.data())));
+    RETURN_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, OUT reinterpret_cast<uint8_t*>(pixelBytes.get())));
 
-    dimensions.assign({ 1, int32_t(channelCount), int32_t(height), int32_t(width) });
+    dimensions = { uint32_t(width), uint32_t(height), uint32_t(channelCount), 1};
+    return S_OK;
 }
 
+
+#if 0
+// TODO:
 void StoreImageData(
     span<const uint8_t> pixelBytes,
     std::u8string_view pixelFormatString, // currently only supports "b8g8r8".
@@ -1187,22 +1264,78 @@ void StoreImageData(
 #endif
 
 
-void ClearSvgList()
+void ClearDocumentList()
 {
+    g_canvasItems.clear();
     g_svgDocuments.clear();
+    g_images.clear();
     g_filenameList.clear();
     g_bitmap = lunasvg::Bitmap();
     g_errorMessage.clear();
 }
 
 
-void AppendSingleSvgFile(wchar_t const* filePath)
+bool AppendSingleImageFile(wchar_t const* filePath)
+{
+    std::array<uint32_t, 4> dimensions; // width, height, channels, 1
+    std::unique_ptr<std::byte[]> pixelBytes;
+    if (FAILED(LoadImageData(filePath, /*out*/ dimensions,/*out*/ pixelBytes)))
+    {
+        return false;
+    }
+
+    g_images.emplace_back(Image{ .width = dimensions[0], .height = dimensions[1], .pixels = std::move(pixelBytes) });
+    return true;
+}
+
+
+bool AppendSingleSvgFile(wchar_t const* filePath)
 {
     auto document = lunasvg::Document::loadFromFile(filePath);
-    if (document)
+    if (!document)
     {
-        g_svgDocuments.push_back(std::move(document));
+        return false;
+    }
+
+    g_svgDocuments.push_back(std::move(document));
+    return true;
+}
+
+
+void AppendSingleDocumentFile(wchar_t const* filePath)
+{
+    bool loadSuccess = false;
+    enum {SvgType, ImageType};
+    std::pair<std::wstring_view, int> filenameExtensions[] =
+    {
+        {L".svg", SvgType},
+        {L".png", ImageType},
+        {L".bmp", ImageType},
+        {L".ico", ImageType},
+        {L".jpg", ImageType},
+        {L".jpeg", ImageType},
+        {L".tif", ImageType},
+        {L".tiff", ImageType},
+        {L".gif", ImageType},
+    };
+    std::wstring_view f = filePath;
+    for (auto filenameExtension : filenameExtensions)
+    {
+        if (f.ends_with(filenameExtension.first))
+        {
+            switch (filenameExtension.second)
+            {
+            case ImageType: loadSuccess = AppendSingleImageFile(filePath); break;
+            case SvgType: loadSuccess = AppendSingleSvgFile(filePath); break;
+            }
+            break;
+        }
+    }
+
+    if (loadSuccess)
+    {
         g_filenameList.push_back(filePath);
+        RealignBitmapOffsetsLater();
     }
     else
     {
@@ -1210,14 +1343,6 @@ void AppendSingleSvgFile(wchar_t const* filePath)
         _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s\n", filePath);
         g_errorMessage += errorMessage;
     }
-    RealignBitmapOffsetsLater();
-}
-
-
-void LoadSvgFile(wchar_t const* fileName)
-{
-    ClearSvgList();
-    AppendSingleSvgFile(fileName);
 }
 
 
@@ -1231,13 +1356,13 @@ void ShowLoadErrors()
     }
 }
 
-void LoadSvgFiles(std::vector<std::wstring>&& fileList)
+void LoadDocumentFiles(std::vector<std::wstring>&& fileList)
 {
     auto movedFileList = std::move(fileList);
-    ClearSvgList();
+    ClearDocumentList();
     for (auto& fileName : movedFileList)
     {
-        AppendSingleSvgFile(fileName.c_str());
+        AppendSingleDocumentFile(fileName.c_str());
     }
     ShowLoadErrors();
 }
@@ -1276,6 +1401,7 @@ void GenerateCanvasItems(
     constexpr uint32_t maximumSmallDigitNumbers = 4;
     const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
     const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+    const uint32_t totalImages = static_cast<uint32_t>(g_images.size());
     const bool isHorizontalLayout = (flowDirection == CanvasItem::FlowDirection::RightDown);
     static_assert(uint32_t(CanvasItem::FlowDirection::Total) == 2);
 
@@ -1287,6 +1413,7 @@ void GenerateCanvasItems(
         break;
 
     case BitmapSizingDisplay::WaterfallObjectThenSize:
+        if (totalDocuments > 0)
         {
             for (uint32_t bitmapSize : g_waterfallBitmapSizes)
             {
@@ -1328,7 +1455,7 @@ void GenerateCanvasItems(
                 // Append all labels, one for each size.
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
                 {
-                    CanvasItem labelCanvasItem =
+                    CanvasItem canvasItem =
                     {
                         .itemType = CanvasItem::ItemType::SizeLabel,
                         .flags = flags,
@@ -1336,7 +1463,7 @@ void GenerateCanvasItems(
                         .w = !isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
                         .h = !isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
                     };
-                    canvasItems.push_back(std::move(labelCanvasItem));
+                    canvasItems.push_back(std::move(canvasItem));
                     flags = CanvasItem::Flags::Default;
                 }
 
@@ -1346,7 +1473,7 @@ void GenerateCanvasItems(
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
                 {
                     auto& document = g_svgDocuments[documentIndex];
-                    CanvasItem svgCanvasItem =
+                    CanvasItem canvasItem =
                     {
                         .itemType = CanvasItem::ItemType::SvgDocument,
                         .flags = flags,
@@ -1354,7 +1481,7 @@ void GenerateCanvasItems(
                         .w = bitmapSize,
                         .h = bitmapSize,
                     };
-                    canvasItems.push_back(std::move(svgCanvasItem));
+                    canvasItems.push_back(std::move(canvasItem));
                     flags = CanvasItem::Flags::Default;
                 }
             }
@@ -1381,6 +1508,21 @@ void GenerateCanvasItems(
             }
         }
         break;
+    }
+
+    // Append any loaded images too.
+    for (uint32_t imageIndex = 0; imageIndex < totalImages; ++imageIndex)
+    {
+        auto& image = g_images[imageIndex];
+        CanvasItem canvasItem =
+        {
+            .itemType = CanvasItem::ItemType::Image,
+            .flags = CanvasItem::Flags::Default,
+            .value = {.imageIndex = imageIndex},
+            .w = image.width,
+            .h = image.height,
+        };
+        canvasItems.push_back(std::move(canvasItem));
     }
 }
 
@@ -1557,6 +1699,29 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
                 }
             }
             break;
+
+        case CanvasItem::ItemType::Image:
+            {
+                assert(canvasItem.value.imageIndex < g_images.size());
+                auto& image = g_images[canvasItem.value.imageIndex];
+
+                RECT subbitmapRect = ToRect(canvasItem);
+                if (IntersectRect(/*out*/&subbitmapRect, &subbitmapRect, &bitmapRect))
+                {
+                    DrawBitmap32Bit(
+                        bitmap.data(),
+                        canvasItem.x,
+                        canvasItem.y,
+                        g_bitmap.width(),
+                        g_bitmap.height(),
+                        g_bitmap.width() * sizeof(PixelBgra),
+                        reinterpret_cast<uint8_t const*>(image.pixels.get()),
+                        image.width,
+                        image.height
+                    );
+                }
+            }
+            break;
         }
     }
 }
@@ -1644,7 +1809,7 @@ void RedrawBackground()
 
 void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
 {
-    if (g_svgDocuments.empty())
+    if (g_svgDocuments.empty() && g_images.empty())
     {
         return;
     }
@@ -1976,11 +2141,14 @@ BOOL StretchBltFixed(
 }
 
 
+// The cached bitmap is useful for frequent panning (rather than recreating it every WM_PAINT),
+// but it can occupy megabytes of memory which are unnecessary when the application is inactive.
 /*TIMERPROC*/void CALLBACK ReclaimCachedBitmapMemory(HWND hwnd, UINT uElapse, UINT_PTR uIDEvent, DWORD dwTime)
 {
     KillTimer(hwnd, uIDEvent);
     DeleteObject(g_cachedScreenBitmap);
     g_cachedScreenBitmap = nullptr;
+    g_cachedScreenBitmapPixels = nullptr;
 }
 
 
@@ -2589,7 +2757,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         .lStructSize = sizeof(openFileName),
                         .hwndOwner = hwnd,
                         .hInstance = g_instanceHandle,
-                        .lpstrFilter = L"SVG\0" L"*.svg\0"
+                        .lpstrFilter = L"Images (SVG, PNG, BMP, ICO, DDS, HDP, JPEG, TIFF, GIF)\0" L"*.svg;*.png;*.bmp;*.ico;*.dds;*.hdp;*.wdp;*.wmp;*.jpg;*.jpeg;*.tif;*.tiff;*.gif\0"
                                        L"All files\0" L"*\0"
                                        L"\0",
                         .lpstrFile = std::data(fileNameBuffer),
@@ -2618,7 +2786,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                             fileName += fileNameLength + 1;
                         }
 
-                        LoadSvgFiles(std::move(filenameList));
+                        LoadDocumentFiles(std::move(filenameList));
                         RelayoutCanvasItemsLater(hwnd);
                     }
                 }
@@ -2628,14 +2796,14 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 // Reload the previous SVG files, useful if you update the SVG file in a text editor and resave it.
                 if (!g_filenameList.empty())
                 {
-                    LoadSvgFiles(std::move(g_filenameList));
+                    LoadDocumentFiles(std::move(g_filenameList));
                     ShowLoadErrors();
                     RelayoutCanvasItemsLater(hwnd);
                 }
                 break;
 
             case IDM_FILE_UNLOAD:
-                ClearSvgList();
+                ClearDocumentList();
                 RelayoutCanvasItemsLater(hwnd);
                 break;
 
@@ -2837,7 +3005,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             if (!filenameList.empty())
             {
                 RedrawCanvasItemsLater(hwnd);
-                LoadSvgFiles(std::move(filenameList));
+                LoadDocumentFiles(std::move(filenameList));
                 RelayoutCanvasItemsLater(hwnd);
             }
         }
