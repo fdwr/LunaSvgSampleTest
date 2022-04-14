@@ -1306,24 +1306,30 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
 {
     bool loadSuccess = false;
     enum {SvgType, ImageType};
-    std::pair<std::wstring_view, int> filenameExtensions[] =
+
+    // Capitalize filename extension for comparison.
+    std::array<wchar_t, 1024> filePathUppercase;
+    wcsncpy_s(filePathUppercase.data(), std::size(filePathUppercase), filePath, std::size(filePathUppercase) - 1);
+    CharUpper(filePathUppercase.data());
+    std::wstring_view fileNameView = filePathUppercase.data();
+
+    std::pair<std::wstring_view, int> filenameExtensionMappings[] =
     {
-        {L".svg", SvgType},
-        {L".png", ImageType},
-        {L".bmp", ImageType},
-        {L".ico", ImageType},
-        {L".jpg", ImageType},
-        {L".jpeg", ImageType},
-        {L".tif", ImageType},
-        {L".tiff", ImageType},
-        {L".gif", ImageType},
+        {L".SVG", SvgType},
+        {L".PNG", ImageType},
+        {L".BMP", ImageType},
+        {L".ICO", ImageType},
+        {L".JPG", ImageType},
+        {L".JPEG", ImageType},
+        {L".TIF", ImageType},
+        {L".TIFF", ImageType},
+        {L".GIF", ImageType},
     };
-    std::wstring_view f = filePath;
-    for (auto filenameExtension : filenameExtensions)
+    for (auto filenameExtensionMapping : filenameExtensionMappings)
     {
-        if (f.ends_with(filenameExtension.first))
+        if (fileNameView.ends_with(filenameExtensionMapping.first))
         {
-            switch (filenameExtension.second)
+            switch (filenameExtensionMapping.second)
             {
             case ImageType: loadSuccess = AppendSingleImageFile(filePath); break;
             case SvgType: loadSuccess = AppendSingleSvgFile(filePath); break;
