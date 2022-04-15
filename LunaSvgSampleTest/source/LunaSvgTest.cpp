@@ -1064,8 +1064,13 @@ void DrawBitmap32Bit(
         return;
     }
 
-    const uint32_t destRowByteDelta = destByteStridePerRow - (width * sizeof(PixelBgra));
-    const uint32_t sourceRowByteDelta = sourceByteStridePerRow - (width * sizeof(PixelBgra));
+    #ifndef NDEBUG
+    uint32_t totalSourceBytes = sourceHeight * sourceByteStridePerRow;
+    uint32_t totalDestBytes = destHeight * destByteStridePerRow;
+    #endif
+
+    uint32_t const destRowByteDelta = destByteStridePerRow - (width * sizeof(PixelBgra));
+    uint32_t const sourceRowByteDelta = sourceByteStridePerRow - (width * sizeof(PixelBgra));
     uint8_t const* sourcePixel = sourcePixels + sourceY * sourceByteStridePerRow + sourceX * sizeof(PixelBgra);
     uint8_t* destPixel = destPixels + uint32_t(destY) * destByteStridePerRow + uint32_t(destX) * sizeof(PixelBgra);
 
@@ -1073,9 +1078,22 @@ void DrawBitmap32Bit(
     {
         for (uint32_t i = 0; i < width; ++i)
         {
-            assert(destPixel >= destPixels && destPixel < destPixels + destHeight * destByteStridePerRow);
-            assert(sourcePixel >= sourcePixels && sourcePixel < sourcePixels + sourceHeight * sourceByteStridePerRow);
-            *reinterpret_cast<uint32_t*>(destPixel) = *reinterpret_cast<uint32_t const*>(sourcePixel);
+            assert(destPixel >= destPixels && destPixel < destPixels + totalDestBytes);
+            assert(sourcePixel >= sourcePixels && sourcePixel < sourcePixels + totalSourceBytes);
+
+            PixelBgra const sourceColor = *reinterpret_cast<PixelBgra const*>(sourcePixel);
+            PixelBgra const backgroundColor = *reinterpret_cast<PixelBgra const*>(destPixel);
+            uint32_t const bitmapAlpha = sourceColor.a;
+            uint32_t const inverseBitmapAlpha = 255 - bitmapAlpha;
+
+            uint32_t const blue  = (inverseBitmapAlpha * backgroundColor.b / 255) + sourceColor.b;
+            uint32_t const green = (inverseBitmapAlpha * backgroundColor.g / 255) + sourceColor.g;
+            uint32_t const red   = (inverseBitmapAlpha * backgroundColor.r / 255) + sourceColor.r;
+            uint32_t const alpha = (inverseBitmapAlpha * backgroundColor.a / 255) + sourceColor.a;
+            uint32_t const pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+
+            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
+            *reinterpret_cast<uint32_t*>(destPixel) = pixelValue;
             sourcePixel += sizeof(PixelBgra);
             destPixel += sizeof(PixelBgra);
         }
