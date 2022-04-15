@@ -1172,20 +1172,21 @@ HRESULT LoadImageData(
 
 std::pair<std::wstring_view, GUID const&> const g_filenameExtensionToGuidMappings[] =
 {
+    // The comment formats have issues on Windows 7 (hresult = 0x88982F50) or bad output.
     {L"BMP",  GUID_ContainerFormatBmp},
     {L"PNG",  GUID_ContainerFormatPng},
-    {L"ICO",  GUID_ContainerFormatIco},
-    {L"JPG",  GUID_ContainerFormatJpeg},
-    {L"JPEG", GUID_ContainerFormatJpeg},
+    // {L"ICO",  GUID_ContainerFormatIco}, // WIC lacks a native ICO encoder. -_-
+    // {L"JPG",  GUID_ContainerFormatJpeg}, // Output colors look wrong.
+    // {L"JPEG", GUID_ContainerFormatJpeg},
     {L"TIF",  GUID_ContainerFormatTiff},
     {L"TIFF", GUID_ContainerFormatTiff},
-    {L"GIF",  GUID_ContainerFormatGif},
-    {L"WMP",  GUID_ContainerFormatWmp},
-    {L"DDS",  GUID_ContainerFormatDds},
-    {L"DNG",  GUID_ContainerFormatAdng},
-    {L"HEIF", GUID_ContainerFormatHeif},
-    {L"AVIF", GUID_ContainerFormatHeif},
-    {L"WEBP", GUID_ContainerFormatWebp},
+    // {L"GIF",  GUID_ContainerFormatGif}, // GIF supports up to 8-bit, not 32-bit.
+    // {L"WMP",  GUID_ContainerFormatWmp}, // HDR isn't interesting here.
+    // {L"DDS",  GUID_ContainerFormatDds},
+    // {L"DNG",  GUID_ContainerFormatAdng},
+    // {L"HEIF", GUID_ContainerFormatHeif},
+    // {L"AVIF", GUID_ContainerFormatHeif},
+    // {L"WEBP", GUID_ContainerFormatWebp},
 };
 
 
@@ -2826,7 +2827,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         .lStructSize = sizeof(saveFileName),
                         .hwndOwner = hwnd,
                         .hInstance = g_instanceHandle,
-                        .lpstrFilter = L"Raster Images (PNG, BMP, ICO, DDS, HDP, JPEG, TIFF, GIF)\0" L"*.png;*.bmp;*.ico;*.dds;*.hdp;*.wdp;*.wmp;*.jpg;*.jpeg;*.tif;*.tiff;*.gif\0"
+                        .lpstrFilter = L"Raster Images (PNG, BMP, TIFF)\0" L"*.png;*.bmp;*.tif;*.tiff\0"
                                        L"All files\0" L"*\0"
                                        L"\0",
                         .lpstrFile = std::data(fileNameBuffer),
@@ -2839,14 +2840,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     {
                         std::array<uint32_t, 4> dimensions = {g_bitmap.width(), g_bitmap.height(), 4, 1};
                         std::byte const* pixelBytes = reinterpret_cast<std::byte const*>(g_bitmap.data());
-                        if (FAILED(StoreImageData(
-                            { pixelBytes, pixelBytes + g_bitmap.stride() * g_bitmap.height() },
-                            dimensions,
-                            fileNameBuffer
-                        )))
+                        HRESULT hr = StoreImageData(
+                                        { pixelBytes, pixelBytes + g_bitmap.stride() * g_bitmap.height() },
+                                        dimensions,
+                                        fileNameBuffer
+                                     );
+                        if (FAILED(hr))
                         {
                             wchar_t errorMessage[1000];
-                            _snwprintf_s(errorMessage, sizeof(errorMessage), L"Failed to write file: %s", fileNameBuffer);
+                            _snwprintf_s(errorMessage, sizeof(errorMessage), L"Failed to write file (0x%08X): %s", hr, fileNameBuffer);
                             DisplayError(errorMessage);
                         }
                     }
