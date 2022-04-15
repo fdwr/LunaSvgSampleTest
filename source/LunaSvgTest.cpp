@@ -1104,7 +1104,7 @@ void DrawBitmap32Bit(
 
 HRESULT LoadImageData(
     _In_z_ wchar_t const* inputFilename,
-    /*out*/ std::array<uint32_t, 4>& dimensions,
+    /*out*/ std::array<uint32_t, 4>& dimensions, // width, height, channels
     /*out*/ std::unique_ptr<std::byte[]>& pixelBytes
     )
 {
@@ -1114,7 +1114,6 @@ HRESULT LoadImageData(
     uint32_t const bytesPerChannel = 1;
 
     IWICImagingFactory* wicFactory = g_wicFactory.Get();
-    //RETURN_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT &wicFactory));
 
     // Decompress the image using WIC.
     ComPtr<IWICStream> stream;
@@ -1126,8 +1125,8 @@ HRESULT LoadImageData(
     RETURN_IF_FAILED(wicFactory->CreateStream(&stream));
     RETURN_IF_FAILED(stream->InitializeFromFilename(inputFilename, GENERIC_READ));
     // If from memory instead: RETURN_IF_FAILED(stream->InitializeFromMemory(const_cast<uint8_t*>(fileBytes.data()), static_cast<uint32_t>(fileBytes.size_bytes())));
-    RETURN_IF_FAILED(wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, OUT & decoder));
-    RETURN_IF_FAILED(decoder->GetFrame(0, OUT & bitmapFrame));
+    RETURN_IF_FAILED(wicFactory->CreateDecoderFromStream(stream.Get(), nullptr, WICDecodeMetadataCacheOnLoad, /*out*/ &decoder));
+    RETURN_IF_FAILED(decoder->GetFrame(0, /*out*/ &bitmapFrame));
 
     WICPixelFormatGUID actualPixelFormatGuid;
     RETURN_IF_FAILED(bitmapFrame->GetPixelFormat(/*out*/ &actualPixelFormatGuid));
@@ -1157,12 +1156,12 @@ HRESULT LoadImageData(
     // Copy the pixels out of the IWICBitmapSource.
     uint32_t width, height;
     RETURN_IF_FAILED(pixelSource->GetSize(/*out*/ &width, /*out*/ &height));
-    const uint32_t bytesPerPixel = channelCount * bytesPerChannel;
-    const uint32_t rowByteStride = width * bytesPerPixel;
-    const uint32_t bufferByteSize = rowByteStride * height;
+    uint32_t const bytesPerPixel = channelCount * bytesPerChannel;
+    uint32_t const rowByteStride = width * bytesPerPixel;
+    uint32_t const bufferByteSize = rowByteStride * height;
     pixelBytes.reset(new std::byte[bufferByteSize]);
     WICRect rect = { 0, 0, static_cast<INT>(width), static_cast<INT>(height) };
-    RETURN_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, OUT reinterpret_cast<uint8_t*>(pixelBytes.get())));
+    RETURN_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, /*out*/ reinterpret_cast<uint8_t*>(pixelBytes.get())));
 
     dimensions = { uint32_t(width), uint32_t(height), uint32_t(channelCount), 1};
     return S_OK;
@@ -1172,34 +1171,21 @@ HRESULT LoadImageData(
 #if 0
 // TODO:
 void StoreImageData(
-    span<const uint8_t> pixelBytes,
+    span<std::byte const> pixelBytes,
     std::u8string_view pixelFormatString, // currently only supports "b8g8r8".
     onnx::TensorProto::DataType dataType,
-    span<int32_t const> dimensions,
+    /*out*/ std::array<uint32_t, 4> dimensions,
     _In_z_ wchar_t const* outputFilename
 )
 {
+    IWICImagingFactory* wicFactory = g_wicFactory.Get();
+
     std::wstring_view filename = std::wstring_view(outputFilename);
     std::wstring_view filenameExtension = filename.substr(filename.find_last_of(L".") + 1);
+
     if (filenameExtension != L"png")
     {
         throw std::invalid_argument("Only .png is supported for writing files.");
-    }
-    if (dimensions.empty())
-    {
-        throw std::invalid_argument("Dimensions are empty. They must be at least 1D for images.");
-    }
-    std::vector<int32_t> reshapedDimensions;
-    if (dimensions.size() < 2)
-    {
-        reshapedDimensions.assign(dimensions.begin(), dimensions.end());
-        reshapedDimensions.insert(reshapedDimensions.begin(), 2 - reshapedDimensions.size(), 1);
-        dimensions = reshapedDimensions;
-    }
-    // TODO: Support non-8bit pixel types.
-    if (pixelFormatString != u8"b8g8r8")
-    {
-        throw std::invalid_argument("Only supported pixelFormatString is b8g8r8.");
     }
 
     // TODO: Support non-8bit pixel types.
@@ -1223,9 +1209,6 @@ void StoreImageData(
         throw std::invalid_argument("Pixel format is not supported for writing. Verify the channel layout.");
     };
 
-    ComPtr<IWICImagingFactory> wicFactory;
-    THROW_IF_FAILED(WICCreateImagingFactory_Proxy(WINCODEC_SDK_VERSION1, OUT & wicFactory));
-
     // Decompress the image using WIC.
     ComPtr<IWICStream> stream;
     ComPtr<IWICBitmapEncoder> encoder;
@@ -1234,9 +1217,9 @@ void StoreImageData(
 
     THROW_IF_FAILED(wicFactory->CreateStream(&stream));
     THROW_IF_FAILED(stream->InitializeFromFilename(outputFilename, GENERIC_WRITE));
-    THROW_IF_FAILED(wicFactory->CreateEncoder(GUID_ContainerFormatPng, nullptr, OUT & encoder));
+    THROW_IF_FAILED(wicFactory->CreateEncoder(GUID_ContainerFormatPng, nullptr, /*out*/ &encoder));
     THROW_IF_FAILED(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache));
-    THROW_IF_FAILED(encoder->CreateNewFrame(OUT & bitmapFrame, &propertybag));
+    THROW_IF_FAILED(encoder->CreateNewFrame(/*out*/ &bitmapFrame, &propertybag));
 
 #if 0
     // This is how you customize the TIFF output.
