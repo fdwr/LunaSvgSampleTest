@@ -158,7 +158,7 @@ bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
-bool g_outlinesVisible = false; // TODO:!!! Display path outlines of each document.
+bool g_outlinesVisible = false; // Display path outlines of each document.
 bool g_pixelGridVisible = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
@@ -237,6 +237,7 @@ void RelayoutCanvasItemsLater(HWND hwnd);
 void RedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasBackgroundAndItems(HWND hwnd);
 void ShowLoadErrors();
+void DisplayError(_In_z_ wchar_t const* message);
 
 
 int APIENTRY wWinMain(
@@ -369,6 +370,7 @@ void HideToolTip()
 
 /*TIMERPROC*/void CALLBACK HideToolTipTimerProc(HWND hwnd, UINT uElapse, UINT_PTR uIDEvent, DWORD dwTime)
 {
+    g_errorMessage.clear();
     KillTimer(hwnd, uIDEvent);
     HideToolTip();
 }
@@ -1104,7 +1106,7 @@ void DrawBitmap32Bit(
 
 HRESULT LoadImageData(
     _In_z_ wchar_t const* inputFilename,
-    /*out*/ std::array<uint32_t, 4>& dimensions, // width, height, channels
+    /*out*/ std::array<uint32_t, 4>& dimensions, // width, height, channels, bytes per channel
     /*out*/ std::unique_ptr<std::byte[]>& pixelBytes
     )
 {
@@ -1133,13 +1135,13 @@ HRESULT LoadImageData(
 
     // Convert the image if not the needed format.
     // 32bppPBGRA is what Direct2D uses.
-    WICPixelFormatGUID const* resolvedPixelFormatGuid = &GUID_WICPixelFormat32bppPBGRA;
-    if (actualPixelFormatGuid != *resolvedPixelFormatGuid)
+    WICPixelFormatGUID const* targetPixelFormatGuid = &GUID_WICPixelFormat32bppPBGRA;
+    if (actualPixelFormatGuid != *targetPixelFormatGuid)
     {
         RETURN_IF_FAILED(wicFactory->CreateFormatConverter(&converter));
         RETURN_IF_FAILED(converter->Initialize(
             bitmapFrame.Get(),
-            *resolvedPixelFormatGuid,
+            *targetPixelFormatGuid,
             WICBitmapDitherTypeNone,
             nullptr,
             0.f,
@@ -1168,46 +1170,68 @@ HRESULT LoadImageData(
 }
 
 
-#if 0
-// TODO:
-void StoreImageData(
-    span<std::byte const> pixelBytes,
-    std::u8string_view pixelFormatString, // currently only supports "b8g8r8".
-    onnx::TensorProto::DataType dataType,
-    /*out*/ std::array<uint32_t, 4> dimensions,
-    _In_z_ wchar_t const* outputFilename
-)
+std::pair<std::wstring_view, GUID const&> const g_filenameExtensionToGuidMappings[] =
 {
+    {L"BMP",  GUID_ContainerFormatBmp},
+    {L"PNG",  GUID_ContainerFormatPng},
+    {L"ICO",  GUID_ContainerFormatIco},
+    {L"JPG",  GUID_ContainerFormatJpeg},
+    {L"JPEG", GUID_ContainerFormatJpeg},
+    {L"TIF",  GUID_ContainerFormatTiff},
+    {L"TIFF", GUID_ContainerFormatTiff},
+    {L"GIF",  GUID_ContainerFormatGif},
+    {L"WMP",  GUID_ContainerFormatWmp},
+    {L"DDS",  GUID_ContainerFormatDds},
+    {L"DNG",  GUID_ContainerFormatAdng},
+    {L"HEIF", GUID_ContainerFormatHeif},
+    {L"AVIF", GUID_ContainerFormatHeif},
+    {L"WEBP", GUID_ContainerFormatWebp},
+};
+
+
+HRESULT StoreImageData(
+    std::span<std::byte const> pixelBytes,
+    std::array<uint32_t, 4> dimensions, // width, height, channels, bytes per channel
+    _In_z_ wchar_t const* outputFilename
+    )
+{
+    uint32_t const width = dimensions[0];
+    uint32_t const height = dimensions[1];
+    uint32_t const channelCount = dimensions[2];
+    uint32_t const bytesPerChannel = dimensions[3];
+    uint32_t const bytesPerPixel = channelCount * bytesPerChannel;
+    uint32_t const rowByteStride = width * bytesPerPixel;
+    uint32_t const bufferByteSize = rowByteStride * height;
+
+    assert(channelCount == 4 && bytesPerChannel == 1);
+    assert(pixelBytes.size() == bufferByteSize);
+
     IWICImagingFactory* wicFactory = g_wicFactory.Get();
 
-    std::wstring_view filename = std::wstring_view(outputFilename);
-    std::wstring_view filenameExtension = filename.substr(filename.find_last_of(L".") + 1);
+    std::wstring filePathUppercase(outputFilename);
+    std::wstring_view filePathUppercaseView(filePathUppercase);
+    CharUpper(filePathUppercase.data());
+    std::wstring_view filenameExtension = filePathUppercaseView.substr(filePathUppercaseView.find_last_of(L".") + 1);
 
-    if (filenameExtension != L"png")
+    GUID const* containerGuid = nullptr;
+    for (auto& mapping : g_filenameExtensionToGuidMappings)
     {
-        throw std::invalid_argument("Only .png is supported for writing files.");
+        if (filenameExtension == mapping.first)
+        {
+            containerGuid = &mapping.second;
+            break;
+        }
     }
 
-    // TODO: Support non-8bit pixel types.
-    // For now, convert any format larger than 8-bits to 8-bit.
-    std::vector<uint8_t> pixelBytesBuffer;
-    if (dataType != onnx::TensorProto::DataType::TensorProto_DataType_UINT8)
+    if (containerGuid == nullptr)
     {
-        const uint32_t sourceElementCount = GetElementCountFromByteSpan(dataType, pixelBytes);
-        pixelBytesBuffer.resize(sourceElementCount);
-        ConvertElementTypeToUInt8Clamped(dataType, pixelBytes, /*out*/ pixelBytesBuffer);
-        pixelBytes = pixelBytesBuffer;
-        dataType = onnx::TensorProto::DataType::TensorProto_DataType_UINT8;
+        wchar_t errorMessage[1000];
+        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Unknown file type extension: %s", outputFilename);
+        DisplayError(errorMessage);
+        return E_FAIL;
     }
 
-    WICPixelFormatGUID const* resolvedPixelFormatGuid = nullptr;
-    const uint32_t channelCount = dimensions.size() >= 3 ? dimensions[dimensions.size() - 3] : 1;
-    uint32_t bytesPerChannel;
-    if (!ResolvePixelFormat(channelCount, dataType, /*out*/ pixelFormatString, /*out*/ resolvedPixelFormatGuid, /*out*/ bytesPerChannel))
-    {
-        printf("Channel count = %d\n", channelCount);
-        throw std::invalid_argument("Pixel format is not supported for writing. Verify the channel layout.");
-    };
+    WICPixelFormatGUID const* targetPixelFormatGuid = &GUID_WICPixelFormat32bppPBGRA;
 
     // Decompress the image using WIC.
     ComPtr<IWICStream> stream;
@@ -1215,56 +1239,37 @@ void StoreImageData(
     ComPtr<IWICBitmapFrameEncode> bitmapFrame;
     ComPtr<IPropertyBag2> propertybag;
 
-    THROW_IF_FAILED(wicFactory->CreateStream(&stream));
-    THROW_IF_FAILED(stream->InitializeFromFilename(outputFilename, GENERIC_WRITE));
-    THROW_IF_FAILED(wicFactory->CreateEncoder(GUID_ContainerFormatPng, nullptr, /*out*/ &encoder));
-    THROW_IF_FAILED(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache));
-    THROW_IF_FAILED(encoder->CreateNewFrame(/*out*/ &bitmapFrame, &propertybag));
+    RETURN_IF_FAILED(wicFactory->CreateStream(&stream));
+    RETURN_IF_FAILED(stream->InitializeFromFilename(outputFilename, GENERIC_WRITE));
+    RETURN_IF_FAILED(wicFactory->CreateEncoder(*containerGuid, nullptr, /*out*/ &encoder));
+    RETURN_IF_FAILED(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache));
+    RETURN_IF_FAILED(encoder->CreateNewFrame(/*out*/ &bitmapFrame, &propertybag));
 
-#if 0
-    // This is how you customize the TIFF output.
-    {
-        PROPBAG2 option = {};
-        option.pstrName = L"TiffCompressionMethod";
-        VARIANT varValue;
-        VariantInit(&varValue);
-        varValue.vt = VT_UI1;
-        varValue.bVal = WICTiffCompressionZIP;
-        THROW_IF_FAILED(propertybag->Write(1, &option, &varValue));
-        THROW_IF_FAILED(bitmapFrame->Initialize(propertybag));
-    }
-#endif
-    THROW_IF_FAILED(bitmapFrame->Initialize(propertybag.Get()));
-
-    const span<int32_t const> hwDimensions = dimensions.subspan(dimensions.size() - 2, 2);
-    const uint32_t height = hwDimensions[0];
-    const uint32_t width = hwDimensions[1];
-    const uint32_t bytesPerPixel = channelCount * bytesPerChannel;
-    const uint32_t rowByteStride = width * bytesPerPixel;
-    const uint32_t bufferByteSize = rowByteStride * height;
-
-    THROW_IF_FAILED(bitmapFrame->SetSize(width, height));
-
-    WICPixelFormatGUID actualPixelFormatGuid = *resolvedPixelFormatGuid;
-    THROW_IF_FAILED(bitmapFrame->SetPixelFormat(/*inout*/ &actualPixelFormatGuid));
-
-    // Assign to a temporary large buffer if the specified dimensions are larger than the passed
-    // pixel content. The remaining pixels will just be empty blackness.
-    if (bufferByteSize > pixelBytes.size_bytes())
-    {
-        pixelBytesBuffer.reserve(bufferByteSize);
-        pixelBytesBuffer.assign(pixelBytes.begin(), pixelBytes.end());
-        pixelBytesBuffer.resize(bufferByteSize);
-        pixelBytes = pixelBytesBuffer;
-    }
+    // If TIFF, then compress.
+    //if (*containerGuid == GUID_ContainerFormatTiff)
+    //{
+    //    PROPBAG2 option = {};
+    //    option.pstrName = const_cast<wchar_t*>(L"TiffCompressionMethod");
+    //    VARIANT varValue;
+    //    VariantInit(&varValue);
+    //    varValue.vt = VT_UI1;
+    //    varValue.bVal = WICTiffCompressionZIP;
+    //    RETURN_IF_FAILED(propertybag->Write(1, &option, &varValue));
+    //    RETURN_IF_FAILED(bitmapFrame->Initialize(propertybag.Get()));
+    //}
+    WICPixelFormatGUID actualPixelFormatGuid = *targetPixelFormatGuid;
+    RETURN_IF_FAILED(bitmapFrame->Initialize(propertybag.Get()));
+    RETURN_IF_FAILED(bitmapFrame->SetSize(width, height));
+    RETURN_IF_FAILED(bitmapFrame->SetPixelFormat(/*inout*/ &actualPixelFormatGuid));
 
     // Why is the WritePixels input parameter not const??
     BYTE* recastPixelBytes = const_cast<BYTE*>(reinterpret_cast<BYTE const*>(pixelBytes.data()));
-    THROW_IF_FAILED(bitmapFrame->WritePixels(height, rowByteStride, bufferByteSize, recastPixelBytes));
-    THROW_IF_FAILED(bitmapFrame->Commit());
-    THROW_IF_FAILED(encoder->Commit());
+    RETURN_IF_FAILED(bitmapFrame->WritePixels(height, rowByteStride, bufferByteSize, recastPixelBytes));
+    RETURN_IF_FAILED(bitmapFrame->Commit());
+    RETURN_IF_FAILED(encoder->Commit());
+
+    return S_OK;
 }
-#endif
 
 
 void ClearDocumentList()
@@ -1311,12 +1316,10 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     enum {SvgType, ImageType};
 
     // Capitalize filename extension for comparison.
-    std::array<wchar_t, 1024> filePathUppercase;
-    wcsncpy_s(filePathUppercase.data(), std::size(filePathUppercase), filePath, std::size(filePathUppercase) - 1);
+    std::wstring filePathUppercase(filePath);
     CharUpper(filePathUppercase.data());
-    std::wstring_view fileNameView = filePathUppercase.data();
 
-    std::pair<std::wstring_view, int> filenameExtensionMappings[] =
+    std::pair<std::wstring_view, int> const filenameExtensionMappings[] =
     {
         {L".SVG", SvgType},
         {L".PNG", ImageType},
@@ -1328,9 +1331,9 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
         {L".TIFF", ImageType},
         {L".GIF", ImageType},
     };
-    for (auto filenameExtensionMapping : filenameExtensionMappings)
+    for (auto& filenameExtensionMapping : filenameExtensionMappings)
     {
-        if (fileNameView.ends_with(filenameExtensionMapping.first))
+        if (filePathUppercase.ends_with(filenameExtensionMapping.first))
         {
             switch (filenameExtensionMapping.second)
             {
@@ -1349,7 +1352,7 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     else
     {
         wchar_t errorMessage[1000];
-        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s\n", filePath);
+        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s", filePath);
         g_errorMessage += errorMessage;
     }
 }
@@ -1364,6 +1367,18 @@ void ShowLoadErrors()
         SetTimer(g_windowHandle, IDM_OPEN_FILE, 2000, &HideToolTipTimerProc);
     }
 }
+
+
+void DisplayError(_In_z_ wchar_t const* message)
+{
+    if (!g_errorMessage.empty() && g_errorMessage.back() != '\n')
+    {
+        g_errorMessage.push_back('\n');
+    }
+    g_errorMessage.append(message);
+    ShowLoadErrors();
+}
+
 
 void LoadDocumentFiles(std::vector<std::wstring>&& fileList)
 {
@@ -2798,6 +2813,42 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                         LoadDocumentFiles(std::move(filenameList));
                         RelayoutCanvasItemsLater(hwnd);
+                    }
+                }
+                break;
+
+            case IDM_EXPORT_IMAGE:
+                {
+                    wchar_t fileNameBuffer[32768];
+                    fileNameBuffer[0] = '\0';
+                    OPENFILENAME saveFileName =
+                    {
+                        .lStructSize = sizeof(saveFileName),
+                        .hwndOwner = hwnd,
+                        .hInstance = g_instanceHandle,
+                        .lpstrFilter = L"Raster Images (PNG, BMP, ICO, DDS, HDP, JPEG, TIFF, GIF)\0" L"*.png;*.bmp;*.ico;*.dds;*.hdp;*.wdp;*.wmp;*.jpg;*.jpeg;*.tif;*.tiff;*.gif\0"
+                                       L"All files\0" L"*\0"
+                                       L"\0",
+                        .lpstrFile = std::data(fileNameBuffer),
+                        .nMaxFile = static_cast<DWORD>(std::size(fileNameBuffer)),
+                        .Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE,
+                    };
+
+                    // Get the filename(s) from the user.
+                    if (GetSaveFileName(&saveFileName) && saveFileName.nFileOffset > 0)
+                    {
+                        std::array<uint32_t, 4> dimensions = {g_bitmap.width(), g_bitmap.height(), 4, 1};
+                        std::byte const* pixelBytes = reinterpret_cast<std::byte const*>(g_bitmap.data());
+                        if (FAILED(StoreImageData(
+                            { pixelBytes, pixelBytes + g_bitmap.stride() * g_bitmap.height() },
+                            dimensions,
+                            fileNameBuffer
+                        )))
+                        {
+                            wchar_t errorMessage[1000];
+                            _snwprintf_s(errorMessage, sizeof(errorMessage), L"Failed to write file: %s", fileNameBuffer);
+                            DisplayError(errorMessage);
+                        }
                     }
                 }
                 break;

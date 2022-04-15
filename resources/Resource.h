@@ -108,6 +108,7 @@
 #define IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT 233
 #define IDM_SIZE_NATURAL            234
 #define IDM_SIZE_DISPLAY_LAST       235
+#define IDM_EXPORT_IMAGE            240
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC
