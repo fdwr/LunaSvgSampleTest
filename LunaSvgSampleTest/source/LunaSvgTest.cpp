@@ -2263,6 +2263,7 @@ public:
     void Move(double x, double y) override
     {
         DrawPointIndicator(x, y);
+        contourPath_.StartFigure();
     }
 
     void Line(double x1, double y1, double x2, double y2) override
