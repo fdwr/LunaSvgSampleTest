@@ -1,7 +1,6 @@
 Random thoughts for the future:
 
 TODO:
-    - Investigate top right outline edge "D:\src\LunaSvgTestData\medium.com\medium.com house.svg"
     - Add option to display size label or not
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
