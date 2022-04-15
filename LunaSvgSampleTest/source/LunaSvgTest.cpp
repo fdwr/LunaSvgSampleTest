@@ -1031,11 +1031,13 @@ void DrawBitmap32Bit(
     uint32_t const sourceByteStridePerRow = sourceWidth * sizeof(PixelBgra);
     uint32_t width = sourceWidth;
     uint32_t height = sourceHeight;
+    uint32_t sourceX = 0;
+    uint32_t sourceY = 0;
 
     if (destX < 0)
     {
         width += destX;
-        sourcePixels += uint32_t(-destX) * sizeof(PixelBgra);
+        sourceX = -destX;
         destX = 0;
     }
     if (uint32_t(destX) + width > destWidth)
@@ -1050,7 +1052,7 @@ void DrawBitmap32Bit(
     if (destY < 0)
     {
         height += destY;
-        sourcePixels += uint32_t(-destY) * sourceWidth * sizeof(PixelBgra);
+        sourceY = -destY;
         destY = 0;
     }
     if (uint32_t(destY) + height > destHeight)
@@ -1064,8 +1066,8 @@ void DrawBitmap32Bit(
 
     const uint32_t destRowByteDelta = destByteStridePerRow - (width * sizeof(PixelBgra));
     const uint32_t sourceRowByteDelta = sourceByteStridePerRow - (width * sizeof(PixelBgra));
-    uint8_t const* sourcePixel = sourcePixels;
-    uint8_t* destPixel = destPixels + destY * destByteStridePerRow + destX * sizeof(PixelBgra);
+    uint8_t const* sourcePixel = sourcePixels + sourceY * sourceByteStridePerRow + sourceX * sizeof(PixelBgra);
+    uint8_t* destPixel = destPixels + uint32_t(destY) * destByteStridePerRow + uint32_t(destX) * sizeof(PixelBgra);
 
     for (uint32_t j = 0; j < height; ++j)
     {
@@ -2472,7 +2474,8 @@ void RepaintWindow(HWND hwnd)
         {
             switch (canvasItem.itemType)
             {
-                case CanvasItem::ItemType::SvgDocument:
+            case CanvasItem::ItemType::SvgDocument:
+            case CanvasItem::ItemType::Image:
                 {
                     const RECT gridRect = GetCanvasItemRect(canvasItem);
                     const uint32_t w = gridRect.right - gridRect.left;
