@@ -143,7 +143,7 @@ const std::wstring_view g_defaultMessage =
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128};
-const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32,INT_MAX/2};
+const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32};
 const uint32_t g_bitmapScrollStep = 64;
 
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
@@ -2499,7 +2499,8 @@ void RepaintWindow(HWND hwnd)
     };
 
     // Draw the grid.
-    int32_t gridSpacing = std::min(LONG(g_gridSize), clientRect.right) * g_bitmapPixelZoom;
+    int32_t gridSize = (g_gridSize > 0) ? g_gridSize : INT32_MAX / 2;
+    int32_t gridSpacing = std::min(LONG(gridSize), clientRect.right) * g_bitmapPixelZoom;
     if (g_gridVisible || g_pixelGridVisible)
     {
         gridSpacing = std::max(gridSpacing, 2);
@@ -3035,6 +3036,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawBitmapLater(hwnd);
                 break;
 
+            case IDM_GRID_SIZE_0:
             case IDM_GRID_SIZE_1:
             case IDM_GRID_SIZE_2:
             case IDM_GRID_SIZE_3:
@@ -3047,10 +3049,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_16:
             case IDM_GRID_SIZE_24:
             case IDM_GRID_SIZE_32:
-            case IDM_GRID_SIZE_INFINITE:
                 g_gridVisible = true;
-                static_assert(IDM_GRID_SIZE_1 == IDM_GRID_SIZE_FIRST);
-                static_assert(IDM_GRID_SIZE_INFINITE == IDM_GRID_SIZE_LAST);
+                static_assert(IDM_GRID_SIZE_0 == IDM_GRID_SIZE_FIRST);
+                static_assert(IDM_GRID_SIZE_32 == IDM_GRID_SIZE_LAST);
                 static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
                 g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
                 RedrawBitmapLater(hwnd);
