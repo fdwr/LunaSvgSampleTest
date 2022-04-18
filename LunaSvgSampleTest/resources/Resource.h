@@ -62,7 +62,11 @@
 #define IDM_GRID_SIZE_16            153
 #define IDM_GRID_SIZE_24            154
 #define IDM_GRID_SIZE_32            155
-#define IDM_GRID_SIZE_LAST          155
+#define IDM_GRID_SIZE_48            156
+#define IDM_GRID_SIZE_64            157
+#define IDM_GRID_SIZE_96            158
+#define IDM_GRID_SIZE_128           159
+#define IDM_GRID_SIZE_LAST          159
 #define IDM_FILE_RELOAD             162
 #define IDM_FILE_UNLOAD             163
 #define IDM_INVERT_COLORS           164

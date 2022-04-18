@@ -143,7 +143,7 @@ const std::wstring_view g_defaultMessage =
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128};
-const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32};
+const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32,48,64,96,128};
 const uint32_t g_bitmapScrollStep = 64;
 
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
@@ -3049,9 +3049,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_16:
             case IDM_GRID_SIZE_24:
             case IDM_GRID_SIZE_32:
+            case IDM_GRID_SIZE_48:
+            case IDM_GRID_SIZE_64:
+            case IDM_GRID_SIZE_96:
+            case IDM_GRID_SIZE_128:
                 g_gridVisible = true;
                 static_assert(IDM_GRID_SIZE_0 == IDM_GRID_SIZE_FIRST);
-                static_assert(IDM_GRID_SIZE_32 == IDM_GRID_SIZE_LAST);
+                static_assert(IDM_GRID_SIZE_128 == IDM_GRID_SIZE_LAST);
                 static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
                 g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
                 RedrawBitmapLater(hwnd);
