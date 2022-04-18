@@ -236,8 +236,9 @@ void AppendSingleDocumentFile(wchar_t const* filePath);
 void RelayoutCanvasItemsLater(HWND hwnd);
 void RedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasBackgroundAndItems(HWND hwnd);
-void ShowLoadErrors();
-void DisplayError(_In_z_ wchar_t const* message);
+void ShowErrors();
+void ShowError(_In_z_ wchar_t const* message);
+void AppendError(_In_z_ wchar_t const* message);
 
 
 int APIENTRY wWinMain(
@@ -273,7 +274,7 @@ int APIENTRY wWinMain(
         {
             AppendSingleDocumentFile(arguments[argumentIndex]);
         }
-        ShowLoadErrors();
+        ShowErrors();
         RelayoutCanvasItemsLater(g_windowHandle);
     }
     LocalFree(arguments);
@@ -1228,7 +1229,7 @@ HRESULT StoreImageData(
     {
         wchar_t errorMessage[1000];
         _snwprintf_s(errorMessage, sizeof(errorMessage), L"Unknown file type extension: %s", outputFilename);
-        DisplayError(errorMessage);
+        ShowError(errorMessage);
         return E_FAIL;
     }
 
@@ -1354,12 +1355,12 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     {
         wchar_t errorMessage[1000];
         _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s", filePath);
-        g_errorMessage += errorMessage;
+        AppendError(errorMessage);
     }
 }
 
 
-void ShowLoadErrors()
+void ShowErrors()
 {
     if (!g_errorMessage.empty())
     {
@@ -1370,14 +1371,31 @@ void ShowLoadErrors()
 }
 
 
-void DisplayError(_In_z_ wchar_t const* message)
+void AppendError(_In_z_ wchar_t const* message)
 {
-    if (!g_errorMessage.empty() && g_errorMessage.back() != '\n')
+    // To increase the tooltip visibility, add a blank line before and after.
+    if (g_errorMessage.empty())
     {
         g_errorMessage.push_back('\n');
     }
+
     g_errorMessage.append(message);
-    ShowLoadErrors();
+
+    if (!g_errorMessage.ends_with(L"\n "))
+    {
+        if (g_errorMessage.back() != '\n')
+        {
+            g_errorMessage.push_back('\n');
+        }
+        g_errorMessage.push_back(L' ');
+    }
+}
+
+
+void ShowError(_In_z_ wchar_t const* message)
+{
+    AppendError(message);
+    ShowErrors();
 }
 
 
@@ -1389,7 +1407,7 @@ void LoadDocumentFiles(std::vector<std::wstring>&& fileList)
     {
         AppendSingleDocumentFile(fileName.c_str());
     }
-    ShowLoadErrors();
+    ShowErrors();
 }
 
 
@@ -2821,6 +2839,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_EXPORT_IMAGE:
                 {
+                    if (!g_bitmap.valid())
+                    {
+                        ShowError(L"Cannot export empty image.");
+                        break;
+                    }
+
                     wchar_t fileNameBuffer[32768];
                     fileNameBuffer[0] = '\0';
                     OPENFILENAME saveFileName =
@@ -2850,7 +2874,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         {
                             wchar_t errorMessage[1000];
                             _snwprintf_s(errorMessage, sizeof(errorMessage), L"Failed to write file (0x%08X): %s", hr, fileNameBuffer);
-                            DisplayError(errorMessage);
+                            ShowError(errorMessage);
                         }
                     }
                 }
@@ -2861,7 +2885,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 if (!g_filenameList.empty())
                 {
                     LoadDocumentFiles(std::move(g_filenameList));
-                    ShowLoadErrors();
+                    ShowErrors();
                     RelayoutCanvasItemsLater(hwnd);
                 }
                 break;
