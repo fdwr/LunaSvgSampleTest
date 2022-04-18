@@ -142,7 +142,7 @@ const std::wstring_view g_defaultMessage =
     L"arrow keys/home/end/pgup/pgdn = pan\r\n";
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
-const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64};
+const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128};
 const uint32_t g_gridSizes[] = {1,2,3,4,5,6,7,8,12,16,24,32,INT_MAX/2};
 const uint32_t g_bitmapScrollStep = 64;
 
@@ -1365,7 +1365,7 @@ void ShowLoadErrors()
     {
         // Show error messages, after two second delay.
         ShowToolTip(g_errorMessage.c_str());
-        SetTimer(g_windowHandle, IDM_OPEN_FILE, 2000, &HideToolTipTimerProc);
+        SetTimer(g_windowHandle, IDM_OPEN_FILE, 3000, &HideToolTipTimerProc);
     }
 }
 
@@ -2963,7 +2963,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM9:
             case IDM_ZOOM10:
             case IDM_ZOOM11:
-                static_assert(IDM_ZOOM11 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM12:
+            case IDM_ZOOM13:
+                static_assert(IDM_ZOOM13 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 ChangeBitmapZoomCentered(hwnd, g_zoomFactors[wmId - IDM_ZOOM0]);
                 break;
 
