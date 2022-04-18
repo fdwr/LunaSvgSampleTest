@@ -5,6 +5,13 @@ TODO:
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
     - Support non-square SVG's
+    - Upload LunaSvg changes:
+        - Blank canvas treated as blank
+        - Missing em and ex from switch statement
+        - Unknown elements treated as g
+        - Clear faster
+        - Possibly enumerate contours
+        - Eventually grid fitting
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -17,7 +24,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
         Invisible points solely for anchoring other shape's points to
         It has no fill, stroke, or visibility.
-        Bounding box and clipping path calculations do not apply.
+        Bounding box and clipping path calculations do not apply (so getBBox, getBoundingClientRect, getClientRects). Though SVG editors may have a more inclusive bounding box to show anchors.
         Pointer or keyboard events do not apply.
         1 point is translation
         2 points is scaling (uniformly along both axes - for asymmetric scaling, use 3)
@@ -108,13 +115,19 @@ Attribute:
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
 Attribute details:
-    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5) min(1 otherAnchor) y ceil`, `up left`
+    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5) min(1 otherAnchor); y ceil`, `up left`
         todo: should "nearest" be avoided because Nearest may also mean rounded away from zero?
         main equation:
-            if line direction negative
-                reverse mode function
-            if does not require axis aligment or if axis aligned
-                roundedValued = modeFunction((value - prebias) / scale) * scale - postbias)
+            if is axis aligned or does not require axis aligment
+                if transform reinterpretation matters
+                    swap axes if rotated 90 or 270
+                    mirror axes if mirrored or rotated 180
+                if direction inversion matters
+                    if line direction negative xor winding direction inverted
+                        reverse mode function
+                axisRoundedValue = modeFunction((axisValue - prebias) / scale) * scale - postbias)
+                todo: consider even/odd shift
+                orthogonalAxisValue += (axisRoundedValue - axisValue) * slope of perpendicular edge
         primitives:
             none - no grid rounding along x or y. none(x) none(y)
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: x(floor 0.5 2 -0.5) y(ceil)
@@ -130,9 +143,8 @@ Attribute details:
             direction-ignored - the line direction does not matter. floor is floor, ceil is ceil.
             winding-inverted - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed.
             winding-ignored - ignores the winding direction
-            proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. The letter A's T-junction on the horizontal bar. proportional(x)
+            proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
-            ?round one axis proportionally to the other. Consider the letter 'A' horizontal midline, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
