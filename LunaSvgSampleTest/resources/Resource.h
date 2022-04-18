@@ -6,7 +6,7 @@
 
 #define IDM_FILE                     90
 #define IDM_EDIT                     91
-#define IDM_COLOR                    92
+#define IDM_BACKGROUND               92
 #define IDM_SIZE                     93
 #define IDM_VIEW                     94
 #define IDM_GRID                     95
@@ -40,12 +40,12 @@
 #define IDM_SIZE17                  127
 #define IDM_SIZE_LAST               127
 #define IDM_COPY_BITMAP             130
-#define IDM_COLOR_FIRST             131
-#define IDM_COLOR_TRANSPARENT_BLACK 131
-#define IDM_COLOR_GRAY_CHECKERBOARD 132
-#define IDM_COLOR_OPAQUE_WHITE      133
-#define IDM_COLOR_OPAQUE_GRAY       134
-#define IDM_COLOR_LAST              134
+#define IDM_BACKGROUND_FIRST             131
+#define IDM_BACKGROUND_TRANSPARENT_BLACK 131
+#define IDM_BACKGROUND_GRAY_CHECKERBOARD 132
+#define IDM_BACKGROUND_OPAQUE_WHITE      133
+#define IDM_BACKGROUND_OPAQUE_GRAY       134
+#define IDM_BACKGROUND_LAST              134
 #define IDM_GRID_VISIBLE            141
 #define IDM_PIXEL_GRID_VISIBLE      142
 #define IDM_GRID_SIZE_FIRST         143

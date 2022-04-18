@@ -2616,9 +2616,9 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
     {
         {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
         {IDM_GRID, IDM_PIXEL_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_pixelGridVisible); }},
-        {IDM_COLOR, IDM_COLOR_FIRST, IDM_COLOR_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
-        {IDM_COLOR, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
-        {IDM_COLOR, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
+        {IDM_BACKGROUND, IDM_BACKGROUND_FIRST, IDM_BACKGROUND_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
+        {IDM_BACKGROUND, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
+        {IDM_BACKGROUND, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
         {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
         {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
         {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
@@ -3002,16 +3002,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 CopyBitmapToClipboard(g_bitmap, hwnd);
                 break;
 
-            case IDM_COLOR_GRAY_CHECKERBOARD:
-            case IDM_COLOR_TRANSPARENT_BLACK:
-            case IDM_COLOR_OPAQUE_WHITE:
-            case IDM_COLOR_OPAQUE_GRAY:
-                static_assert(IDM_COLOR_GRAY_CHECKERBOARD - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard));
-                static_assert(IDM_COLOR_TRANSPARENT_BLACK - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack));
-                static_assert(IDM_COLOR_OPAQUE_WHITE - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite));
-                static_assert(IDM_COLOR_OPAQUE_GRAY - IDM_COLOR_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueGray));
+            case IDM_BACKGROUND_GRAY_CHECKERBOARD:
+            case IDM_BACKGROUND_TRANSPARENT_BLACK:
+            case IDM_BACKGROUND_OPAQUE_WHITE:
+            case IDM_BACKGROUND_OPAQUE_GRAY:
+                static_assert(IDM_BACKGROUND_GRAY_CHECKERBOARD - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard));
+                static_assert(IDM_BACKGROUND_TRANSPARENT_BLACK - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack));
+                static_assert(IDM_BACKGROUND_OPAQUE_WHITE - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite));
+                static_assert(IDM_BACKGROUND_OPAQUE_GRAY - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueGray));
 
-                g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_COLOR_FIRST);
+                g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_BACKGROUND_FIRST);
                 RedrawCanvasItemsLater(hwnd);
                 break;
 
