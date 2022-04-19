@@ -6,11 +6,11 @@ TODO:
     - Add 'switch' element too.
     - Support non-square SVG's
     - Upload LunaSvg changes:
-        - Blank canvas treated as blank
-        - Missing em and ex from switch statement
-        - Unknown elements treated as g
-        - Clear faster
-        - Possibly enumerate contours
+        - (fixed locally) Blank canvas treated as blank
+        - (fixed locally) Missing em and ex from switch statement property.cpp Length::value
+        - (defer until SVG2 published?) Unknown elements treated as g
+        - (fixed locally) Clear faster
+        - (added locally) enumerate contours
         - Eventually grid fitting
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
@@ -26,11 +26,11 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         It has no fill, stroke, or visibility.
         Bounding box and clipping path calculations do not apply (so getBBox, getBoundingClientRect, getClientRects). Though SVG editors may have a more inclusive bounding box to show anchors.
         Pointer or keyboard events do not apply.
-        1 point is translation
-        2 points is scaling (uniformly along both axes - for asymmetric scaling, use 3)
-        2 points along a single axis is uniform scaling (e.g. x=10,y=20 to x=30,y=20)
-        3 points is arbitrary transformation (asymmetric scaling, shear, rotation)
-        4+ points are unsupported, but a future version could treat them like a mesh warp.
+        Anchor sets contain multiple anchors, each potentially with different rounding modes
+            1 point yields translation
+            2 points yield uniform scaling along both axes - for asymmetric scaling, use 3 (e.g. x=10,y=20 to x=30,y=20)
+            3 points yield arbitrary transformation (asymmetric scaling, shear, rotation)
+            4+ points are unsupported, but a future version could treat them like a mesh warp.
     Grid fitting
         Align group of objects to adjusted/aligned point
         Translate anchor and entire grouped object and then stretch by other anchor
@@ -98,6 +98,7 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
 
 Elements:
     anchor - invisible point used for other shapes to align/fit to.
+    anchor-set - set of 1 to 3 anchors used to align/fit shapes (translation, scaling, arbitrary)
 
 Attribute:
     grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
@@ -116,9 +117,8 @@ Attribute:
 
 Attribute details:
     grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5) min(1 otherAnchor); y ceil`, `up left`
-        todo: should "nearest" be avoided because Nearest may also mean rounded away from zero?
         main equation:
-            if is axis aligned or does not require axis aligment
+            if world transform is axis aligned or rounding does not require axis aligment
                 if transform reinterpretation matters
                     swap axes if rotated 90 or 270
                     mirror axes if mirrored or rotated 180
@@ -126,17 +126,36 @@ Attribute details:
                     if line direction negative xor winding direction inverted
                         reverse mode function
                 axisRoundedValue = modeFunction((axisValue - prebias) / scale) * scale - postbias)
-                todo: consider even/odd shift
+                todo: subtract or add postbias? Does +prebias -postbias also work?
+                todo: consider even/odd parity shift and rounding lines to nearest tangent (e.g. a 1.5 pixel wide vertical line left or right)
                 orthogonalAxisValue += (axisRoundedValue - axisValue) * slope of perpendicular edge
+        transform order:
+            1. world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+               (now in screen space)
+            2. anchor(s) grid fit/align
+                a. nop                      [[1,  0  ], [0,  1  ], [0,  0  ] nop
+                b. translate                [[1,  0  ], [0,  1  ], [dx, dy ]
+                c. scale & translate        [[s,  0  ], [0,  s  ], [dx, dy ]
+                d. arbitrary                [[sx, hy ], [hx, sy ], [dx, dy ]
+            3. prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
+            4. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1
+            5. floor/ceil                   [[1,  0  ], [0,  1  ], [dx, dy ] nop of 'none' rounding mode
+            6. size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+            7. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+            ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
-            none - no grid rounding along x or y. none(x) none(y)
+            none - no grid rounding along x or y. e.g "x none; y floor"
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: x(floor 0.5 2 -0.5) y(ceil)
             ceil -  round to nearest integer toward positive infinity
             to-infinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
             to-zero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
+            bias - combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5)
+            prebias - amount to add (subtract?) to coordinate before applying scale
+            postbias - amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift.
+            scale - a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense.
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
-            min? - todo: somehow integrate minimum distance from other anchors into this
+            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor)
             axis-alignment-matters - only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
             axis-alignment-ignored - apply the rounding even when not axis aligned
             direction-inverted - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive).
@@ -145,6 +164,8 @@ Attribute details:
             winding-ignored - ignores the winding direction
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
+            ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
+             it's useful for a pair of open scissors or the tab of a manilla folder where pure rounding would distort the 45-degree line shape.
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
@@ -158,6 +179,7 @@ Attribute details:
             nearest-right - Equals `floor(x+.5)`.
             nearest-up - ...
             nearest-down - ...
+            todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero?
             center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
             center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
             center-right
@@ -186,8 +208,11 @@ Attribute details:
             evenodd-up
             evenodd-down
             odd-shift?
+            parity-shift?
+            nearest edge shift? When stems could be closer to the left edge or right edge, choose whichever edge is closer. Maybe a subclass of parity-shift, customizable by accepting numeric parameters?
         interactions
             calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
+            axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
 
 Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
@@ -229,7 +254,6 @@ Example:
           </switch>
         </svg>
 
-
     One anchor can be defined relative to another one.
     Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
     todo: second anchor is relative to the rounded location rather than user coordinates, right?
@@ -252,6 +276,11 @@ Example:
         <g grid-rounding="floor-x(2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
         <g grid-rounding="floor-x(0.5)"><!-- round to every half a pixel -->
 
+        <g grid-rounding="x floor prebias(0.5)"><!-- round down to pixel centers -->
+        <g grid-rounding="x floor scale(2)"><!-- scale grid by 2x -->
+        <g grid-rounding="x floor scale(2) prebias(-0.5) postbias(0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="x floor scale(0.5)"><!-- round to every half a pixel -->
+
     Referring to the same anchor twice in a nested group will be a nop, since the outer group
     already aligned the anchor. (but how to achieve this? how to know the outer one applied?)
 
@@ -269,6 +298,26 @@ Example:
         <g grid-fit="topLeftCorner bottomRightCorner">
             <circle cx="50" cy="50" r="10"/>
         </g>
+
+    You should be able to define an anchor set comprised of other existing anchors:
+    
+        <anchor id="anchorA" x="40" y="40" grid-rounding="up left"/>
+        <anchor id="anchorB" x="60" y="40" grid-rounding="up right"/>
+        <anchor id="anchorC" x="40" y="60" grid-rounding="down left"/>
+        <anchor id="anchorD" x="20" y="40" grid-rounding="up left"/>
+        ...
+        <anchor-set id="anchorSetA" anchors="anchorA anchorB anchorC"/>
+        <anchor-set id="anchorSetB" anchors="anchorA anchorD anchorC"/>
+
+    Or via containment (id's on internal anchors are unnecessary):
+    
+        <anchor-set id="anchorSetA">
+            <anchor x="40" y="40" grid-rounding="up left"/>
+            <anchor x="60" y="40" grid-rounding="up right"/>
+            <anchor x="40" y="60" grid-rounding="down left"/>
+        </anchor-set>
+        
+    Anchor sets behave like anchors with multiple points. <anchor points="40,60 40,40 60,60" grid-rounding="down left"/>
 
     grid-fit should accept 1, 2, or 3 anchors for points, which is translation, scaling along x and y, or arbitrary scaling/rotation/shear.
     1 point is equivalent to 3 points repeating the same value.
@@ -366,8 +415,9 @@ Example:
     <switch><g ppu-range="0 2"><g ppu-range="2 10"><g ppu-range="10"></switch>
 
     For computing ppuc along minimum axis, think of computing the minor axis length along a sheared/rotated ellipse.
-        Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-        Possibly use eigen vector?
+        -Possibly use matrix inverse and rotate a point to axis aligned unit vector? [a b; c d] Possibly det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+        -Possibly use eigen vector?
+        Use this:
             numpy.set_printoptions(precision=3, floatmode='fixed', suppress=True)
             angle = math.tau * 45 / 360
             r = numpy.array([[cos(angle), -sin(angle)], [sin(angle), cos(angle)]])
@@ -419,6 +469,41 @@ Code snippets
 
         https://www.w3.org/TR/SVG11/intro.html#TermConditionalProcessingAttribute
 
+    Matrix transform of point
+        https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-xform
+        x = m11*x + m21*y + dx
+        y = m12*x + m22*y + dy
+
+    d:\src\lunasvgsampletest\external\lunasvg\source\property.cpp
+
+        Transform Transform::operator*(const Transform& transform) const
+        {
+            double m00 = this->m00 * transform.m00 + this->m10 * transform.m01;
+            double m10 = this->m00 * transform.m10 + this->m10 * transform.m11;
+            double m01 = this->m01 * transform.m00 + this->m11 * transform.m01;
+            double m11 = this->m01 * transform.m10 + this->m11 * transform.m11;
+            double m02 = this->m02 * transform.m00 + this->m12 * transform.m01 + transform.m02;
+            double m12 = this->m02 * transform.m10 + this->m12 * transform.m11 + transform.m12;
+
+            return Transform{m00, m10, m01, m11, m02, m12};
+        }
+
+        Transform Transform::inverted() const
+        {
+            double det = (this->m00 * this->m11 - this->m10 * this->m01);
+            if(det == 0.0)
+                return Transform{};
+
+            double inv_det = 1.0 / det;
+            double m00 = this->m00 * inv_det;
+            double m10 = this->m10 * inv_det;
+            double m01 = this->m01 * inv_det;
+            double m11 = this->m11 * inv_det;
+            double m02 = (this->m01 * this->m12 - this->m11 * this->m02) * inv_det;
+            double m12 = (this->m10 * this->m02 - this->m00 * this->m12) * inv_det;
+
+            return Transform{m11, -m10, -m01, m00, m02, m12};
+        }
 
 Related:
     SVG
