@@ -1172,32 +1172,31 @@ HRESULT LoadImageData(
 }
 
 
-std::pair<std::wstring_view, GUID const&> const g_filenameExtensionToGuidMappings[] =
-{
-    // The comment formats have issues on Windows 7 (hresult = 0x88982F50) or bad output.
-    {L"BMP",  GUID_ContainerFormatBmp},
-    {L"PNG",  GUID_ContainerFormatPng},
-    // {L"ICO",  GUID_ContainerFormatIco}, // WIC lacks a native ICO encoder. -_-
-    // {L"JPG",  GUID_ContainerFormatJpeg}, // Output colors look wrong.
-    // {L"JPEG", GUID_ContainerFormatJpeg},
-    {L"TIF",  GUID_ContainerFormatTiff},
-    {L"TIFF", GUID_ContainerFormatTiff},
-    // {L"GIF",  GUID_ContainerFormatGif}, // GIF supports up to 8-bit, not 32-bit.
-    // {L"WMP",  GUID_ContainerFormatWmp}, // HDR isn't interesting here.
-    // {L"DDS",  GUID_ContainerFormatDds},
-    // {L"DNG",  GUID_ContainerFormatAdng},
-    // {L"HEIF", GUID_ContainerFormatHeif},
-    // {L"AVIF", GUID_ContainerFormatHeif},
-    // {L"WEBP", GUID_ContainerFormatWebp},
-};
-
-
 HRESULT StoreImageData(
     std::span<std::byte const> pixelBytes,
     std::array<uint32_t, 4> dimensions, // width, height, channels, bytes per channel
     _In_z_ wchar_t const* outputFilename
     )
 {
+    std::pair<std::wstring_view, GUID const*> static constexpr filenameExtensionToGuidMappings[] =
+    {
+        // The commented formats have issues on Windows 7 (hresult = 0x88982F50) or bad output.
+        {L"BMP",  &GUID_ContainerFormatBmp},
+        {L"PNG",  &GUID_ContainerFormatPng},
+        {L"TIF",  &GUID_ContainerFormatTiff},
+        {L"TIFF", &GUID_ContainerFormatTiff},
+        // {L"ICO",  GUID_ContainerFormatIco}, // WIC lacks a native ICO encoder. -_-
+        // {L"JPG",  GUID_ContainerFormatJpeg}, // Output colors look wrong.
+        // {L"JPEG", GUID_ContainerFormatJpeg},
+        // {L"GIF",  GUID_ContainerFormatGif}, // GIF supports up to 8-bit, not 32-bit.
+        // {L"WMP",  GUID_ContainerFormatWmp}, // HDR isn't interesting here.
+        // {L"DDS",  GUID_ContainerFormatDds},
+        // {L"DNG",  GUID_ContainerFormatAdng},
+        // {L"HEIF", GUID_ContainerFormatHeif},
+        // {L"AVIF", GUID_ContainerFormatHeif},
+        // {L"WEBP", GUID_ContainerFormatWebp},
+    };
+
     uint32_t const width = dimensions[0];
     uint32_t const height = dimensions[1];
     uint32_t const channelCount = dimensions[2];
@@ -1217,11 +1216,11 @@ HRESULT StoreImageData(
     std::wstring_view filenameExtension = filePathUppercaseView.substr(filePathUppercaseView.find_last_of(L".") + 1);
 
     GUID const* containerGuid = nullptr;
-    for (auto& mapping : g_filenameExtensionToGuidMappings)
+    for (auto& mapping : filenameExtensionToGuidMappings)
     {
         if (filenameExtension == mapping.first)
         {
-            containerGuid = &mapping.second;
+            containerGuid = mapping.second;
             break;
         }
     }
@@ -1311,11 +1310,7 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     HRESULT loadResult = S_OK;
     enum { UnknownType, SvgType, ImageType } documentType = UnknownType;
 
-    // Capitalize filename extension for comparison.
-    std::wstring filePathUppercase(filePath);
-    CharUpper(filePathUppercase.data());
-
-    std::pair<std::wstring_view, decltype(documentType)> const filenameExtensionMappings[] =
+    std::pair<std::wstring_view, decltype(documentType)> static constexpr filenameExtensionMappings[] =
     {
         {L".SVG", SvgType},
         {L".PNG", ImageType},
@@ -1327,6 +1322,11 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
         {L".TIFF", ImageType},
         {L".GIF", ImageType},
     };
+
+    // Capitalize filename extension for comparison.
+    std::wstring filePathUppercase(filePath);
+    CharUpper(filePathUppercase.data());
+
     for (auto& filenameExtensionMapping : filenameExtensionMappings)
     {
         if (filePathUppercase.ends_with(filenameExtensionMapping.first))
