@@ -3068,6 +3068,29 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
             case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM, g_bitmapScrollStep, /*isHorizontal*/ false); break;
 
+            case IDM_PRESET_INSPECT:
+                g_gridVisible = true;
+                g_pixelGridVisible = true;
+                g_outlinesVisible = true;
+                ChangeBitmapZoomCentered(hwnd, 16);
+                break;
+
+            case IDM_PRESET_OVERVIEW:
+                g_gridVisible = false;
+                g_pixelGridVisible = false;
+                g_outlinesVisible = false;
+                ChangeBitmapZoomCentered(hwnd, 1);
+                break;
+
+            case IDM_PRESET_WRAPPED_ICONS:
+                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                g_bitmapSizeWrapped = true;
+                g_bitmapSizePerDocument = 64;
+                g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                RelayoutCanvasItemsLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
             default:
                 return DefWindowProc(hwnd, message, wParam, lParam);
             }
