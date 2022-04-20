@@ -2180,8 +2180,8 @@ BOOL StretchBltFixed(
         if (destX < clipLeft)
         {
             int destOffsetX = clipLeft - destX;
-            int srcOffsetX = destOffsetX * srcW / destW;
-            destOffsetX = srcOffsetX * destW / srcW;
+            int srcOffsetX = int32_t(int64_t(destOffsetX) * srcW / destW);
+            destOffsetX = int32_t(int64_t(srcOffsetX) * destW / srcW);
             destX += destOffsetX;
             destW -= destOffsetX;
             srcX += srcOffsetX;
@@ -2190,8 +2190,8 @@ BOOL StretchBltFixed(
         if (destX + destW > clipRight)
         {
             int destOffsetX = clipRight - destX;
-            int srcOffsetX = (destOffsetX * srcW + destW - 1) / destW;
-            destOffsetX = srcOffsetX * destW / srcW;
+            int srcOffsetX = int32_t((int64_t(destOffsetX) * srcW + destW - 1) / destW);
+            destOffsetX = int32_t(int64_t(srcOffsetX) * destW / srcW);
             destW = destOffsetX;
             srcW = srcOffsetX;
         }
