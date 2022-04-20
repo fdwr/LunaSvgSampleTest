@@ -213,6 +213,8 @@ Attribute details:
         interactions
             calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
             axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
+        questions:
+            How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
 
 Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
