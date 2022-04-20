@@ -160,6 +160,7 @@ bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
 bool g_outlinesVisible = false; // Display path outlines of each document.
+bool g_fillsVisible = true; // Fills and strokes are visible.
 bool g_pixelGridVisible = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
@@ -1747,6 +1748,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
             break;
 
         case CanvasItem::ItemType::SvgDocument:
+            if (g_fillsVisible)
             {
                 assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
                 auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
@@ -2656,6 +2658,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(g_canvasFlowDirection); }},
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
         {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
+        {IDM_VIEW, IDM_FILLS_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_fillsVisible); }},
         {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, g_gridSize)); }},
     };
 
@@ -2990,6 +2993,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_OUTLINES_VISIBLE:
                 g_outlinesVisible = !g_outlinesVisible;
                 RedrawWholeCanvasLater(hwnd);
+                break;
+
+            case IDM_FILLS_VISIBLE:
+                g_fillsVisible = !g_fillsVisible;
+                RedrawCanvasItemsLater(hwnd);
                 break;
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:

@@ -108,6 +108,7 @@
 #define IDM_SIZE_FLOW_DOWN_RIGHT    214
 #define IDM_SIZE_FLOW_LAST          214
 #define IDM_OUTLINES_VISIBLE        220
+#define IDM_FILLS_VISIBLE           221
 #define IDM_SIZE_DISPLAY_FIRST      230
 #define IDM_SIZE_FIXED              230
 #define IDM_SIZE_WINDOW             231
