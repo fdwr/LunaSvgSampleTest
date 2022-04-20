@@ -11,6 +11,7 @@
 #define IDM_VIEW                     94
 #define IDM_GRID                     95
 #define IDM_HELP                     96
+#define IDM_PRESET					 97
 #define IDD_LUNASVGTEST_DIALOG      102
 #define IDD_ABOUTBOX                103
 #define IDM_ABOUT                   104
@@ -115,6 +116,9 @@
 #define IDM_SIZE_NATURAL            234
 #define IDM_SIZE_DISPLAY_LAST       235
 #define IDM_EXPORT_IMAGE            240
+#define IDM_PRESET_INSPECT          241
+#define IDM_PRESET_OVERVIEW         242
+#define IDM_PRESET_WRAPPED_ICONS    243
 
 #define IDC_MYICON              2
 #ifndef IDC_STATIC
