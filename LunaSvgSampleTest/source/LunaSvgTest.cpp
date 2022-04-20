@@ -2768,11 +2768,10 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
             mouseCoordinate.y = std::clamp(int32_t(mouseCoordinate.y), -g_bitmapOffsetY, effectiveBitmapHeight - g_bitmapOffsetY);
 
             // Compute zoom origin based on mouse cursor (not just the top/left of the current view like some apps).
-            RedrawBitmapLater(hwnd); // Invalidate using current zoom.
             g_bitmapOffsetX = (g_bitmapOffsetX + mouseCoordinate.x) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.x;
             g_bitmapOffsetY = (g_bitmapOffsetY + mouseCoordinate.y) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.y;
             g_bitmapPixelZoom = newPixelZoom;
-            RedrawBitmapLater(hwnd); // Invalidate using new zoom.
+            RedrawWholeCanvasLater(hwnd); // Invalidate using current zoom.
             UpdateBitmapScrollbars(hwnd);
         }
     }
@@ -2792,8 +2791,6 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
         return; // Nop.
     }
 
-    RedrawBitmapLater(hwnd);
-
     // Compute the centerpoint of the window.
     RECT clientRect;
     GetClientRect(hwnd, &clientRect);
@@ -2804,7 +2801,7 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
     g_bitmapPixelZoom = newBitmapPixelZoom;
     ConstrainBitmapOffsets(clientRect);
 
-    RedrawBitmapLater(hwnd); // Enqueue another invalidated rect at the new zoom.
+    RedrawWholeCanvasLater(hwnd);
     UpdateBitmapScrollbars(hwnd);
 }
 
