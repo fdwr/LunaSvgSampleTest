@@ -15,6 +15,7 @@ WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
 WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
 
+#define RETURN_IF(expression, returnValue) if (expression) return (returnValue);
 #define RETURN_IF_FAILED(expression) {auto hr_ = (expression); if (FAILED(hr_)) {return hr_;}}
 #define RETURN_IF_FAILED_V(expression, returnValue) if (FAILED(expression)) return (returnValue);
 
@@ -237,8 +238,8 @@ void RelayoutCanvasItemsLater(HWND hwnd);
 void RedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasBackgroundAndItems(HWND hwnd);
 void ShowErrors();
-void ShowError(_In_z_ wchar_t const* message);
-void AppendError(_In_z_ wchar_t const* message);
+void ShowError(std::wstring_view message);
+void AppendError(std::wstring_view message);
 
 
 int APIENTRY wWinMain(
@@ -1227,9 +1228,7 @@ HRESULT StoreImageData(
 
     if (containerGuid == nullptr)
     {
-        wchar_t errorMessage[1000];
-        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Unknown file type extension: %s", outputFilename);
-        ShowError(errorMessage);
+        ShowError(std::format(L"Unknown file type extension: {}", outputFilename));
         return E_FAIL;
     }
 
@@ -1285,43 +1284,38 @@ void ClearDocumentList()
 }
 
 
-bool AppendSingleImageFile(wchar_t const* filePath)
+HRESULT AppendSingleImageFile(wchar_t const* filePath)
 {
     std::array<uint32_t, 4> dimensions; // width, height, channels, 1
     std::unique_ptr<std::byte[]> pixelBytes;
-    if (FAILED(LoadImageData(filePath, /*out*/ dimensions,/*out*/ pixelBytes)))
-    {
-        return false;
-    }
+    RETURN_IF_FAILED(LoadImageData(filePath, /*out*/ dimensions,/*out*/ pixelBytes));
 
     g_images.emplace_back(Image{ .width = dimensions[0], .height = dimensions[1], .pixels = std::move(pixelBytes) });
-    return true;
+    return S_OK;
 }
 
 
-bool AppendSingleSvgFile(wchar_t const* filePath)
+HRESULT AppendSingleSvgFile(wchar_t const* filePath)
 {
     auto document = lunasvg::Document::loadFromFile(filePath);
-    if (!document)
-    {
-        return false;
-    }
+    // LunaSvg doesn't return any form of more specific error code for us :/.
+    RETURN_IF(!document, HRESULT_FROM_WIN32(ERROR_XML_PARSE_ERROR));
 
     g_svgDocuments.push_back(std::move(document));
-    return true;
+    return S_OK;
 }
 
 
 void AppendSingleDocumentFile(wchar_t const* filePath)
 {
-    bool loadSuccess = false;
-    enum {SvgType, ImageType};
+    HRESULT loadResult = S_OK;
+    enum { UnknownType, SvgType, ImageType } documentType = UnknownType;
 
     // Capitalize filename extension for comparison.
     std::wstring filePathUppercase(filePath);
     CharUpper(filePathUppercase.data());
 
-    std::pair<std::wstring_view, int> const filenameExtensionMappings[] =
+    std::pair<std::wstring_view, decltype(documentType)> const filenameExtensionMappings[] =
     {
         {L".SVG", SvgType},
         {L".PNG", ImageType},
@@ -1337,26 +1331,28 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     {
         if (filePathUppercase.ends_with(filenameExtensionMapping.first))
         {
-            switch (filenameExtensionMapping.second)
-            {
-            case ImageType: loadSuccess = AppendSingleImageFile(filePath); break;
-            case SvgType: loadSuccess = AppendSingleSvgFile(filePath); break;
-            }
+            documentType = filenameExtensionMapping.second;
             break;
         }
     }
 
-    if (loadSuccess)
+    switch (documentType)
     {
-        g_filenameList.push_back(filePath);
-        RealignBitmapOffsetsLater();
+    case ImageType: loadResult = AppendSingleImageFile(filePath); break;
+    case SvgType: loadResult = AppendSingleSvgFile(filePath); break;
+    case UnknownType:
+        AppendError(std::format(L"Unknown file type: {}", filePath));
+        return;
     }
-    else
+
+    if (FAILED(loadResult))
     {
-        wchar_t errorMessage[1000];
-        _snwprintf_s(errorMessage, sizeof(errorMessage), L"Error loading: %s", filePath);
-        AppendError(errorMessage);
+        AppendError(std::format(L"Error loading file (0x{:08X}): {}", uint32_t(loadResult), filePath));
+        return;
     }
+
+    g_filenameList.push_back(filePath);
+    RealignBitmapOffsetsLater();
 }
 
 
@@ -1371,7 +1367,7 @@ void ShowErrors()
 }
 
 
-void AppendError(_In_z_ wchar_t const* message)
+void AppendError(std::wstring_view message)
 {
     // To increase the tooltip visibility, add a blank line before and after.
     if (g_errorMessage.empty())
@@ -1392,7 +1388,7 @@ void AppendError(_In_z_ wchar_t const* message)
 }
 
 
-void ShowError(_In_z_ wchar_t const* message)
+void ShowError(std::wstring_view message)
 {
     AppendError(message);
     ShowErrors();
@@ -2873,9 +2869,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                                      );
                         if (FAILED(hr))
                         {
-                            wchar_t errorMessage[1000];
-                            _snwprintf_s(errorMessage, sizeof(errorMessage), L"Failed to write file (0x%08X): %s", hr, fileNameBuffer);
-                            ShowError(errorMessage);
+                            ShowError(std::format(L"Failed to write file (0x{:08X}): {}", hr, fileNameBuffer));
                         }
                     }
                 }
