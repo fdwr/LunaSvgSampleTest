@@ -175,7 +175,45 @@ union PixelBgra
         uint8_t a;
     };
     uint32_t i;
+
+    // blend(dest, source) =  source.bgra + (dest.bgra * (1 - source.a))
+    static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor)
+    {
+        const uint32_t bitmapAlpha = newColor.a;
+        if (bitmapAlpha == 255)
+            return newColor;
+
+        const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
+
+        uint32_t blue  = (inverseBitmapAlpha * existingColor.b / 255) + newColor.b;
+        uint32_t green = (inverseBitmapAlpha * existingColor.g / 255) + newColor.g;
+        uint32_t red   = (inverseBitmapAlpha * existingColor.r / 255) + newColor.r;
+        uint32_t alpha = (inverseBitmapAlpha * existingColor.a / 255) + newColor.a;
+        uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+        return PixelBgra{ .i = pixelValue };
+    }
+
+    // Lighten dark colors and darken light colors using the average grayscale,
+    // useful for displaying grid lines or dots.
+    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor)
+    {
+        uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
+        shade += (shade >= 128) ? -64 : 64;
+        return PixelBgra{ .i = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000 };
+    }
 };
+
+template <typename OriginalType, typename TargetType = OriginalType>
+TargetType* AddByteOffset(OriginalType* p, size_t byteOffset)
+{
+    return reinterpret_cast<TargetType*>(reinterpret_cast<uint8_t*>(p) + byteOffset);
+}
+
+template <typename OriginalType, typename TargetType = OriginalType>
+TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset)
+{
+    return reinterpret_cast<TargetType const*>(reinterpret_cast<uint8_t const*>(p) + byteOffset);
+}
 
 // Redefine the bitmap header structs so inheritance works.
 // Who needlessly prefixed every field with {bi, bc, bv5} so that generic
@@ -642,14 +680,13 @@ void DrawGridFast32bpp(
     RECT const& gridRect,
     uint32_t xSpacing,
     uint32_t ySpacing,
-    uint32_t color, // B,G,R,A in byte memory order (no alpha blending done)
+    uint32_t color, // B,G,R,A in byte memory order (no alpha blending done). If 0, then softly invert the color.
     bool drawLines,
     std::byte* pixels,
     uint32_t rowByteStride,
     RECT const& bitmapBoundingRect
     )
 {
-    using PixelType = uint32_t;
     assert(bitmapBoundingRect.left >= 0);
     assert(bitmapBoundingRect.top >= 0);
     assert(rowByteStride >= bitmapBoundingRect.right * sizeof(uint32_t));
@@ -670,27 +707,62 @@ void DrawGridFast32bpp(
         return;
     }
 
+    PixelBgra bgraColor{ .i = color };
+
+    auto drawHorizontalLine = [](PixelBgra* pixel, int32_t x0, int32_t x1, uint32_t xSpacing, PixelBgra bgraColor)
+    {
+        if (bgraColor.i == 0)
+        {
+            for (int32_t x = x0; x < x1; x += xSpacing)
+            {
+                pixel[x] = PixelBgra::InvertSoftAverage(pixel[x]);
+            }
+        }
+        else
+        {
+            for (int32_t x = x0; x < x1; x += xSpacing)
+            {
+                pixel[x] = PixelBgra::Blend(pixel[x], bgraColor);
+            }
+        }
+    };
+
+    auto drawVerticalLine = [](PixelBgra* pixel, int32_t y0, int32_t y1, uint32_t ySpacing, uint32_t rowByteStride, PixelBgra bgraColor)
+    {
+        pixel = AddByteOffset(pixel, y0 * rowByteStride);
+        if (bgraColor.i == 0)
+        {
+            for (int32_t y = y0; y < y1; ++y)
+            {
+                *pixel = PixelBgra::InvertSoftAverage(*pixel);
+                pixel = AddByteOffset(pixel, rowByteStride);
+            }
+        }
+        else
+        {
+            for (int32_t y = y0; y < y1; ++y)
+            {
+                *pixel = PixelBgra::Blend(*pixel, bgraColor);
+                pixel = AddByteOffset(pixel, rowByteStride);
+            }
+        }
+    };
+
+
     if (drawLines)
     {
         // Vertical lines drawn left to right.
         for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
         {
-            std::byte* pixel = pixels + (y0 * rowByteStride) + (x * sizeof(PixelType));
-            for (int32_t y = y0; y < y1; ++y)
-            {
-                *reinterpret_cast<PixelType*>(pixel) = color;
-                pixel += rowByteStride;
-            }
+            PixelBgra* pixel = AddByteOffset<std::byte, PixelBgra>(pixels, x * sizeof(PixelBgra));
+            drawVerticalLine(pixel, y0, y1, 1, rowByteStride, bgraColor);
         }
 
         // Horizontal lines drawn top to bottom.
         for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
         {
-            uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
-            for (int32_t x = x0; x < x1; ++x)
-            {
-                pixelRow[x] = color;
-            }
+            PixelBgra* pixelRow = AddByteOffset<std::byte, PixelBgra>(pixels, y * rowByteStride);
+            drawHorizontalLine(pixelRow, x0, x1, 1, bgraColor);
         }
     }
     else
@@ -700,14 +772,8 @@ void DrawGridFast32bpp(
         // screen takes 6ms vs 166ms with SetPixel.
         for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
         {
-            uint32_t* pixelRow = reinterpret_cast<PixelType*>(pixels + y * rowByteStride);
-            for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
-            {
-                PixelBgra p = {.i = pixelRow[x]};
-                uint32_t shade = ((p.r + p.g + p.b) * 341) >> 10;
-                shade += (shade >= 128) ? -64 : 64;
-                pixelRow[x] = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000;
-            }
+            PixelBgra* pixelRow = AddByteOffset<std::byte, PixelBgra>(pixels, y * rowByteStride);
+            drawHorizontalLine(pixelRow, x0Adjusted, x1, xSpacing, bgraColor);
         }
     }
 }
@@ -988,32 +1054,18 @@ void DrawBackgroundColorUnderneath(
     )
 {
     static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
-    PixelBgra bgraColor = *reinterpret_cast<PixelBgra*>(&backgroundColor);
+    PixelBgra bgraColor{ .i = backgroundColor };
 
     //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
-    const uint32_t rowByteDelta = byteStridePerRow - (width * sizeof(PixelBgra));
-    uint8_t* pixel = pixels + y * byteStridePerRow + x * sizeof(PixelBgra);
+    PixelBgra* pixel = AddByteOffset<uint8_t, PixelBgra>(pixels, y * byteStridePerRow + x * sizeof(PixelBgra));
 
     for (uint32_t j = 0; j < height; ++j)
     {
         for (uint32_t i = 0; i < width; ++i)
         {
-            const PixelBgra bitmapColor = *reinterpret_cast<PixelBgra const*>(pixel);
-            const uint32_t bitmapAlpha = bitmapColor.a;
-            const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
-            
-            uint32_t blue  = (inverseBitmapAlpha * bgraColor.b / 255) + bitmapColor.b;
-            uint32_t green = (inverseBitmapAlpha * bgraColor.g / 255) + bitmapColor.g;
-            uint32_t red   = (inverseBitmapAlpha * bgraColor.r / 255) + bitmapColor.r;
-            uint32_t alpha = (inverseBitmapAlpha * bgraColor.a / 255) + bitmapColor.a;
-            uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
-            
-            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
-            assert(pixel >= pixels && pixel < pixels + height * byteStridePerRow);
-            *reinterpret_cast<uint32_t*>(pixel) = pixelValue;
-            pixel += sizeof(PixelBgra);
+            pixel[i] = PixelBgra::Blend(bgraColor, pixel[i]);
         }
-        pixel += rowByteDelta;
+        pixel = AddByteOffset(pixel, byteStridePerRow);
     }
 }
 
@@ -1073,35 +1125,17 @@ void DrawBitmap32Bit(
     uint32_t totalDestBytes = destHeight * destByteStridePerRow;
     #endif
 
-    uint32_t const destRowByteDelta = destByteStridePerRow - (width * sizeof(PixelBgra));
-    uint32_t const sourceRowByteDelta = sourceByteStridePerRow - (width * sizeof(PixelBgra));
-    uint8_t const* sourcePixel = sourcePixels + sourceY * sourceByteStridePerRow + sourceX * sizeof(PixelBgra);
-    uint8_t* destPixel = destPixels + uint32_t(destY) * destByteStridePerRow + uint32_t(destX) * sizeof(PixelBgra);
+    PixelBgra const* sourcePixel = AddByteOffset<uint8_t, PixelBgra>(sourcePixels, sourceY * sourceByteStridePerRow + sourceX * sizeof(PixelBgra));
+    PixelBgra* destPixel = AddByteOffset<uint8_t, PixelBgra>(destPixels, uint32_t(destY) * destByteStridePerRow + uint32_t(destX) * sizeof(PixelBgra));
 
     for (uint32_t j = 0; j < height; ++j)
     {
         for (uint32_t i = 0; i < width; ++i)
         {
-            assert(destPixel >= destPixels && destPixel < destPixels + totalDestBytes);
-            assert(sourcePixel >= sourcePixels && sourcePixel < sourcePixels + totalSourceBytes);
-
-            PixelBgra const sourceColor = *reinterpret_cast<PixelBgra const*>(sourcePixel);
-            PixelBgra const backgroundColor = *reinterpret_cast<PixelBgra const*>(destPixel);
-            uint32_t const bitmapAlpha = sourceColor.a;
-            uint32_t const inverseBitmapAlpha = 255 - bitmapAlpha;
-
-            uint32_t const blue  = (inverseBitmapAlpha * backgroundColor.b / 255) + sourceColor.b;
-            uint32_t const green = (inverseBitmapAlpha * backgroundColor.g / 255) + sourceColor.g;
-            uint32_t const red   = (inverseBitmapAlpha * backgroundColor.r / 255) + sourceColor.r;
-            uint32_t const alpha = (inverseBitmapAlpha * backgroundColor.a / 255) + sourceColor.a;
-            uint32_t const pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
-
-            // blend(source, dest) =  source.bgra + (dest.bgra * (1 - source.a))
-            *reinterpret_cast<uint32_t*>(destPixel) = pixelValue;
-            sourcePixel += sizeof(PixelBgra);
-            destPixel += sizeof(PixelBgra);
+            destPixel[i] = PixelBgra::Blend(destPixel[i], sourcePixel[i]);
         }
-        destPixel += destRowByteDelta;
+        sourcePixel = AddByteOffset(sourcePixel, sourceByteStridePerRow);
+        destPixel = AddByteOffset(destPixel, destByteStridePerRow);
     }
 }
 
@@ -2522,14 +2556,14 @@ void RepaintWindow(HWND hwnd)
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0xFF000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0x00000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                         // Draw item border.
                         DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible)
                     {
                         // Draw internal points.
-                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0xFF000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
