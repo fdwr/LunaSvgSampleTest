@@ -949,7 +949,7 @@ void DrawSmallDigits(
     uint32_t bitmapByteStridePerRow
     )
 {
-	static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
+    static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
 
     // Cheap clipping (whole clip, not partial)
     if (y < 0 || y + g_smallDigitHeight > bitmapHeight)
@@ -1657,9 +1657,9 @@ void LayoutCanvasItems(
                 if (lineRect.bottom > int32_t(indentY))
                 {
                     y = indentY;
-					x = lineRect.right;
-					nextX = x;
-					lineRect = {};
+                    x = lineRect.right;
+                    nextX = x;
+                    lineRect = {};
                 }
             }
             nextY = y + canvasItem.h;
@@ -1848,6 +1848,32 @@ bool IsBitmapSizingDisplayResizeable(BitmapSizingDisplay bitmapSizeDisplay)
     case BitmapSizingDisplay::WaterfallSizeThenObject: return g_bitmapSizeWrapped;
     case BitmapSizingDisplay::Natural: return g_bitmapSizeWrapped;
     default: return false;
+    }
+}
+
+
+uint32_t GetBitmapSizingDisplaySize(BitmapSizingDisplay bitmapSizeDisplay, RECT const& clientRect)
+{
+    switch (bitmapSizeDisplay)
+    {
+    case BitmapSizingDisplay::Natural:
+        if (!g_svgDocuments.empty())
+        {
+            auto& document = *g_svgDocuments.front();
+            auto w = static_cast<uint32_t>(std::ceil(document.width()));
+            auto h = static_cast<uint32_t>(std::ceil(document.height()));
+            return std::max(w, h);
+        }
+        [[fallthrough]];
+
+    case BitmapSizingDisplay::FixedSize:
+    case BitmapSizingDisplay::WaterfallObjectThenSize:
+    case BitmapSizingDisplay::WaterfallSizeThenObject:
+    default:
+        return g_bitmapSizePerDocument;
+
+    case BitmapSizingDisplay::WindowSize:
+        return std::min(clientRect.bottom, clientRect.right) / g_bitmapPixelZoom;
     }
 }
 
@@ -3007,6 +3033,22 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
                 RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_SIZE_SMALLER:
+            case IDM_SIZE_LARGER:
+                {
+                    // Increase or decrease the document size by 1 pixel from whatever it currently is.
+                    RECT clientRect;
+                    GetClientRect(hwnd, &clientRect);
+                    uint32_t size = GetBitmapSizingDisplaySize(g_bitmapSizingDisplay, clientRect);
+                    size += ((wmId == IDM_SIZE_SMALLER) ? -1 : 1);
+
+                    g_bitmapSizePerDocument = std::clamp(size, 1u, 32768u);
+                    g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                    RelayoutCanvasItemsLater(hwnd);
+                    RealignBitmapOffsetsLater();
+                }
                 break;
 
             case IDM_ZOOM0:
