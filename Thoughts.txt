@@ -139,8 +139,9 @@ Attribute details:
                 d. arbitrary                [[sx, hy ], [hx, sy ], [dx, dy ]
             3. prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
             4. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1
-            5. floor/ceil                   [[1,  0  ], [0,  1  ], [dx, dy ] nop of 'none' rounding mode
+            5. floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop of 'none' rounding mode
             6. size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+            7. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
             7. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
             ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
@@ -166,6 +167,7 @@ Attribute details:
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
             ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
              it's useful for a pair of open scissors or the tab of a manilla folder where pure rounding would distort the 45-degree line shape.
+             useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
@@ -251,7 +253,7 @@ Example:
               <!-- less detailed version for less than 16 pixels per unit... -->
             </g>
             <g ppu-range="16">
-   	          <!-- tiny details visible at higher ppu, at least 16 PPU... -->
+              <!-- tiny details visible at higher ppu, at least 16 PPU... -->
             </g>
           </switch>
         </svg>
