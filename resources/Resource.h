@@ -116,6 +116,8 @@
 #define IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT 233
 #define IDM_SIZE_NATURAL            234
 #define IDM_SIZE_DISPLAY_LAST       235
+#define IDM_SIZE_SMALLER            236
+#define IDM_SIZE_LARGER             237
 #define IDM_EXPORT_IMAGE            240
 #define IDM_PRESET_INSPECT          241
 #define IDM_PRESET_OVERVIEW         242
