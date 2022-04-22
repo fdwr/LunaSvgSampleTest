@@ -307,25 +307,36 @@ Example:
     
         <anchor id="anchorA" x="40" y="40" grid-rounding="up left"/>
         <anchor id="anchorB" x="60" y="40" grid-rounding="up right"/>
-        <anchor id="anchorC" x="40" y="60" grid-rounding="down left"/>
-        <anchor id="anchorD" x="20" y="40" grid-rounding="up left"/>
+        <anchor id="anchorC" x="60" y="60" grid-rounding="down left"/>
+        <anchor id="anchorD" x="40" y="60" grid-rounding="up left"/>
         ...
         <anchor-set id="anchorSetA" anchors="anchorA anchorB anchorC"/>
         <anchor-set id="anchorSetB" anchors="anchorA anchorD anchorC"/>
 
-    Or via containment (id's on internal anchors are unnecessary):
+    Or via containment? (id's on internal anchors are then unnecessary):
     
         <anchor-set id="anchorSetA">
             <anchor x="40" y="40" grid-rounding="up left"/>
             <anchor x="60" y="40" grid-rounding="up right"/>
             <anchor x="40" y="60" grid-rounding="down left"/>
         </anchor-set>
+
+    Or via points? (which would allow in/out rounding modes)
+
+        <anchor-set id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
+
+    Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
+    An anchors attribute is preferred over points, and points over
         
-    Anchor sets behave like anchors with multiple points. <anchor points="40,60 40,40 60,60" grid-rounding="down left"/>
+    Can anchors have multiple points? e.g. <anchor points="40,60 40,40 60,60" grid-rounding="down left"/>
+    Or should anchors only ever be 1D points? And only anchor sets allow "points" attributes?
+    It would be more concise to allow anchor with "points" and often mean only one primitive to think about <anchor>.
+    Though it would be confusing if anchor allowed multiple points because when an anchor set then references an anchor, what does that mean?
 
     grid-fit should accept 1, 2, or 3 anchors for points, which is translation, scaling along x and y, or arbitrary scaling/rotation/shear.
     1 point is equivalent to 3 points repeating the same value.
-    2 points is equivalent to 3 points with the 3rd point holding an x and y value from the other 2 points.
+    2 points is equivalent to 3 points with the 3rd point holding an x and y value from the other 2 points. Or 4 points making a square?
+    If more than 3 points are provided, only 3 points are used to extract the affine transformation, as non-affine transforms are unsupported by most 2D renderers.
 
     Rotation should reinterpret rounding modes, so that the final bitmap looks identical when rotated in-place as it would if it was
     graphically rotated. There are however times where disabling that reinterpretation is useful, such as when rotating a petal
