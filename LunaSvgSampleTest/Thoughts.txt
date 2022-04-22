@@ -55,6 +55,10 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Conditional visibility based on device pixels per canvas unit (PPU)
         If the condition is false, all children are hidden too (more like display:none than visibility:hidden).
         If applied to an anchor, that anchor is not considered part of the rendering tree, and any children depending on it behave like a nop.
+        Possible differences:
+            Omit details like drop shadow
+            Perspective orientation when the icon is large, but flat when tiny (e.g. Windows 7 Notepad in Alt+Tab vs top left system icon)
+            Fewer objects, such as a pad with pencil at large sizes but just the pad for smaller sizes.
     Minimum constraints
         Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
@@ -164,6 +168,7 @@ Attribute details:
             winding-inverted - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed.
             winding-ignored - ignores the winding direction
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+            position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
             ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
              it's useful for a pair of open scissors or the tab of a manilla folder where pure rounding would distort the 45-degree line shape.
@@ -267,6 +272,9 @@ Example:
     todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
           are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
           A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
+    todo: can you have relative inline anchors, such as <rect ...><anchor position="0% 100%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
+          How do you align to it though? Does it need an id, just for that one case, which kinda defeats the convenience factor?
+          Or <rect ... anchor-points="0% 100%" anchor-rounding="up" grid-rounding="out"/></rect> ?
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
