@@ -169,6 +169,7 @@ Attribute details:
             winding-ignored - ignores the winding direction
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
+            Should anchor-rounding be a separate attribute in that case to avoid points also being rounded?
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
             ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
              it's useful for a pair of open scissors or the tab of a manilla folder where pure rounding would distort the 45-degree line shape.
