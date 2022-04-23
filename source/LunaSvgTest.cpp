@@ -132,15 +132,26 @@ bool g_realignBitmap = false; // Set true after loading new files to recenter/re
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
 std::wstring g_errorMessage;
 const std::wstring_view g_defaultMessage =
-    L"No SVG loaded\r\n"
+    L"No SVG loaded - use File/Open or drag&drop filenames to load SVG documents.\r\n"
     L"\r\n"
-    L"Use File/Open or drag&drop filenames to load SVG documents.\r\n"
+    L"ctrl o = open files\r\n"
+    L"F5 = reload current files\r\n"
+    L"ctrl c = copy bitmap to clipboard\r\n"
     L"\r\n"
     L"mouse wheel = pan vertically\r\n"
     L"mouse wheel + shift = pan horizontally\r\n"
     L"mouse wheel + ctrl = zoom\r\n"
     L"middle mouse drag = pan\r\n"
-    L"arrow keys/home/end/pgup/pgdn = pan\r\n";
+    L"arrow keys/home/end/pgup/pgdn = pan\r\n"
+    L"+/- = increase/decrease zoom\r\n"
+    L"ctrl +/- = increase/decrease object size\r\n"
+    L"\r\n"
+    L"g = show/hide grid\r\n"
+    L"shift g = show/hide pixel grid\r\n"
+    L"o = show/hide outlines\r\n"
+    L"r = show/hide raster fills and strokes\r\n"
+    L"a = show/hide alpha channel\r\n"
+    ;
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128};
@@ -160,8 +171,9 @@ bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
 bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
 bool g_outlinesVisible = false; // Display path outlines of each document.
-bool g_fillsVisible = true; // Fills and strokes are visible.
+bool g_rasterFillsStrokesVisible = true; // Fills and strokes are visible.
 bool g_pixelGridVisible = false; // Display points per pixel.
+bool g_snapToPixels = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
 int32_t g_previousMouseY = 0;
@@ -1748,7 +1760,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
             break;
 
         case CanvasItem::ItemType::SvgDocument:
-            if (g_fillsVisible)
+            if (g_rasterFillsStrokesVisible)
             {
                 assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
                 auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
@@ -1768,6 +1780,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
                         bitmap.stride()
                     );
 
+                    // TODO: Check g_snapToPixels to pass pixel snapping flags to document::render.
                     uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
                     auto matrix = GetMatrixForSize(*document, pixelSize);
                     document->render(subbitmap, matrix);
@@ -2684,7 +2697,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(g_canvasFlowDirection); }},
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
         {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
-        {IDM_VIEW, IDM_FILLS_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_fillsVisible); }},
+        {IDM_VIEW, IDM_RASTER_FILLS_STROKES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_rasterFillsStrokesVisible); }},
         {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, g_gridSize)); }},
     };
 
@@ -3018,8 +3031,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 RedrawWholeCanvasLater(hwnd);
                 break;
 
-            case IDM_FILLS_VISIBLE:
-                g_fillsVisible = !g_fillsVisible;
+            case IDM_RASTER_FILLS_STROKES_VISIBLE:
+                g_rasterFillsStrokesVisible = !g_rasterFillsStrokesVisible;
                 RedrawCanvasItemsLater(hwnd);
                 break;
 
@@ -3170,6 +3183,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_SNAP_TO_PIXELS:
+                g_snapToPixels = !g_snapToPixels;
+                RedrawCanvasItemsLater(hwnd);
                 break;
 
             default:

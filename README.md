@@ -20,10 +20,11 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 
 ## Features
 - Opens simple non-animated SVG's. Nearly every SVG I've tried loads. Some icons don't render quite the same as in the browser environment because of inherited CSS properties, but they do render the same as the browser for the isolated file (e.g. certain Facebook icons).
-- Multiple sizes: fixed size, natural size, window size, waterfall display
+- Multiple sizes: fixed size, natural size, window size, waterfall display (increase/decrease with ctrl +/- keys)
 - Pixel zoom: to see the actual rendering up close (Ctrl+mouse wheel or +/- keys)
 - Grid display ('g' key, shift+'g' for pixel grid)
 - Outline view ('o' key)
+- Raster view for fills and strokes ('r' key)
 - Alpha channel view ('a' key)
 
 ## Bug reports
