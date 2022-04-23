@@ -94,3 +94,4 @@ extern "C"
 #include <vector>
 #include <span>
 #include <filesystem>
+#include <variant>

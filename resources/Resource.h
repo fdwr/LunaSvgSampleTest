@@ -122,7 +122,8 @@
 #define IDM_PRESET_INSPECT                  241
 #define IDM_PRESET_OVERVIEW                 242
 #define IDM_PRESET_WRAPPED_ICONS            243
-#define IDM_SNAP_TO_PIXELS                  244
+#define IDM_PRESET_WRAPPED_IMAGES           244
+#define IDM_SNAP_TO_PIXELS                  250
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC
