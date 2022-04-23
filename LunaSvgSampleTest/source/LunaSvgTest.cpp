@@ -54,9 +54,10 @@ struct CanvasItem
 {
     enum class ItemType : uint8_t
     {
+        None,
         SizeLabel,
         SvgDocument,
-        Image,
+        RasterImage,
     };
     enum class Flags : uint8_t
     {
@@ -78,7 +79,6 @@ struct CanvasItem
     union
     {
         uint32_t labelSize;
-        uint32_t svgDocumentIndex;
         uint32_t imageIndex;
     } value;
     uint32_t x; // Left edge of item box
@@ -87,7 +87,7 @@ struct CanvasItem
     uint32_t h; // Height
 };
 
-struct Image
+struct RasterImage
 {
     uint32_t width;
     uint32_t height;
@@ -105,10 +105,108 @@ RECT ToRect(CanvasItem const& canvasItem)
     };
 }
 
+Gdiplus::Rect ToGdiplusRect(CanvasItem const& canvasItem)
+{
+    return {
+        INT(canvasItem.x),
+        INT(canvasItem.y),
+        INT(canvasItem.w),
+        INT(canvasItem.h)
+    };
+}
+
+Gdiplus::RectF ToGdiplusRectF(CanvasItem const& canvasItem)
+{
+    return {
+        float(canvasItem.x),
+        float(canvasItem.y),
+        float(canvasItem.w),
+        float(canvasItem.h)
+    };
+}
+
 SIZE ToSize(RECT const& rect)
 {
     return { LONG(rect.right - rect.left), LONG(rect.bottom - rect.top) };
 }
+
+template<typename VariantType, typename T, std::size_t index = 0>
+constexpr std::size_t variant_index()
+{
+    if constexpr (index == std::variant_size_v<VariantType>)
+    {
+        return index;
+    }
+    else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>)
+    {
+        return index;
+    }
+    else
+    {
+        return variant_index<VariantType, T, index + 1>();
+    }
+}
+
+// Why does std::variant have such an idiotic interface, with no intuitive get() or index_of_type() methods?
+// So, we'll fix it with a more logical interface.
+template <typename... Ts>
+class variantex : public std::variant<Ts...>
+{
+public:
+    using base = std::variant<Ts...>;
+
+    using base::base;
+
+    template<typename T>
+    T& get()
+    {
+        return std::get<T>(*this);
+    }
+
+    template<typename T>
+    bool is_type() const
+    {
+        return std::holds_alternative<T>(*this);
+    }
+
+    template<typename T>
+    constexpr static size_t index_of_type()
+    {
+        return variant_index<base, T>();
+    }
+
+    template<typename T>
+    void call(T& t)
+    {
+        base& b = *this;
+        std::visit(t, b);
+    }
+};
+
+struct ImageOrSvgDocument :
+    variantex<
+        std::unique_ptr<RasterImage>,
+        std::unique_ptr<lunasvg::Document>
+    >
+{
+    CanvasItem::ItemType GetCanvasItemType() noexcept
+    {
+        switch (this->index())
+        {
+        case 0: return CanvasItem::ItemType::RasterImage;
+        case 1: return CanvasItem::ItemType::SvgDocument;
+        default: return CanvasItem::ItemType::None;
+        }
+    }
+
+    // Unwrap the pointer.
+    template <typename UnwrappedType>
+    UnwrappedType& GetReference()
+    {
+        assert(this->index() == this->index_of_type<std::unique_ptr<UnwrappedType>>());
+        return *this->get<std::unique_ptr<UnwrappedType>>();
+    }
+};
 
 DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 
@@ -117,8 +215,7 @@ ULONG_PTR g_gdiplusStartupToken;
 Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
 ComPtr<IWICImagingFactory> g_wicFactory;
 
-std::vector<std::unique_ptr<lunasvg::Document>> g_svgDocuments;
-std::vector<Image> g_images;
+std::vector<ImageOrSvgDocument> g_images;
 std::vector<CanvasItem> g_canvasItems;
 std::vector<std::wstring> g_filenameList;
 
@@ -1013,7 +1110,7 @@ void DrawSmallDigits(
 
 
 // Given the SVG document and a desired size, compute the transformation matrix.
-lunasvg::Matrix GetMatrixForSize(lunasvg::Document& document, uint32_t minimumSize)
+lunasvg::Matrix GetMatrixForSize(lunasvg::Document const& document, uint32_t minimumSize)
 {
     auto documentWidth = document.width();
     auto documentHeight = document.height();
@@ -1322,7 +1419,6 @@ HRESULT StoreImageData(
 void ClearDocumentList()
 {
     g_canvasItems.clear();
-    g_svgDocuments.clear();
     g_images.clear();
     g_filenameList.clear();
     g_bitmap = lunasvg::Bitmap();
@@ -1336,7 +1432,8 @@ HRESULT AppendSingleImageFile(wchar_t const* filePath)
     std::unique_ptr<std::byte[]> pixelBytes;
     RETURN_IF_FAILED(LoadImageData(filePath, /*out*/ dimensions,/*out*/ pixelBytes));
 
-    g_images.emplace_back(Image{ .width = dimensions[0], .height = dimensions[1], .pixels = std::move(pixelBytes) });
+    std::unique_ptr<RasterImage> newImage(new RasterImage{ .width = dimensions[0], .height = dimensions[1], .pixels = std::move(pixelBytes) });
+    g_images.emplace_back(std::move(newImage));
     return S_OK;
 }
 
@@ -1347,7 +1444,7 @@ HRESULT AppendSingleSvgFile(wchar_t const* filePath)
     // LunaSvg doesn't return any form of more specific error code for us :/.
     RETURN_IF(!document, HRESULT_FROM_WIN32(ERROR_XML_PARSE_ERROR));
 
-    g_svgDocuments.push_back(std::move(document));
+    g_images.emplace_back(std::move(document));
     return S_OK;
 }
 
@@ -1368,6 +1465,7 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
         {L".TIF", ImageType},
         {L".TIFF", ImageType},
         {L".GIF", ImageType},
+        {L".DDS", ImageType}, // Is this actually supported by WIC? I haven't found a .dds that loads yet.
     };
 
     // Capitalize filename extension for comparison.
@@ -1455,17 +1553,22 @@ void LoadDocumentFiles(std::vector<std::wstring>&& fileList)
 
 
 // Helper to append one canvas item per SVG document at the given pixel size.
-void AppendCanvasItemsGivenSize(std::vector<CanvasItem>& canvasItems, uint32_t documentPixelSize)
+void AppendCanvasItemsGivenSize(
+    /*inout*/ std::vector<CanvasItem>& canvasItems,
+    std::span<ImageOrSvgDocument const> images,
+    uint32_t documentPixelSize
+    )
 {
-    const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
+    const uint32_t totalDocuments = static_cast<uint32_t>(images.size());
 
-    for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+    for (uint32_t index = 0; index < totalDocuments; ++index)
     {
+        auto& image = g_images[index];
         CanvasItem canvasItem =
         {
-            .itemType = CanvasItem::ItemType::SvgDocument,
+            .itemType = image.GetCanvasItemType(),
             .flags = CanvasItem::Flags::Default,
-            .value = {.svgDocumentIndex = documentIndex},
+            .value = {.imageIndex = index},
             .w = documentPixelSize,
             .h = documentPixelSize,
         };
@@ -1486,8 +1589,7 @@ void GenerateCanvasItems(
 
     constexpr uint32_t maximumSmallDigitNumbers = 4;
     const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
-    const uint32_t totalDocuments = static_cast<uint32_t>(g_svgDocuments.size());
-    const uint32_t totalImages = static_cast<uint32_t>(g_images.size());
+    const uint32_t totalDocuments = static_cast<uint32_t>(g_images.size());
     const bool isHorizontalLayout = (flowDirection == CanvasItem::FlowDirection::RightDown);
     static_assert(uint32_t(CanvasItem::FlowDirection::Total) == 2);
 
@@ -1495,7 +1597,7 @@ void GenerateCanvasItems(
     switch (g_bitmapSizingDisplay)
     {
     case BitmapSizingDisplay::FixedSize:
-        AppendCanvasItemsGivenSize(canvasItems, g_bitmapSizePerDocument);
+        AppendCanvasItemsGivenSize(/*inout*/ canvasItems, g_images, g_bitmapSizePerDocument);
         break;
 
     case BitmapSizingDisplay::WaterfallObjectThenSize:
@@ -1514,15 +1616,15 @@ void GenerateCanvasItems(
                 };
                 canvasItems.push_back(std::move(labelCanvasItem));
 
-                // Append all SVG documents at the current size.
-                for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+                // Append all SVG documents or raster images at the current size.
+                for (uint32_t index = 0; index < totalDocuments; ++index)
                 {
-                    auto& document = g_svgDocuments[documentIndex];
+                    auto& image = g_images[index];
                     CanvasItem svgCanvasItem =
                     {
-                        .itemType = CanvasItem::ItemType::SvgDocument,
+                        .itemType = image.GetCanvasItemType(),
                         .flags = CanvasItem::Flags::Default,
-                        .value = {.svgDocumentIndex = documentIndex},
+                        .value = {.imageIndex = index},
                         .w = bitmapSize,
                         .h = bitmapSize,
                     };
@@ -1534,7 +1636,7 @@ void GenerateCanvasItems(
 
     case BitmapSizingDisplay::WaterfallSizeThenObject:
         {
-            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            for (uint32_t index = 0; index < totalDocuments; ++index)
             {
                 CanvasItem::Flags flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
 
@@ -1555,15 +1657,15 @@ void GenerateCanvasItems(
 
                 flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
 
-                // Append all SVG documents at the current size.
+                // Append all SVG documents or raster images at the current size.
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
                 {
-                    auto& document = g_svgDocuments[documentIndex];
+                    auto& image = g_images[index];
                     CanvasItem canvasItem =
                     {
-                        .itemType = CanvasItem::ItemType::SvgDocument,
+                        .itemType = image.GetCanvasItemType(),
                         .flags = flags,
-                        .value = {.svgDocumentIndex = documentIndex},
+                        .value = {.imageIndex = index},
                         .w = bitmapSize,
                         .h = bitmapSize,
                     };
@@ -1577,38 +1679,40 @@ void GenerateCanvasItems(
     case BitmapSizingDisplay::WindowSize:
         {
             const uint32_t bitmapMaximumSize = std::min(boundingRect.bottom, boundingRect.right) / g_bitmapPixelZoom;
-            AppendCanvasItemsGivenSize(canvasItems, bitmapMaximumSize);
+            AppendCanvasItemsGivenSize(canvasItems, g_images, bitmapMaximumSize);
         }
         break;
 
     case BitmapSizingDisplay::Natural:
         {
-            AppendCanvasItemsGivenSize(canvasItems, /*documentPixelSize*/ 0);
+            AppendCanvasItemsGivenSize(canvasItems, g_images, /*documentPixelSize*/ 0);
+
             // Set the height and width each of canvas item to its natural dimensions.
-            for (uint32_t documentIndex = 0; documentIndex < totalDocuments; ++documentIndex)
+            for (uint32_t index = 0; index < totalDocuments; ++index)
             {
-                auto& canvasItem = canvasItems[documentIndex];
-                auto& document = *g_svgDocuments[documentIndex];
-                canvasItem.w = static_cast<uint32_t>(std::ceil(document.width()));
-                canvasItem.h = static_cast<uint32_t>(std::ceil(document.height()));
+                auto& canvasItem = canvasItems[index];
+                auto& image = g_images[index];
+                switch (image.GetCanvasItemType())
+                {
+                case CanvasItem::ItemType::SvgDocument:
+                    {
+                        lunasvg::Document& document = image.GetReference<lunasvg::Document>();
+                        canvasItem.w = static_cast<uint32_t>(std::ceil(document.width()));
+                        canvasItem.h = static_cast<uint32_t>(std::ceil(document.height()));
+                    }
+                    break;
+
+                case CanvasItem::ItemType::RasterImage:
+                    {
+                        RasterImage& rasterImage = image.GetReference<RasterImage>();
+                        canvasItem.w = rasterImage.width;
+                        canvasItem.h = rasterImage.height;
+                    }
+                    break;
+                }
             }
         }
         break;
-    }
-
-    // Append any loaded images too.
-    for (uint32_t imageIndex = 0; imageIndex < totalImages; ++imageIndex)
-    {
-        auto& image = g_images[imageIndex];
-        CanvasItem canvasItem =
-        {
-            .itemType = CanvasItem::ItemType::Image,
-            .flags = CanvasItem::Flags::Default,
-            .value = {.imageIndex = imageIndex},
-            .w = image.width,
-            .h = image.height,
-        };
-        canvasItems.push_back(std::move(canvasItem));
     }
 }
 
@@ -1730,6 +1834,13 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
     lunasvg::Bitmap subbitmap;
     const RECT bitmapRect = { 0, 0, LONG(bitmap.width()), LONG(bitmap.height()) };
 
+    Gdiplus::Bitmap gdiplusSurface(bitmap.width(), bitmap.height(), bitmap.stride(), PixelFormat32bppPARGB, bitmap.data());
+    Gdiplus::Graphics gdiplusGraphics(&gdiplusSurface);
+    Gdiplus::ImageAttributes imageAttributes;
+    imageAttributes.SetWrapMode(Gdiplus::WrapModeTileFlipXY); // Try WrapModeTileFlipXY if there are edges.
+    gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeBilinear);
+    gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver); // TODO: use CompositingModeSourceCopy if no alpha for speed
+
     for (const auto& canvasItem : canvasItems)
     {
         switch (canvasItem.itemType)
@@ -1762,8 +1873,8 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
         case CanvasItem::ItemType::SvgDocument:
             if (g_rasterFillsStrokesVisible)
             {
-                assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
-                auto& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
+                assert(canvasItem.value.imageIndex < g_images.size());
+                auto& document = g_images[canvasItem.value.imageIndex].GetReference<lunasvg::Document>();
 
                 // Draw the icon into a subrect of the larger atlas texture,
                 // adjusting the pointer offset while keeping the correct stride.
@@ -1782,30 +1893,48 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
 
                     // TODO: Check g_snapToPixels to pass pixel snapping flags to document::render.
                     uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
-                    auto matrix = GetMatrixForSize(*document, pixelSize);
-                    document->render(subbitmap, matrix);
+                    auto matrix = GetMatrixForSize(document, pixelSize);
+                    document.render(subbitmap, matrix);
                 }
             }
             break;
 
-        case CanvasItem::ItemType::Image:
+        case CanvasItem::ItemType::RasterImage:
             {
                 assert(canvasItem.value.imageIndex < g_images.size());
-                auto& image = g_images[canvasItem.value.imageIndex];
+                auto& rasterImage = g_images[canvasItem.value.imageIndex].GetReference<RasterImage>();
 
                 RECT subbitmapRect = ToRect(canvasItem);
                 if (IntersectRect(/*out*/&subbitmapRect, &subbitmapRect, &bitmapRect))
                 {
-                    DrawBitmap32Bit(
-                        bitmap.data(),
-                        canvasItem.x,
-                        canvasItem.y,
-                        g_bitmap.width(),
-                        g_bitmap.height(),
-                        g_bitmap.width() * sizeof(PixelBgra),
-                        reinterpret_cast<uint8_t const*>(image.pixels.get()),
-                        image.width,
-                        image.height
+                    Gdiplus::Bitmap gdiplusImage(
+                        int(rasterImage.width),
+                        int(rasterImage.height),
+                        int(rasterImage.width * sizeof(PixelBgra)),
+                        PixelFormat32bppPARGB,
+                        reinterpret_cast<BYTE*>(rasterImage.pixels.get())
+                    );
+
+                    // Compute the target rectangle while keeping a 1:1 aspect ratio (no distortion).
+                    Gdiplus::RectF destRect = ToGdiplusRectF(canvasItem);
+                    float scaledHeight = rasterImage.height * destRect.Width / rasterImage.width;
+                    if (scaledHeight < destRect.Height)
+                    {
+                        destRect.Height = scaledHeight;
+                    }
+                    else
+                    {
+                        destRect.Width = rasterImage.width * destRect.Height / rasterImage.height;
+                    }
+
+                    gdiplusGraphics.DrawImage(
+                        &gdiplusImage,
+                        destRect,
+                        0.0f, 0.0f, float(rasterImage.width), float(rasterImage.height),
+                        Gdiplus::UnitPixel,
+                        &imageAttributes,
+                        nullptr, // callback
+                        nullptr // callbackData
                     );
                 }
             }
@@ -1870,11 +1999,11 @@ uint32_t GetBitmapSizingDisplaySize(BitmapSizingDisplay bitmapSizeDisplay, RECT 
     switch (bitmapSizeDisplay)
     {
     case BitmapSizingDisplay::Natural:
-        if (!g_svgDocuments.empty())
+        if (!g_canvasItems.empty())
         {
-            auto& document = *g_svgDocuments.front();
-            auto w = static_cast<uint32_t>(std::ceil(document.width()));
-            auto h = static_cast<uint32_t>(std::ceil(document.height()));
+            auto& canvasItem = g_canvasItems.front();
+            auto w = canvasItem.w;
+            auto h = canvasItem.h;
             return std::max(w, h);
         }
         [[fallthrough]];
@@ -1923,7 +2052,7 @@ void RedrawBackground()
 
 void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
 {
-    if (g_svgDocuments.empty() && g_images.empty())
+    if (g_images.empty())
     {
         return;
     }
@@ -2455,6 +2584,9 @@ void RepaintWindow(HWND hwnd)
         g_cachedScreenBitmapSize.cy = (clientRect.bottom + 15) & ~15;
     }
 
+    HRGN updateRegion = CreateRectRgn(0, 0, 0, 0);
+    GetUpdateRgn(hwnd, updateRegion, false);
+
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
     HDC memoryDc = CreateCompatibleDC(hdc); // Buffer the drawing to avoid flickering.
@@ -2575,7 +2707,6 @@ void RepaintWindow(HWND hwnd)
     if (g_gridVisible || g_pixelGridVisible)
     {
         gridSpacing = std::max(gridSpacing, 2);
-        int32_t pixelGridSpacing = std::max(g_bitmapPixelZoom, 2u);
 
         GdiFlush();
         for (const auto& canvasItem : g_canvasItems)
@@ -2583,7 +2714,7 @@ void RepaintWindow(HWND hwnd)
             switch (canvasItem.itemType)
             {
             case CanvasItem::ItemType::SvgDocument:
-            case CanvasItem::ItemType::Image:
+            case CanvasItem::ItemType::RasterImage:
                 {
                     const RECT gridRect = GetCanvasItemRect(canvasItem);
                     const uint32_t w = gridRect.right - gridRect.left;
@@ -2601,10 +2732,10 @@ void RepaintWindow(HWND hwnd)
                         // Draw item border.
                         DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
-                    if (g_pixelGridVisible)
+                    if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
                         // Draw internal points.
-                        DrawGridFast32bpp(gridRect, pixelGridSpacing, pixelGridSpacing, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(gridRect, g_bitmapPixelZoom, g_bitmapPixelZoom, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
@@ -2624,22 +2755,19 @@ void RepaintWindow(HWND hwnd)
             {
             case CanvasItem::ItemType::SvgDocument:
                 {
-                    const RECT itemRect = GetCanvasItemRect(canvasItem);
-                    RECT itemRectCopy;
-                    if (!IntersectRect(/*out*/&itemRectCopy, &itemRect, &clientRect))
+                    assert(canvasItem.value.imageIndex < g_images.size());
+                    auto const& document = g_images[canvasItem.value.imageIndex].GetReference<lunasvg::Document>();
+
+                    RECT const itemRect = GetCanvasItemRect(canvasItem);
+                    if (RectInRegion(updateRegion, &itemRect))
                     {
-                        continue; // Off-screen.
+                        Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
+                        GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
+
+                        uint32_t const pixelSize = std::min(canvasItem.w, canvasItem.h);
+                        auto const svgMatrix = GetMatrixForSize(document, pixelSize);
+                        document.enumerateContours(contourSink, svgMatrix);
                     }
-
-                    Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
-                    GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
-
-                    assert(canvasItem.value.svgDocumentIndex < g_svgDocuments.size());
-                    auto const& document = g_svgDocuments[canvasItem.value.svgDocumentIndex];
-
-                    uint32_t const pixelSize = std::min(canvasItem.w, canvasItem.h);
-                    auto const svgMatrix = GetMatrixForSize(*document, pixelSize);
-                    document->enumerateContours(contourSink, svgMatrix);
                 }
                 break;
             }
@@ -2651,6 +2779,7 @@ void RepaintWindow(HWND hwnd)
     DeleteDC(memoryDc);
 
     EndPaint(hwnd, &ps);
+    DeleteRgn(updateRegion);
 
     // Don't call DeleteObject(memoryBitmap) immediately, in case the user
     // is actively panning or resizing the window. Rather, delete this object later
@@ -3176,11 +3305,19 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 ChangeBitmapZoomCentered(hwnd, 1);
                 break;
 
+            case IDM_PRESET_WRAPPED_IMAGES:
+                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                g_bitmapSizeWrapped = true;
+                g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
+                RelayoutCanvasItemsLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
             case IDM_PRESET_WRAPPED_ICONS:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
                 g_bitmapSizeWrapped = true;
-                g_bitmapSizePerDocument = 64;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                g_bitmapSizePerDocument = 64;
                 RelayoutCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
