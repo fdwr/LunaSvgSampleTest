@@ -257,10 +257,11 @@ const std::wstring_view g_defaultMessage =
     L"F5 = reload current files\r\n"
     L"ctrl c = copy bitmap to clipboard\r\n"
     L"\r\n"
+    L"left mouse click = show item & coordinate\r\n"
+    L"middle mouse drag = pan\r\n"
     L"mouse wheel = pan vertically\r\n"
     L"mouse wheel + shift = pan horizontally\r\n"
     L"mouse wheel + ctrl = zoom\r\n"
-    L"middle mouse drag = pan\r\n"
     L"arrow keys/home/end/pgup/pgdn = pan\r\n"
     L"+/- = increase/decrease zoom\r\n"
     L"ctrl +/- = increase/decrease object size\r\n"
@@ -1278,6 +1279,8 @@ HRESULT LoadImageData(
     /*out*/ std::unique_ptr<std::byte[]>& pixelBytes
     )
 {
+    assert(g_wicFactory.Get() != nullptr);
+
     pixelBytes.reset();
 
     uint32_t const channelCount = 4;
@@ -1334,6 +1337,7 @@ HRESULT LoadImageData(
     RETURN_IF_FAILED(pixelSource->CopyPixels(&rect, rowByteStride, bufferByteSize, /*out*/ reinterpret_cast<uint8_t*>(pixelBytes.get())));
 
     dimensions = { uint32_t(width), uint32_t(height), uint32_t(channelCount), 1};
+
     return S_OK;
 }
 
@@ -1344,6 +1348,8 @@ HRESULT StoreImageData(
     _In_z_ wchar_t const* outputFilename
     )
 {
+    assert(g_wicFactory.Get() != nullptr);
+
     std::pair<std::wstring_view, GUID const*> static constexpr filenameExtensionToGuidMappings[] =
     {
         // The commented formats have issues on Windows 7 (hresult = 0x88982F50) or bad output.
