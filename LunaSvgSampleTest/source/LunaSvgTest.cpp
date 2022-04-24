@@ -1493,6 +1493,9 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
         {L".TIF", ImageType},
         {L".TIFF", ImageType},
         {L".GIF", ImageType},
+        {L".TGA", ImageType}, // Might load if 3rd party codec installed.
+        {L".DNG", ImageType}, // Does this require an extra codec?
+        {L".WDP", ImageType}, // Requires at least Windows 8.
         {L".DDS", ImageType}, // Is this actually supported by WIC? I haven't found a .dds that loads yet.
     };
 
@@ -3350,7 +3353,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     g_bitmapSizePerDocument = std::clamp(size, 1u, 32768u);
                     g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                     RelayoutAndRedrawCanvasItemsLater(hwnd);
-                    RealignBitmapOffsetsLater();
+                    ConstrainBitmapOffsetsLater();
                 }
                 break;
 
