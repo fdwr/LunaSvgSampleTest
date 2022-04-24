@@ -102,25 +102,26 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
 
 Elements:
-    anchor - invisible point used for other shapes to align/fit to.
-    anchor-set - set of 1 to 3 anchors used to align/fit shapes (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
+    anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
 
 Attributes:
-    grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
-    grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
-    grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
-    grid-offset - adjustment in device pixels, such as shifting to a half pixel.
-    grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
-    grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
-    grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
-    path.anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
-    path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit) or "f".
-    ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?).
-    anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
-    anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers. *naming: applicable-region?
-    anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit attribute in the shape. The shorthand accepts % relative to the shape bounds.
+    *.grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
+    *.grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
+    *.grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
+    *.grid-offset - adjustment in device pixels, such as shifting to a half pixel.
+    *.grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
+    *.grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
+    *.grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
+    *.anchor-rounding - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
+    *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?).
+    *.anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
+    path.anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
+    path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit) or "f".
+    anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
+    anchor.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
+    anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
 
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
@@ -247,7 +248,7 @@ Example:
                 <!-- 3 anchors are used in the path for displacement.
                      Multiple anchors can apply to multiple points,
                      such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
-                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" grid-d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+                <path anchor-list="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" grid-d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
             </g>
         </g>
 
@@ -287,8 +288,8 @@ Example:
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
-        <path id="topComponent" anchors="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor -->
-        <path id="bottomComponent" anchors="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
+        <path id="topComponent" anchor-list="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor #0 -->
+        <path id="bottomComponent" anchor-list="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
 
     You can supply a scale and bias directly in the rounding mode. floor((x-bias)/scale)*scale+bias
 
@@ -327,8 +328,8 @@ Example:
         <anchor id="anchorC" x="60" y="60" grid-rounding="down left"/>
         <anchor id="anchorD" x="40" y="60" grid-rounding="up left"/>
         ...
-        <anchor-set id="anchorSetA" anchors="anchorA anchorB anchorC"/>
-        <anchor-set id="anchorSetB" anchors="anchorA anchorD anchorC"/>
+        <anchor-set id="anchorSetA" anchor-list="anchorA anchorB anchorC"/>
+        <anchor-set id="anchorSetB" anchor-list="anchorA anchorD anchorC"/>
 
     Or via containment? (id's on internal anchors are then unnecessary):
     
@@ -344,7 +345,7 @@ Example:
 
     Or should there just be <anchor>, not anchor-set, except it accepts multiple existing ones?
 
-        <anchor id="anchorSetA" anchors="anchorA anchorB anchorC"/>
+        <anchor id="anchorSetA" anchor-list="anchorA anchorB anchorC"/>
 
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
     An anchors attribute is preferred over points, and points over child elements.
@@ -409,7 +410,7 @@ Example:
 
         <!-- starting from top right corner of picture frame, use top outer and right outer, then preceeding counter-clockwise use just top outer, then top and right... -->
         <path
-            anchors="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
+            anchor-list="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
             d="ga 0 6 M 38,11 C 38 10.9 38 10.7 37.9 10.6 .. ga 0 H 33.3 L 22.8 2.8 C 21.1 1.6 18.8 1.6 17.1 2.8 ... g 0 2"
         />
 
@@ -423,8 +424,8 @@ Example:
         <anchor x="20" y="20" id="boxTopLeft" grid-round="nearest-ties-low">
         <anchor x="38" y="38" id="cicrleCenter" grid-round="odd-shift-ties-low(xy 20)">
 
-        <rect x="20" y="20" width="10" height="10" anchors="boxTopLeft boxTopRight boxBottomLeft boxBottomRight"/>
-        <circle cx="38" cy="38" r="10" anchors="circleCenter circleTopLeft circleTopRight circleBottomLeft circleBottomRight"/>
+        <rect x="20" y="20" width="10" height="10" anchor-list="boxTopLeft boxTopRight boxBottomLeft boxBottomRight"/>
+        <circle cx="38" cy="38" r="10" anchor-list="circleCenter circleTopLeft circleTopRight circleBottomLeft circleBottomRight"/>
     </svg>
 
     Interaction with elements:
