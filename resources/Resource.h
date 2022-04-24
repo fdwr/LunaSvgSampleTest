@@ -87,7 +87,9 @@
 #define IDM_ZOOM11                          181
 #define IDM_ZOOM12                          182
 #define IDM_ZOOM13                          183
-#define IDM_ZOOM_LAST                       183
+#define IDM_ZOOM14                          184
+#define IDM_ZOOM15                          185
+#define IDM_ZOOM_LAST                       185
 #define IDM_NAVIGATE_LINE_LEFT              190
 #define IDM_NAVIGATE_LINE_RIGHT             191
 #define IDM_NAVIGATE_LINE_DOWN              192
