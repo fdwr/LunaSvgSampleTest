@@ -105,20 +105,19 @@ Elements:
     anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
 
 Attributes:
-    *.grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
-    *.grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
+    *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
+    *.grid-fit - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
     *.grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
-    *.grid-offset - adjustment in device pixels, such as shifting to a half pixel.
+    *.grid-offset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead?
     *.grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
     *.grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
     *.grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
     *.anchor-rounding - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
-    *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?).
-    *.anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit attribute in the shape. The shorthand accepts % relative to the shape bounds.
+    *.anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
-    path.anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
-    path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit) or "f".
+    path.anchor-list - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
+    path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor".
     anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     anchor.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
@@ -422,7 +421,7 @@ Example:
             Maybe there should be no "anchors" and only a "grid-fit" (or "grid-align"/"grid-adjust").
         -->
         <anchor x="20" y="20" id="boxTopLeft" grid-round="nearest-ties-low">
-        <anchor x="38" y="38" id="cicrleCenter" grid-round="odd-shift-ties-low(xy 20)">
+        <anchor x="38" y="38" id="circleCenter" grid-round="odd-shift-ties-low(xy 20)">
 
         <rect x="20" y="20" width="10" height="10" anchor-list="boxTopLeft boxTopRight boxBottomLeft boxBottomRight"/>
         <circle cx="38" cy="38" r="10" anchor-list="circleCenter circleTopLeft circleTopRight circleBottomLeft circleBottomRight"/>
