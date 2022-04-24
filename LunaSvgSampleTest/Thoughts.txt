@@ -12,6 +12,12 @@ TODO:
         - (fixed locally) Clear faster
         - (added locally) enumerate contours
         - Eventually grid fitting
+    - Screenshot candidates
+        - icons8-fluency-fill-color.svg lavendar paint needs proportional shear to maintain shape 24x24
+        - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
+        - icons8-fluency-afro-pick 28x28 bad (24x24 good)
+        - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
+        - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h

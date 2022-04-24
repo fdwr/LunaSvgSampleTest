@@ -274,7 +274,7 @@ const std::wstring_view g_defaultMessage =
     ;
 
 const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
-const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128};
+const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128,192,256};
 const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32,48,64,96,128};
 const uint32_t g_bitmapScrollStep = 64;
 
@@ -3221,6 +3221,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         .lpstrFile = std::data(fileNameBuffer),
                         .nMaxFile = static_cast<DWORD>(std::size(fileNameBuffer)),
                         .Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_LONGNAMES | OFN_NOTESTFILECREATE,
+                        .lpstrDefExt = L"png",
                     };
 
                     // Get the filename(s) from the user.
@@ -3235,7 +3236,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                                      );
                         if (FAILED(hr))
                         {
-                            ShowError(std::format(L"Failed to write file (0x{:08X}): {}", hr, fileNameBuffer));
+                            ShowError(std::format(L"Failed to write file (0x{:08X}): {}", uint32_t(hr), fileNameBuffer));
                         }
                     }
                 }
@@ -3371,7 +3372,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM11:
             case IDM_ZOOM12:
             case IDM_ZOOM13:
-                static_assert(IDM_ZOOM13 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM14:
+            case IDM_ZOOM15:
+                static_assert(IDM_ZOOM15 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 ChangeBitmapZoomCentered(hwnd, g_zoomFactors[wmId - IDM_ZOOM0]);
                 break;
 
