@@ -1,9 +1,11 @@
 # LunaSvgSampleTest
 
-Dwayne Robinson 2022-03-27 to 2022-04-02
+Dwayne Robinson 2022-03-27 to 2022-04-24
 
 ## What is it?
-Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo) and also to *someday* experiment with various SVG extensions for grid-fitting icons to get crisper toolbar icons.
+Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo).
+
+Someday I'll use this project to experiment with SVG extensions for grid-fitting/pixel snapping to get crisp toolbar and menu icons, rather than the current blurry mess that is SVG. Reports of the demise of 96 DPI are greatly exaggerated.
 
 ![Image of LunaSvgTest](LunaSvgTestScreenshot.png)
 ![Image of LunaSvgTest](LunaSvgTestScreenshot2.png)
@@ -28,7 +30,7 @@ Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it wor
 - Alpha channel view ('a' key)
 
 ## Bug reports
-I'm unlikely to add more features to this app, because this is just a side project anyway, but let me know if you encounter bugs in the app itself. Any SVG loading or rendering issues are most likely in LunaSvg (sorry, I don't have more diagnostic info accessible to print out the specific error).
+I'm unlikely to add too many features to this app, because this is just a side project anyway, but let me know if you encounter bugs in the app itself. Any SVG loading or rendering issues are most likely in LunaSvg (sorry, I don't have more diagnostic info accessible to print out the specific error).
 
 ## Related
 - LunaSVG - https://github.com/sammycage/lunasvg
