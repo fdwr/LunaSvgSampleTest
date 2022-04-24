@@ -87,6 +87,19 @@ struct CanvasItem
     uint32_t h; // Height
 };
 
+
+bool operator==(CanvasItem const& a, CanvasItem const& b) noexcept
+{
+    return a.itemType == b.itemType
+        && a.flags == b.flags
+        && memcmp(&a.value, &b.value, sizeof(b.value))
+        && a.x == b.x
+        && a.y == b.y
+        && a.w == b.w
+        && a.h == b.w;
+}
+
+
 struct RasterImage
 {
     uint32_t width;
@@ -95,7 +108,7 @@ struct RasterImage
     std::unique_ptr<std::byte[]> pixels;
 };
 
-RECT ToRect(CanvasItem const& canvasItem)
+RECT ToRect(CanvasItem const& canvasItem) noexcept
 {
     return {
         LONG(canvasItem.x),
@@ -105,7 +118,7 @@ RECT ToRect(CanvasItem const& canvasItem)
     };
 }
 
-Gdiplus::Rect ToGdiplusRect(CanvasItem const& canvasItem)
+Gdiplus::Rect ToGdiplusRect(CanvasItem const& canvasItem) noexcept
 {
     return {
         INT(canvasItem.x),
@@ -115,7 +128,7 @@ Gdiplus::Rect ToGdiplusRect(CanvasItem const& canvasItem)
     };
 }
 
-Gdiplus::RectF ToGdiplusRectF(CanvasItem const& canvasItem)
+Gdiplus::RectF ToGdiplusRectF(CanvasItem const& canvasItem) noexcept
 {
     return {
         float(canvasItem.x),
@@ -125,7 +138,7 @@ Gdiplus::RectF ToGdiplusRectF(CanvasItem const& canvasItem)
     };
 }
 
-SIZE ToSize(RECT const& rect)
+SIZE ToSize(RECT const& rect) noexcept
 {
     return { LONG(rect.right - rect.left), LONG(rect.bottom - rect.top) };
 }
@@ -223,7 +236,7 @@ lunasvg::Bitmap g_bitmap; // Rendered bitmap of all SVG documents.
 HBITMAP g_cachedScreenBitmap;
 std::byte* g_cachedScreenBitmapPixels;
 SIZE g_cachedScreenBitmapSize; // Most recent size of cached bitmap (may be slightly larger than the actual bitmap area).
-bool g_canvasItemsNeedRedrawing = true; // Set true after any size changes, layout changes, or background color (not just scrolling or zoom).
+bool g_canvasItemsNeedRedrawing = true; // Set true if items need redrawing after any size changes, layout changes, or background color (not just scrolling or zoom).
 bool g_relayoutCanvasItems = false; // Set true when SVG content needs to be laid out again (e.g. resize window when wrapped).
 bool g_realignBitmap = false; // Set true after loading new files to recenter/realign the new bitmap.
 bool g_constrainBitmapOffsets = false; // Set true after resizing to constrain the view over the current bitmap.
@@ -232,6 +245,7 @@ const std::wstring_view g_defaultMessage =
     L"No SVG loaded - use File/Open or drag&drop filenames to load SVG documents.\r\n"
     L"\r\n"
     L"ctrl o = open files\r\n"
+    L"drag&drop = open files\r\n"
     L"F5 = reload current files\r\n"
     L"ctrl c = copy bitmap to clipboard\r\n"
     L"\r\n"
@@ -287,7 +301,7 @@ union PixelBgra
     uint32_t i;
 
     // blend(dest, source) =  source.bgra + (dest.bgra * (1 - source.a))
-    static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor)
+    static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor) noexcept
     {
         const uint32_t bitmapAlpha = newColor.a;
         if (bitmapAlpha == 255)
@@ -305,7 +319,7 @@ union PixelBgra
 
     // Lighten dark colors and darken light colors using the average grayscale,
     // useful for displaying grid lines or dots.
-    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor)
+    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor) noexcept
     {
         uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
         shade += (shade >= 128) ? -64 : 64;
@@ -314,13 +328,13 @@ union PixelBgra
 };
 
 template <typename OriginalType, typename TargetType = OriginalType>
-TargetType* AddByteOffset(OriginalType* p, size_t byteOffset)
+TargetType* AddByteOffset(OriginalType* p, size_t byteOffset) noexcept
 {
     return reinterpret_cast<TargetType*>(reinterpret_cast<uint8_t*>(p) + byteOffset);
 }
 
 template <typename OriginalType, typename TargetType = OriginalType>
-TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset)
+TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset) noexcept
 {
     return reinterpret_cast<TargetType const*>(reinterpret_cast<uint8_t const*>(p) + byteOffset);
 }
@@ -382,7 +396,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 INT_PTR CALLBACK AboutDialogProcedure(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 void ClearDocumentList();
 void AppendSingleDocumentFile(wchar_t const* filePath);
-void RelayoutCanvasItemsLater(HWND hwnd);
+void RelayoutAndRedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasItemsLater(HWND hwnd);
 void RedrawCanvasBackgroundAndItems(HWND hwnd);
 void ShowErrors();
@@ -424,7 +438,7 @@ int APIENTRY wWinMain(
             AppendSingleDocumentFile(arguments[argumentIndex]);
         }
         ShowErrors();
-        RelayoutCanvasItemsLater(g_windowHandle);
+        RelayoutAndRedrawCanvasItemsLater(g_windowHandle);
     }
     LocalFree(arguments);
 
@@ -2021,30 +2035,31 @@ uint32_t GetBitmapSizingDisplaySize(BitmapSizingDisplay bitmapSizeDisplay, RECT 
 
 
 // Redraw the background behind the SVG, such as transparent black or checkerboard.
-void RedrawBackground()
+void RedrawBackground(lunasvg::Bitmap& bitmap)
 {
-    // Do not draw the opaque background, which would otherwise show nothing but whiteness.
+    // When the alpha channel is visible, do not draw the opaque background,
+    // which would otherwise show nothing but whiteness.
     if (g_showAlphaChannel)
     {
-        g_bitmap.clear(0x00000000);
+        bitmap.clear(0x00000000);
         return;
     }
 
     switch (g_backgroundColorMode)
     {
     case BackgroundColorMode::TransparentBlack:
-        g_bitmap.clear(0x00000000);
+        bitmap.clear(0x00000000);
         break;
 
     case BackgroundColorMode::GrayCheckerboard:
-        DrawCheckerboardBackground(g_bitmap.data(), 0, 0, g_bitmap.width(), g_bitmap.height(), g_bitmap.stride());
+        DrawCheckerboardBackground(bitmap.data(), 0, 0, bitmap.width(), bitmap.height(), bitmap.stride());
         break;
 
     case BackgroundColorMode::OpaqueWhite:
     case BackgroundColorMode::OpaqueGray:
         // Beware LunaSvg uses backwards alpha (RGBA rather than ARGB) whereas
         // typically most pixel formats put the alpha in the *top* byte.
-        g_bitmap.clear((g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0x808080FF : /*OpaqueWhite*/ 0xFFFFFFFF);
+        bitmap.clear((g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0x808080FF : /*OpaqueWhite*/ 0xFFFFFFFF);
         break;
     }
 }
@@ -2062,28 +2077,57 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
     // with the new size.
     if (g_relayoutCanvasItems)
     {
+        // Keep a copy of the old canvas items for later comparison to see redraw is necessary.
+        std::vector<CanvasItem> canvasItemsCopy;
+        if (!g_canvasItemsNeedRedrawing)
+        {
+            canvasItemsCopy = g_canvasItems;
+        }
+
         RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
         GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
 
+        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
         // Limit bitmap size to avoid std::bad_alloc in case too many SVG files loaded.
         // Plus GDI has issues with large bitmaps in StretchBlt.
-        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
         boundingRect.right = std::min(boundingRect.right, 32768L);
         boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
 
-        g_bitmap.reset(boundingRect.right, boundingRect.bottom);
+        bool bitmapChangedSize = (g_bitmap.width() != boundingRect.right || g_bitmap.height() != boundingRect.bottom);
+        if (bitmapChangedSize)
+        {
+            g_bitmap.reset(boundingRect.right, boundingRect.bottom);
+            g_canvasItemsNeedRedrawing = true;
+        }
+        if (!g_canvasItemsNeedRedrawing && canvasItemsCopy != g_canvasItems)
+        {
+            // The relayout caused items to move around. So redraw.
+            g_canvasItemsNeedRedrawing = true;
+        }
+
         g_relayoutCanvasItems = false;
     }
 
-    RedrawBackground();
-    RedrawCanvasItems(g_canvasItems, g_bitmap);
+    if (g_canvasItemsNeedRedrawing)
+    {
+        RedrawBackground(g_bitmap);
+        RedrawCanvasItems(g_canvasItems, g_bitmap);
+    }
 }
 
 
-// Enqueue the bitmap for redraw later in WM_PAINT, without redrawing the SVG
-// (such as with a pure translation or zoom).
-void RedrawBitmapLater(HWND hwnd)
+// Repaint the whole client rect later in WM_PAINT.
+// This is useful for zooming.
+void InvalidateClientRect(HWND hwnd)
+{
+    InvalidateRect(hwnd, nullptr, true);
+}
+
+
+// Repaint just the bitmap area in WM_PAINT, without redrawing the SVG
+// or the background. This is useful for toggling the grid on/off.
+void InvalidateClientRectBitmap(HWND hwnd)
 {
     RECT invalidationRect =
     {
@@ -2106,26 +2150,29 @@ void RedrawBitmapLater(HWND hwnd)
 }
 
 
-void RedrawWholeCanvasLater(HWND hwnd)
-{
-    InvalidateRect(hwnd, nullptr, true);
-}
-
-
-// Enqueue redrawing the SVG to the bitmap later in WM_PAINT.
+// Redraw all the SVG canvas items.
 void RedrawCanvasItemsLater(HWND hwnd)
 {
     g_canvasItemsNeedRedrawing = true;
-    InvalidateRect(hwnd, nullptr, true);
+    InvalidateClientRect(hwnd);
 }
 
 
 // Enqueue relayout and redrawing the SVG to the bitmap later in WM_PAINT.
-void RelayoutCanvasItemsLater(HWND hwnd)
+void RelayoutAndRedrawCanvasItemsLater(HWND hwnd)
 {
     g_relayoutCanvasItems = true;
     g_canvasItemsNeedRedrawing = true;
-    InvalidateRect(hwnd, nullptr, true);
+    InvalidateClientRect(hwnd);
+}
+
+
+void RelayoutCanvasItemsLater(HWND hwnd)
+{
+    g_relayoutCanvasItems = true;
+    // Do not set g_canvasItemsNeedRedrawing because we only want that lazily
+    // triggered when the layout changes the bitmap size.
+    InvalidateClientRect(hwnd);
 }
 
 
@@ -2150,7 +2197,7 @@ void RedrawCanvasBackgroundAndItems(HWND hwnd)
     durationMs *= 1000.0;
     wchar_t windowTitle[1000];
     wchar_t const* filename = !g_filenameList.empty() ? g_filenameList.front().c_str() : L"";
-    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s (%1.6fms, %ux%u, %s)", g_applicationTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
+    _snwprintf_s(windowTitle, sizeof(windowTitle), L"%s - %1.3fms, %ux%u - %s", g_applicationTitle, durationMs, g_bitmap.width(), g_bitmap.height(), filename);
     SetWindowText(hwnd, windowTitle);
 
     if (g_invertColors)
@@ -2162,7 +2209,7 @@ void RedrawCanvasBackgroundAndItems(HWND hwnd)
         AlphaToGrayscale(g_bitmap);
     }
 
-    RedrawBitmapLater(hwnd);
+    InvalidateClientRectBitmap(hwnd);
     g_canvasItemsNeedRedrawing = false;
 }
 
@@ -2253,9 +2300,9 @@ void CopyBitmapToClipboard(
             uint32_t totalBytes = sizeof(bitmapInfo) + bitmapInfo.sizeImage;
 
             // Although DIB sections understand negative height just fine (the standard top-down image layout used by
-            // most image formats), other programs sometimes choke when seeing it. IrfanView display the image upside
+            // most image formats), other programs sometimes choke when seeing it. IrfanView displays the image upside
             // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
-            // appear on Windows 10 understand upside down images just fine.
+            // appear on Windows 10 understand upside down images just fine. Word just displays an empty box with red X.
             bitmapInfo.height = abs(bitmapInfo.height);
 
             // InkScape does not recognize transparency anymore when setting BI_BITFIELDS
@@ -2551,7 +2598,7 @@ void RepaintWindow(HWND hwnd)
 
     const bool shouldUpdateScrollBars = g_canvasItemsNeedRedrawing | g_realignBitmap | g_constrainBitmapOffsets;
 
-    if (g_canvasItemsNeedRedrawing)
+    if (g_canvasItemsNeedRedrawing || g_relayoutCanvasItems)
     {
         RedrawCanvasBackgroundAndItems(hwnd);
     }
@@ -2716,11 +2763,9 @@ void RepaintWindow(HWND hwnd)
             case CanvasItem::ItemType::SvgDocument:
             case CanvasItem::ItemType::RasterImage:
                 {
-                    const RECT gridRect = GetCanvasItemRect(canvasItem);
-                    const uint32_t w = gridRect.right - gridRect.left;
-                    const uint32_t h = gridRect.bottom - gridRect.top;
-                    RECT gridRectCopy;
-                    if (!IntersectRect(/*out*/&gridRectCopy, &gridRect, &clientRect))
+                    const RECT itemRect = GetCanvasItemRect(canvasItem);
+                    RECT gridRectDummy; // We don't care about the values, just the boolean result.
+                    if (!IntersectRect(/*out*/&gridRectDummy, &itemRect, &clientRect))
                     {
                         continue; // Off-screen.
                     }
@@ -2728,14 +2773,17 @@ void RepaintWindow(HWND hwnd)
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        DrawGridFast32bpp(gridRect, gridSpacing, gridSpacing, 0x00000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(itemRect, gridSpacing, gridSpacing, 0x00000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+
                         // Draw item border.
-                        DrawGridFast32bpp(gridRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        const uint32_t w = itemRect.right - itemRect.left;
+                        const uint32_t h = itemRect.bottom - itemRect.top;
+                        DrawGridFast32bpp(itemRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
                         // Draw internal points.
-                        DrawGridFast32bpp(gridRect, g_bitmapPixelZoom, g_bitmapPixelZoom, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
@@ -2759,7 +2807,9 @@ void RepaintWindow(HWND hwnd)
                     auto const& document = g_images[canvasItem.value.imageIndex].GetReference<lunasvg::Document>();
 
                     RECT const itemRect = GetCanvasItemRect(canvasItem);
-                    if (RectInRegion(updateRegion, &itemRect))
+                    RECT gridRectDummy; // We don't care about the values, just the boolean result.
+
+                    if (IntersectRect(/*out*/&gridRectDummy, &itemRect, &clientRect) && RectInRegion(updateRegion, &itemRect))
                     {
                         Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
                         GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
@@ -2939,7 +2989,7 @@ void OnMouseWheel(HWND hwnd, int32_t cursorX, int32_t cursorY, int32_t delta, ui
             g_bitmapOffsetX = (g_bitmapOffsetX + mouseCoordinate.x) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.x;
             g_bitmapOffsetY = (g_bitmapOffsetY + mouseCoordinate.y) * newPixelZoom / g_bitmapPixelZoom - mouseCoordinate.y;
             g_bitmapPixelZoom = newPixelZoom;
-            RedrawWholeCanvasLater(hwnd); // Invalidate using current zoom.
+            InvalidateClientRect(hwnd);
             UpdateBitmapScrollbars(hwnd);
         }
     }
@@ -2969,7 +3019,7 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
     g_bitmapPixelZoom = newBitmapPixelZoom;
     ConstrainBitmapOffsets(clientRect);
 
-    RedrawWholeCanvasLater(hwnd);
+    InvalidateClientRect(hwnd);
     UpdateBitmapScrollbars(hwnd);
 }
 
@@ -3031,7 +3081,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         }
 
                         LoadDocumentFiles(std::move(filenameList));
-                        RelayoutCanvasItemsLater(hwnd);
+                        RelayoutAndRedrawCanvasItemsLater(hwnd);
                     }
                 }
                 break;
@@ -3083,13 +3133,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 {
                     LoadDocumentFiles(std::move(g_filenameList));
                     ShowErrors();
-                    RelayoutCanvasItemsLater(hwnd);
+                    RelayoutAndRedrawCanvasItemsLater(hwnd);
                 }
                 break;
 
             case IDM_FILE_UNLOAD:
                 ClearDocumentList();
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 break;
 
             case IDM_SIZE0:
@@ -3114,50 +3164,50 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FIXED:
                 // Leave g_bitmapSizePerDocument as previous value.
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WINDOW:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WindowSize;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_OBJECT_THEN_SIZE:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WATERFALL_SIZE_THEN_OBJECT:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_NATURAL:
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_WRAPPED:
                 g_bitmapSizeWrapped = !g_bitmapSizeWrapped;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_OUTLINES_VISIBLE:
                 g_outlinesVisible = !g_outlinesVisible;
-                RedrawWholeCanvasLater(hwnd);
+                InvalidateClientRect(hwnd);
                 break;
 
             case IDM_RASTER_FILLS_STROKES_VISIBLE:
@@ -3167,13 +3217,13 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FLOW_DOWN_RIGHT:
                 g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
@@ -3188,7 +3238,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
                     g_bitmapSizePerDocument = std::clamp(size, 1u, 32768u);
                     g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
-                    RelayoutCanvasItemsLater(hwnd);
+                    RelayoutAndRedrawCanvasItemsLater(hwnd);
                     RealignBitmapOffsetsLater();
                 }
                 break;
@@ -3245,12 +3295,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_GRID_VISIBLE:
                 g_gridVisible = !g_gridVisible;
-                RedrawBitmapLater(hwnd);
+                InvalidateClientRectBitmap(hwnd);
                 break;
 
             case IDM_PIXEL_GRID_VISIBLE:
                 g_pixelGridVisible = !g_pixelGridVisible;
-                RedrawBitmapLater(hwnd);
+                InvalidateClientRectBitmap(hwnd);
                 break;
 
             case IDM_GRID_SIZE_0:
@@ -3275,7 +3325,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_GRID_SIZE_128 == IDM_GRID_SIZE_LAST);
                 static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
                 g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
-                RedrawBitmapLater(hwnd);
+                InvalidateClientRectBitmap(hwnd);
                 break;
 
             case IDM_NAVIGATE_LINE_LEFT:  HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
@@ -3309,7 +3359,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
                 g_bitmapSizeWrapped = true;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
@@ -3318,7 +3368,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_bitmapSizeWrapped = true;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 g_bitmapSizePerDocument = 64;
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
@@ -3354,7 +3404,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             {
                 RedrawCanvasItemsLater(hwnd);
                 LoadDocumentFiles(std::move(filenameList));
-                RelayoutCanvasItemsLater(hwnd);
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
             }
         }
         break;
@@ -3372,7 +3422,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             }
             else
             {
-                RedrawBitmapLater(hwnd);
+                InvalidateClientRectBitmap(hwnd);
             }
             ConstrainBitmapOffsetsLater();
         }

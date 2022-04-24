@@ -41,7 +41,6 @@ extern "C"
 }
 
 /*
-
     #include <cderr.h>
     #include <dde.h>
     #include <ddeml.h>
@@ -75,8 +74,6 @@ extern "C"
         #include <commdlg.h>
     #endif // !NOGDI
 */
-
-
 
 // C RunTime Header Files
 #include <stdlib.h>

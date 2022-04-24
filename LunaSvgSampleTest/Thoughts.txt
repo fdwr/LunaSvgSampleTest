@@ -43,6 +43,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
             in, out
             up, down, left, right
         rounding-origin for in (toward zero) and out (toward infinity) rounding, or maybe an offset inside the rounding mode. e.g. to-zero(x 0 -23 0)
+            Similar to https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin
         inward and outward rounding based on path direction clockwise vs counterclockwise
         Round relative another point
         Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)" or odd-shift(2)
@@ -102,9 +103,9 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
 
 Elements:
     anchor - invisible point used for other shapes to align/fit to.
-    anchor-set - set of 1 to 3 anchors used to align/fit shapes (translation, scaling, arbitrary)
+    anchor-set - set of 1 to 3 anchors used to align/fit shapes (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
 
-Attribute:
+Attributes:
     grid-fit - fit potentially multiple points via scaling (stretch/scale) to display pixel grid
     grid-align - align via translation to display pixel grid, passing an anchor name or coordinates.
     grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
@@ -112,10 +113,14 @@ Attribute:
     grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
     grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
     grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
-    grid-transformation-interaction - whether to reinterpret the rounding mode based on rotation/mirroring (defaults true).
-    path anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
-    path d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit).
+    path.anchors - list of anchors used within the path (referred to by number 0 to N-1 within the path)
+    path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So use "Gg" or "ga" and "gf" (grid align and grid fit) or "f".
     ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?).
+    anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
+    anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers. *naming: applicable-region?
+    anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit attribute in the shape. The shorthand accepts % relative to the shape bounds.
+        direction keyword | <length> | <percentage>
+        Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
 
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
@@ -142,11 +147,11 @@ Attribute details:
                 c. scale & translate        [[s,  0  ], [0,  s  ], [dx, dy ]
                 d. arbitrary                [[sx, hy ], [hx, sy ], [dx, dy ]
             3. prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-            4. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1
+            4. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
             5. floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop of 'none' rounding mode
             6. size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
             7. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
-            7. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+            7. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
             ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
             none - no grid rounding along x or y. e.g "x none; y floor"
@@ -161,13 +166,12 @@ Attribute details:
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor)
-            axis-alignment-matters - only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
-            axis-alignment-ignored - apply the rounding even when not axis aligned
-            direction-inverted - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive).
-            direction-ignored - the line direction does not matter. floor is floor, ceil is ceil.
-            winding-inverted - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed.
-            winding-ignored - ignores the winding direction
+            transform-reinterprets(true/false) - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+            require-axis-alignmentment(true/false)- only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+            direction-inverts(true/false) - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
+            winding-inverts(true/false) - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+            proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias
             position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
             Should anchor-rounding be a separate attribute in that case to avoid points also being rounded?
             ?round along a given vector. Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
@@ -187,7 +191,7 @@ Attribute details:
             nearest-right - Equals `floor(x+.5)`.
             nearest-up - ...
             nearest-down - ...
-            todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero?
+            todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halves-up? fraction-up? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down".
             center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
             center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
             center-right
@@ -197,10 +201,11 @@ Attribute details:
             nearest-center-right
             nearest-center-up
             nearest-center-down
-            in-cw - snap pixel inward along clockwise shape (equivalent to outward on counter-clockwise shape). e.g. in(x) out(y)
-            in-ccw - snap pixel inward along counter-clockwise shape (equivalent to outward on clockwise shape).
-            out-cw - ...
-            out-ccw - ...
+            nearest-up - preferring this one
+            in - snap pixel inward (equivalent to outward on counter-clockwise shape). e.g. in(x) out(y) alias for "floor direction-inverts(true) winding-inverts(true)"
+            in-cw - snap pixel inward if clockwise winding (outward on counter-clockwise shape). "floor direction-inverts(true) winding-inverts(false)"
+            out - ... alias for "ceil direction-inverts(true) winding-inverts(true)"
+            out-cw - ... snap pixel outward if clockwise winding (inward on counter-clockwise shape).
             in-cw-center - ...
             in-ccw-center - ...
             out-cw-center - ...
@@ -209,7 +214,7 @@ Attribute details:
             in-ccw-nearest-center - ...
             out-cw-nearest-center - ...
             out-ccw-nearest-center - ...
-            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(xy 2)`
+            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)`
             evenodd-high
             evenodd-left
             evenodd-right
@@ -223,14 +228,16 @@ Attribute details:
             axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
         questions:
             How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
+            How does vector-effect="non-scaling-stroke" interact?
 
 Example:
     Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
+    Additionally grid alignment needs to be relative to the actual device space, thus a 
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left" />
         <g grid-align="plusSignTopLeftCorner">
-            <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest" grid-multiple="0.5"/><!-- round to nearest half pixel -->
+            <anchor id="plusSignCenter" x="38" y="38" grid-rounding="nearest-low" grid-multiple="0.5"/><!-- round to nearest half pixel -->
             <g grid-align="plusSignCenter">
                 <circle cx="38" cy="38" r="10"/>
                 <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
@@ -240,7 +247,7 @@ Example:
                 <!-- 3 anchors are used in the path for displacement.
                      Multiple anchors can apply to multiple points,
                      such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
-                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" ext:d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
+                <path anchors="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" grid-d="an0 m 10 10 an1 h20 an0 2 v20 z"/>
             </g>
         </g>
 
@@ -276,6 +283,7 @@ Example:
     todo: can you have relative inline anchors, such as <rect ...><anchor position="0% 100%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
           How do you align to it though? Does it need an id, just for that one case, which kinda defeats the convenience factor?
           Or <rect ... anchor-points="0% 100%" anchor-rounding="up" grid-rounding="out"/></rect> ?
+          Percentages are similar in concept to primitiveUnits="objectBoundingBox" which make the lengths relative to the referencing object's bounding box https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/primitiveUnits
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
@@ -334,9 +342,13 @@ Example:
 
         <anchor-set id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
 
+    Or should there just be <anchor>, not anchor-set, except it accepts multiple existing ones?
+
+        <anchor id="anchorSetA" anchors="anchorA anchorB anchorC"/>
+
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
-    An anchors attribute is preferred over points, and points over
-        
+    An anchors attribute is preferred over points, and points over child elements.
+
     Can anchors have multiple points? e.g. <anchor points="40,60 40,40 60,60" grid-rounding="down left"/>
     Or should anchors only ever be 1D points? And only anchor sets allow "points" attributes?
     It would be more concise to allow anchor with "points" and often mean only one primitive to think about <anchor>.
@@ -350,27 +362,23 @@ Example:
     Rotation should reinterpret rounding modes, so that the final bitmap looks identical when rotated in-place as it would if it was
     graphically rotated. There are however times where disabling that reinterpretation is useful, such as when rotating a petal
     around a flower or mirroring slats of a fence, where having consistent rounding across mirrored segments looks better.
-    Attribute grid-transformation-interaction?
+    Attribute grid-rounding: subattribute transform-matters
 
     Inline anchors Would a be convenient shorthand rather than needing a separate anchor each time with a unique id.
     Instead of:
 
-        <anchor id="RectAnchor" x="23" y="42" grid-point-rounding="nearest-up nearest-left">
-        <rect x1="23" y1="42" width="20" height="10" grid-align="RectAnchor">
+        <anchor id="RectAnchor" x="23" y="42" grid-point-rounding="up left"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-align="RectAnchor"/>
 
     Just say:
-        <rect x1="23" y1="42" grid-align="anchor(23 42 nearest-up nearest-left)">
+        <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(23 42 up left)"/>
 
     Note aligning the anchor is different from aligning all the points individually, which would change the height/width:
-        <rect x1="23" y1="42" grid-point-rounding="nearest-up nearest-left">
+        <rect x1="23" y1="42" width="20" height="10" grid-point-rounding="up left"/>
 
-    Naming?
-        nearest-up - preferring this one
-        halves-up?
-        fraction-up?
-
-        "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down",
-        whereas "halves up" means to round toward positive infinity.
+    Or maybe:
+        <rect x1="23" y1="42" width="20" height="10" grid-points="0%,0% 100%,100%" anchor-rounding="up left"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-points="0%,0%" anchor-rounding="up left"/> // translate by rounded top left
 
     Minimum stroke:
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
