@@ -8,7 +8,7 @@
 // set the _WIN32_WINNT macro to the platform you wish to support before including SDKDDKVer.h.
 #include <SDKDDKVer.h>
 
-//#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 //#define NOMINMAX
 #ifndef UNICODE
 #define UNICODE
@@ -23,7 +23,10 @@
 #include <commctrl.h> // for tooltip
 #include <commdlg.h> // GetOpenFileName
 #include <shellapi.h> // DragQueryFile
+#include <rpc.h>
 #include <rpcndr.h> // for GDI+
+#include <combaseapi.h> // for GDI+
+#include <wtypes.h> // for GDI+
 #include <gdiplus.h>
 #include <WinCodec.h>
 #include <wrl/client.h>
@@ -39,41 +42,6 @@ extern "C"
         __deref_out IWICImagingFactory** wicImagingFactory
     );
 }
-
-/*
-    #include <cderr.h>
-    #include <dde.h>
-    #include <ddeml.h>
-    #include <dlgs.h>
-    #ifndef _MAC
-        #include <lzexpand.h>
-        #include <mmsystem.h>
-        #include <nb30.h>
-        #include <rpc.h>
-    #endif
-    #include <shellapi.h>
-    #ifndef _MAC
-        #include <winperf.h>
-        #include <winsock.h>
-    #endif
-    #ifndef NOCRYPT
-        #include <wincrypt.h>
-        #include <winefs.h>
-        #include <winscard.h>
-    #endif
-
-    #ifndef NOGDI
-        #ifndef _MAC
-            #include <winspool.h>
-            #ifdef INC_OLE1
-                #include <ole.h>
-            #else
-                #include <ole2.h>
-            #endif // !INC_OLE1
-        #endif // !MAC
-        #include <commdlg.h>
-    #endif // !NOGDI
-*/
 
 // C RunTime Header Files
 #include <stdlib.h>
