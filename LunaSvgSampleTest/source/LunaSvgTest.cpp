@@ -85,6 +85,14 @@ struct CanvasItem
     uint32_t y; // Top edge of item box
     uint32_t w; // Width
     uint32_t h; // Height
+
+    bool ContainsPoint(int32_t pointX, int32_t pointY) const noexcept
+    {
+        return pointX >= int32_t(x)
+            && pointX <  int32_t(x + w)
+            && pointY >= int32_t(y)
+            && pointY <  int32_t(y + h);
+    }
 };
 
 
@@ -3024,6 +3032,103 @@ void ChangeBitmapZoomCentered(HWND hwnd, uint32_t newBitmapPixelZoom)
 }
 
 
+CanvasItem* GetCanvasItemAtPoint(int32_t pointX, int32_t pointY)
+{
+    for (auto& canvasItem : g_canvasItems)
+    {
+        if (canvasItem.ContainsPoint(pointX, pointY))
+        {
+            return &canvasItem;
+        }
+    }
+    return nullptr;
+}
+
+
+void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
+{
+    // Find which canvas item was clicked after rescaling mouse coordinates.
+    double canvasPointX = double(mouseX + g_bitmapOffsetX) / g_bitmapPixelZoom;
+    double canvasPointY = double(mouseY + g_bitmapOffsetY) / g_bitmapPixelZoom;
+    auto* canvasItem = GetCanvasItemAtPoint(int32_t(canvasPointX), int32_t(canvasPointY));
+
+    if (canvasItem == nullptr || canvasItem->itemType == CanvasItem::ItemType::SizeLabel)
+    {
+        wchar_t windowTitle[1000];
+        _snwprintf_s(
+            windowTitle,
+            sizeof(windowTitle),
+            L"%s - (%0.2f,%0.2f) %ux%u - (background)",
+            g_applicationTitle,
+            canvasPointX,
+            canvasPointY,
+            g_bitmap.width(),
+            g_bitmap.height()
+        );
+        SetWindowText(hwnd, windowTitle);
+
+        return;
+    }
+
+    uint32_t const imageIndex = canvasItem->value.imageIndex;
+    assert(imageIndex < g_images.size());
+    assert(imageIndex < g_filenameList.size());
+
+    // Get both the scaled size from the canvas item and the original image size.
+    uint32_t const canvasItemWidth = canvasItem->w;
+    uint32_t const canvasItemHeight = canvasItem->h;
+    double imageWidth;
+    double imageHeight;
+
+    switch (canvasItem->itemType)
+    {
+    case CanvasItem::ItemType::RasterImage:
+        {
+            auto& image = g_images[imageIndex].GetReference<RasterImage>();
+            imageWidth = image.width;
+            imageHeight = image.height;
+        }
+        break;
+
+    case CanvasItem::ItemType::SvgDocument:
+        {
+            auto& image = g_images[imageIndex].GetReference<lunasvg::Document>();
+            imageWidth = image.width();
+            imageHeight = image.height();
+        }
+        break;
+
+    default:
+        return;
+    }
+
+    // Remap screen pixel coordinate back to original image coordinate.
+    double const canvasItemPointX = canvasPointX - canvasItem->x;
+    double const canvasItemPointY = canvasPointY - canvasItem->y;
+    double const imagePointX = canvasItemPointX * imageWidth / canvasItemWidth;
+    double const imagePointY = canvasItemPointY * imageHeight / canvasItemHeight;
+    wchar_t const* fileName = g_filenameList[imageIndex].c_str();
+
+    wchar_t windowTitle[1000];
+    _snwprintf_s(
+        windowTitle,
+        sizeof(windowTitle),
+        L"%s - (%0.2f,%0.2f) %ux%u - (%0.2f,%0.2f) %0.2fx%0.2f - %s",
+        g_applicationTitle,
+        canvasItemPointX,
+        canvasItemPointY,
+        canvasItemWidth,
+        canvasItemHeight,
+        imagePointX,
+        imagePointY,
+        imageWidth,
+        imageHeight,
+        fileName
+    );
+    SetWindowText(hwnd, windowTitle);
+}
+
+
 // Processes messages for the main window.
 LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -3454,6 +3559,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_LBUTTONDOWN:
         g_previousMouseX = GET_X_LPARAM(lParam);
         g_previousMouseY = GET_Y_LPARAM(lParam);
+        ShowClickedCanvasItem(hwnd, g_previousMouseX, g_previousMouseY);
         SetCapture(hwnd);
         break;
 
