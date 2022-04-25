@@ -2681,7 +2681,9 @@ void RepaintWindow(HWND hwnd)
     {
         FillRect(memoryDc, &clientRect, g_backgroundWindowBrush);
         HFONT oldFont = static_cast<HFONT>(SelectObject(memoryDc, GetStockObject(DEFAULT_GUI_FONT)));
-        DrawText(memoryDc, g_defaultMessage.data(), int(g_defaultMessage.size()), &clientRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
+        const LONG padding = 2;
+        RECT textRect = {clientRect.left + padding, clientRect.top + padding, clientRect.right - padding, clientRect.bottom - padding};
+        DrawText(memoryDc, g_defaultMessage.data(), int(g_defaultMessage.size()), &textRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
         SelectObject(memoryDc, oldFont);
     }
     // Draw bitmap.
