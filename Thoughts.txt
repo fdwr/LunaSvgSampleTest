@@ -566,8 +566,13 @@ Related:
     Guidance
         Material Design "Clarity (Pixel perfection)" - https://material.io/design/iconography/system-icons.html#grid-and-keyline-shapes
         Adobe Spectrum Iconography - https://spectrum.adobe.com/page/iconography/#Characteristics
+        Adobe Draw pixel-perfect art https://helpx.adobe.com/illustrator/using/pixel-perfect.html
         IBM Carbon Design System - https://www.carbondesignsystem.com/guidelines/icons/contribute/
         Firefox Photon Design System - https://design.firefox.com/photon/visuals/iconography.html
-        Pixel-fitting by Dustion Curtis - https://dcurt.is/pixel-fitting 2012-05-09
-        Pushing Pixels About Those Vector Icons by Kirill Grouchnikov - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html
-        Icon Design Vector vs Bitmap by Josh Williams - https://web.archive.org/web/20130209065422/http://www.firewheeldesign.com/sparkplug/2006/April/icon_design_bitmap_vs_vector.php
+        Pixel-fitting by Dustin Curtis - https://dcurt.is/pixel-fitting 2012-05-09
+        Pushing Pixels About Those Vector Icons by Kirill Grouchnikov - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html 2022-04-25
+        Icon Design Vector vs Bitmap by Josh Williams - https://web.archive.org/web/20130209065422/http://www.firewheeldesign.com/sparkplug/2006/April/icon_design_bitmap_vs_vector.php 2022-04-25
+        Pixel-snapping in icon design by Helena Zhang - https://uxdesign.cc/pixel-snapping-in-icon-design-a-rendering-test-6ecd5b516522 2022-04-25
+        Precision With Every Pixel by Ashley Chang - https://blog.readme.com/precision-with-every-pixel/ 2022-04-25
+        The Designer's Guide to Pixel Hinting by Dustin Cartwright *Note he uses the term incorrectly. It's not called "pixel hinting" in this context - https://www.webdesignerdepot.com/2014/03/the-designers-guide-to-pixel-hinting/.
+        My Illustrator snapping settings by Bjango https://bjango.com/articles/illustratorsnapping/
