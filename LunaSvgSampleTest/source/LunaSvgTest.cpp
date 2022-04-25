@@ -2659,6 +2659,17 @@ void RepaintWindow(HWND hwnd)
         UpdateBitmapScrollbars(hwnd);
     }
 
+    HRGN updateRegion = CreateRectRgn(0, 0, 0, 0);
+    GetUpdateRgn(hwnd, updateRegion, false);
+    auto cleanupUpdateRegion = DeferCleanup([=]() {DeleteRgn(updateRegion); });
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+    auto cleanupBeginPaint = DeferCleanup([=, &ps]() {EndPaint(hwnd, &ps); });
+
+    HDC memoryDc = CreateCompatibleDC(hdc); // Buffer the drawing to avoid flickering.
+    auto cleanupMemoryDc = DeferCleanup([=]() {DeleteDC(memoryDc); });
+
     // Clear the existing bitmap if a bigger one is needed.
     if (clientRect.right > g_cachedScreenBitmapSize.cx
     ||  clientRect.bottom > g_cachedScreenBitmapSize.cy)
@@ -2671,17 +2682,6 @@ void RepaintWindow(HWND hwnd)
         g_cachedScreenBitmapSize.cx = (clientRect.right + 15) & ~15;
         g_cachedScreenBitmapSize.cy = (clientRect.bottom + 15) & ~15;
     }
-
-    HRGN updateRegion = CreateRectRgn(0, 0, 0, 0);
-    GetUpdateRgn(hwnd, updateRegion, false);
-    auto cleanupUpdateRegion = DeferCleanup([=]() {DeleteRgn(updateRegion); });
-
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(hwnd, &ps);
-    auto cleanupBeginPaint = DeferCleanup([=, &ps]() {EndPaint(hwnd, &ps); });
-
-    HDC memoryDc = CreateCompatibleDC(hdc); // Buffer the drawing to avoid flickering.
-    auto cleanupMemoryDc = DeferCleanup([=]() {DeleteDC(memoryDc); });
 
     // Create the temporary composited bitmap.
     // Use a DIB section instead of CreateCompatibleBitmap because:
@@ -2709,7 +2709,7 @@ void RepaintWindow(HWND hwnd)
     {
         FillRect(memoryDc, &clientRect, g_backgroundWindowBrush);
         HFONT oldFont = static_cast<HFONT>(SelectObject(memoryDc, GetStockObject(DEFAULT_GUI_FONT)));
-        const LONG padding = 2;
+        const LONG padding = 4;
         RECT textRect = {clientRect.left + padding, clientRect.top + padding, clientRect.right - padding, clientRect.bottom - padding};
         DrawText(memoryDc, g_defaultMessage.data(), int(g_defaultMessage.size()), &textRect, DT_NOCLIP | DT_NOPREFIX | DT_WORDBREAK);
         SelectObject(memoryDc, oldFont);
@@ -2721,7 +2721,7 @@ void RepaintWindow(HWND hwnd)
         FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
 
         // Erase background around drawing.
-        const uint32_t effectiveBitmapWidth = g_bitmap.width() * g_bitmapPixelZoom;
+        const uint32_t effectiveBitmapWidth  = g_bitmap.width() * g_bitmapPixelZoom;
         const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
         RECT bitmapRect =
         {

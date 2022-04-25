@@ -16,6 +16,7 @@ TODO:
         - icons8-fluency-fill-color.svg lavendar paint needs proportional shear to maintain shape 24x24
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
+        - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
         - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
 
@@ -556,7 +557,6 @@ Related:
         Images and Icons for Visual Studio - https://docs.microsoft.com/en-us/visualstudio/extensibility/ux-guidelines/images-and-icons-for-visual-studio?view=vs-2022
     TrueType
         TrueType hinting is overkill - https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01
-        Pushing Pixels About those vector icons - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html
     Tools
         Inkscape SVG editor - https://inkscape.org/
         Cairo based convertor for SVG to PNG - https://cairosvg.org/
@@ -564,7 +564,10 @@ Related:
         SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
         SVG Native Viewer - https://github.com/adobe/svg-native-viewer
     Guidance
-        Material Design "Clarity (Pixel perfection)" https://material.io/design/iconography/system-icons.html#grid-and-keyline-shapes
-        Adobe Spectrum Iconography https://spectrum.adobe.com/page/iconography/#Characteristics
-        IBM Carbon Design System https://www.carbondesignsystem.com/guidelines/icons/contribute/
-        Firefox Photon Design System https://design.firefox.com/photon/visuals/iconography.html
+        Material Design "Clarity (Pixel perfection)" - https://material.io/design/iconography/system-icons.html#grid-and-keyline-shapes
+        Adobe Spectrum Iconography - https://spectrum.adobe.com/page/iconography/#Characteristics
+        IBM Carbon Design System - https://www.carbondesignsystem.com/guidelines/icons/contribute/
+        Firefox Photon Design System - https://design.firefox.com/photon/visuals/iconography.html
+        Pixel-fitting by Dustion Curtis - https://dcurt.is/pixel-fitting 2012-05-09
+        Pushing Pixels About Those Vector Icons by Kirill Grouchnikov - https://www.pushing-pixels.org/2011/11/04/about-those-vector-icons.html
+        Icon Design Vector vs Bitmap by Josh Williams - https://web.archive.org/web/20130209065422/http://www.firewheeldesign.com/sparkplug/2006/April/icon_design_bitmap_vs_vector.php
