@@ -6,31 +6,158 @@
 
 using Microsoft::WRL::ComPtr;
 
-// Global Variables:
-constexpr size_t MAX_LOADSTRING = 100;
-HINSTANCE g_instanceHandle;                     // Current process base memory address.
-HWND g_windowHandle;
-HWND g_toolTipWindowHandle;
-WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
-WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
-const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE+1);
+////////////////////////////////////////////////////////////////////////////////
+// Generic application-agnostic helper functions
 
 #define RETURN_IF(expression, returnValue) if (expression) return (returnValue);
 #define RETURN_IF_FAILED(expression) {auto hr_ = (expression); if (FAILED(hr_)) {return hr_;}}
 #define RETURN_IF_FAILED_V(expression, returnValue) if (FAILED(expression)) return (returnValue);
 
-TOOLINFO g_toolTipInfo =
+// Redefine the bitmap header structs so inheritance works.
+// Who needlessly prefixed every field with {bi, bc, bv5} so that generic
+// code could not work with different versions of the structs? (sigh, face palm)
+struct BITMAPHEADERv2 // BITMAPCOREHEADER
 {
-    .cbSize = sizeof(TOOLINFO),
-    .uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT | TTF_ABSOLUTE, //|TTF_CENTERTIP,
-    .hwnd = nullptr, // containing hwnd
-    .uId = 0, // tool id/handle
-    .rect = {0,0,4096,4096},
-    .hinst = nullptr, // instance handle
-    .lpszText = const_cast<LPWSTR>(L""), // updated text
-    .lParam = 0,
-    .lpReserved = nullptr,
+    DWORD        size;
+    WORD         width;
+    WORD         height;
+    WORD         planes;
+    WORD         bitCount;
 };
+
+struct BITMAPHEADERv3 // BITMAPINFOHEADER (not v3 is not backwards compatible with v2, as the width/height are LONG)
+{
+    DWORD        size;
+    LONG         width;
+    LONG         height;
+    WORD         planes;
+    WORD         bitCount;
+    DWORD        compression;
+    DWORD        sizeImage;
+    LONG         xPelsPerMeter;
+    LONG         yPelsPerMeter;
+    DWORD        clrUsed;
+    DWORD        clrImportant;
+};
+
+struct BITMAPHEADERv4 : BITMAPHEADERv3 // BITMAPV4HEADER
+{
+    DWORD        redMask;
+    DWORD        greenMask;
+    DWORD        blueMask;
+    DWORD        alphaMask;
+    DWORD        csType;
+    CIEXYZTRIPLE endpoints;
+    DWORD        gammaRed;
+    DWORD        gammaGreen;
+    DWORD        gammaBlue;
+};
+
+struct BITMAPHEADERv5 : BITMAPHEADERv4 // BITMAPV5HEADER
+{
+    DWORD        intent;
+    DWORD        profileData;
+    DWORD        profileSize;
+    DWORD        reserved;
+};
+
+template <typename OriginalType, typename TargetType = OriginalType>
+TargetType* AddByteOffset(OriginalType* p, size_t byteOffset) noexcept
+{
+    return reinterpret_cast<TargetType*>(reinterpret_cast<uint8_t*>(p) + byteOffset);
+}
+
+template <typename OriginalType, typename TargetType = OriginalType>
+TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset) noexcept
+{
+    return reinterpret_cast<TargetType const*>(reinterpret_cast<uint8_t const*>(p) + byteOffset);
+}
+
+template<typename VariantType, typename T, std::size_t index = 0>
+constexpr std::size_t variant_index()
+{
+    if constexpr (index == std::variant_size_v<VariantType>)
+    {
+        return index;
+    }
+    else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>)
+    {
+        return index;
+    }
+    else
+    {
+        return variant_index<VariantType, T, index + 1>();
+    }
+}
+
+// Why does std::variant have such an idiotic interface, with no intuitive get() or index_of_type() methods?
+// So, we'll fix it with a more logical interface.
+template <typename... Ts>
+class variantex : public std::variant<Ts...>
+{
+public:
+    using base = std::variant<Ts...>;
+
+    using base::base;
+
+    template<typename T>
+    T& get()
+    {
+        return std::get<T>(*this);
+    }
+
+    template<typename T>
+    bool is_type() const
+    {
+        return std::holds_alternative<T>(*this);
+    }
+
+    template<typename T>
+    constexpr static size_t index_of_type()
+    {
+        return variant_index<base, T>();
+    }
+
+    template<typename T>
+    void call(T& t)
+    {
+        base& b = *this;
+        std::visit(t, b);
+    }
+};
+
+template <typename FunctorType>
+struct DeferCleanupType
+{
+public:
+    explicit DeferCleanupType(FunctorType const& f) : f_(f) {}
+    ~DeferCleanupType() { f_(); }
+
+private:
+    FunctorType f_;
+};
+
+template <typename FunctorType>
+DeferCleanupType<FunctorType> inline DeferCleanup(FunctorType const& f) { return DeferCleanupType<FunctorType>(f); }
+
+template <typename FunctorType>
+struct DismissableCleanupType
+{
+public:
+    explicit DismissableCleanupType(FunctorType const& f) : f_(f) {}
+    ~DismissableCleanupType() { if (!isDismissed_) f_(); }
+    void Dismiss() { isDismissed_ = true; }
+
+private:
+    FunctorType f_;
+    bool isDismissed_ = false;
+};
+
+template <typename FunctorType>
+DismissableCleanupType<FunctorType> inline DismissableCleanup(FunctorType const& f) { return DismissableCleanupType<FunctorType>(f); }
+
+////////////////////////////////////////////////////////////////////////////////
+// Application-specific helper functions
 
 enum class BitmapSizingDisplay
 {
@@ -107,7 +234,6 @@ bool operator==(CanvasItem const& a, CanvasItem const& b) noexcept
         && a.h == b.w;
 }
 
-
 struct RasterImage
 {
     uint32_t width;
@@ -151,59 +277,6 @@ SIZE ToSize(RECT const& rect) noexcept
     return { LONG(rect.right - rect.left), LONG(rect.bottom - rect.top) };
 }
 
-template<typename VariantType, typename T, std::size_t index = 0>
-constexpr std::size_t variant_index()
-{
-    if constexpr (index == std::variant_size_v<VariantType>)
-    {
-        return index;
-    }
-    else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>)
-    {
-        return index;
-    }
-    else
-    {
-        return variant_index<VariantType, T, index + 1>();
-    }
-}
-
-// Why does std::variant have such an idiotic interface, with no intuitive get() or index_of_type() methods?
-// So, we'll fix it with a more logical interface.
-template <typename... Ts>
-class variantex : public std::variant<Ts...>
-{
-public:
-    using base = std::variant<Ts...>;
-
-    using base::base;
-
-    template<typename T>
-    T& get()
-    {
-        return std::get<T>(*this);
-    }
-
-    template<typename T>
-    bool is_type() const
-    {
-        return std::holds_alternative<T>(*this);
-    }
-
-    template<typename T>
-    constexpr static size_t index_of_type()
-    {
-        return variant_index<base, T>();
-    }
-
-    template<typename T>
-    void call(T& t)
-    {
-        base& b = *this;
-        std::visit(t, b);
-    }
-};
-
 struct ImageOrSvgDocument :
     variantex<
         std::unique_ptr<RasterImage>,
@@ -231,7 +304,68 @@ struct ImageOrSvgDocument :
 
 DEFINE_ENUM_FLAG_OPERATORS(CanvasItem::Flags);
 
+union PixelBgra
+{
+    struct
+    {
+        uint8_t b;
+        uint8_t g;
+        uint8_t r;
+        uint8_t a;
+    };
+    uint32_t i;
+
+    // blend(dest, source) =  source.bgra + (dest.bgra * (1 - source.a))
+    static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor) noexcept
+    {
+        const uint32_t bitmapAlpha = newColor.a;
+        if (bitmapAlpha == 255)
+            return newColor;
+
+        const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
+
+        uint32_t blue  = (inverseBitmapAlpha * existingColor.b / 255) + newColor.b;
+        uint32_t green = (inverseBitmapAlpha * existingColor.g / 255) + newColor.g;
+        uint32_t red   = (inverseBitmapAlpha * existingColor.r / 255) + newColor.r;
+        uint32_t alpha = (inverseBitmapAlpha * existingColor.a / 255) + newColor.a;
+        uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+        return PixelBgra{ .i = pixelValue };
+    }
+
+    // Lighten dark colors and darken light colors using the average grayscale,
+    // useful for displaying grid lines or dots.
+    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor) noexcept
+    {
+        uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
+        shade += (shade >= 128) ? -64 : 64;
+        return PixelBgra{ .i = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000 };
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 // Horrible assortment of (gasp) global variables rather than a proper class instance.
+
+constexpr size_t MAX_LOADSTRING = 100;
+HINSTANCE g_instanceHandle;                     // Current process base memory address.
+HWND g_windowHandle;
+HWND g_toolTipWindowHandle;
+WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
+WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
+const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE + 1);
+
+TOOLINFO g_toolTipInfo =
+{
+    .cbSize = sizeof(TOOLINFO),
+    .uFlags = TTF_IDISHWND | TTF_TRACK | TTF_TRANSPARENT | TTF_ABSOLUTE, //|TTF_CENTERTIP,
+    .hwnd = nullptr, // containing hwnd
+    .uId = 0, // tool id/handle
+    .rect = {0,0,4096,4096},
+    .hinst = nullptr, // instance handle
+    .lpszText = const_cast<LPWSTR>(L""), // updated text
+    .lParam = 0,
+    .lpReserved = nullptr,
+};
+
 ULONG_PTR g_gdiplusStartupToken;
 Gdiplus::GdiplusStartupOutput g_gdiplusStartupOutput;
 ComPtr<IWICImagingFactory> g_wicFactory;
@@ -297,104 +431,6 @@ bool g_snapToPixels = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for middle drag.
 int32_t g_previousMouseY = 0;
-
-union PixelBgra
-{
-    struct
-    {
-        uint8_t b;
-        uint8_t g;
-        uint8_t r;
-        uint8_t a;
-    };
-    uint32_t i;
-
-    // blend(dest, source) =  source.bgra + (dest.bgra * (1 - source.a))
-    static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor) noexcept
-    {
-        const uint32_t bitmapAlpha = newColor.a;
-        if (bitmapAlpha == 255)
-            return newColor;
-
-        const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
-
-        uint32_t blue  = (inverseBitmapAlpha * existingColor.b / 255) + newColor.b;
-        uint32_t green = (inverseBitmapAlpha * existingColor.g / 255) + newColor.g;
-        uint32_t red   = (inverseBitmapAlpha * existingColor.r / 255) + newColor.r;
-        uint32_t alpha = (inverseBitmapAlpha * existingColor.a / 255) + newColor.a;
-        uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
-        return PixelBgra{ .i = pixelValue };
-    }
-
-    // Lighten dark colors and darken light colors using the average grayscale,
-    // useful for displaying grid lines or dots.
-    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor) noexcept
-    {
-        uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
-        shade += (shade >= 128) ? -64 : 64;
-        return PixelBgra{ .i = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000 };
-    }
-};
-
-template <typename OriginalType, typename TargetType = OriginalType>
-TargetType* AddByteOffset(OriginalType* p, size_t byteOffset) noexcept
-{
-    return reinterpret_cast<TargetType*>(reinterpret_cast<uint8_t*>(p) + byteOffset);
-}
-
-template <typename OriginalType, typename TargetType = OriginalType>
-TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset) noexcept
-{
-    return reinterpret_cast<TargetType const*>(reinterpret_cast<uint8_t const*>(p) + byteOffset);
-}
-
-// Redefine the bitmap header structs so inheritance works.
-// Who needlessly prefixed every field with {bi, bc, bv5} so that generic
-// code could not work with different versions of the structs? (sigh, face palm)
-struct BITMAPHEADERv2 // BITMAPCOREHEADER
-{
-    DWORD        size;
-    WORD         width;
-    WORD         height;
-    WORD         planes;
-    WORD         bitCount;
-};
-
-struct BITMAPHEADERv3 // BITMAPINFOHEADER (not v3 is not backwards compatible with v2, as the width/height are LONG)
-{
-    DWORD        size;
-    LONG         width;
-    LONG         height;
-    WORD         planes;
-    WORD         bitCount;
-    DWORD        compression;
-    DWORD        sizeImage;
-    LONG         xPelsPerMeter;
-    LONG         yPelsPerMeter;
-    DWORD        clrUsed;
-    DWORD        clrImportant;
-};
-
-struct BITMAPHEADERv4 : BITMAPHEADERv3 // BITMAPV4HEADER
-{
-    DWORD        redMask;
-    DWORD        greenMask;
-    DWORD        blueMask;
-    DWORD        alphaMask;
-    DWORD        csType;
-    CIEXYZTRIPLE endpoints;
-    DWORD        gammaRed;
-    DWORD        gammaGreen;
-    DWORD        gammaBlue;
-};
-
-struct BITMAPHEADERv5 : BITMAPHEADERv4 // BITMAPV5HEADER
-{
-    DWORD        intent;
-    DWORD        profileData;
-    DWORD        profileSize;
-    DWORD        reserved;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1822,13 +1858,7 @@ void LayoutCanvasItems(
         canvasItem.y = y;
 
         // Accumulate the current line bounds with the item.
-        RECT currentRect =
-        {
-            .left = LONG(x),
-            .top = LONG(y),
-            .right = LONG(x + canvasItem.w),
-            .bottom = LONG(y + canvasItem.h),
-        };
+        RECT currentRect = ToRect(canvasItem);
         UnionRect(/*out*/&lineRect, &lineRect, &currentRect);
 
         // Update the coordinates for the next item.
@@ -1844,13 +1874,7 @@ RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
     RECT boundingRect = {};
     for (auto& canvasItem : canvasItems)
     {
-        RECT currentRect =
-        {
-            .left = LONG(canvasItem.x),
-            .top = LONG(canvasItem.y),
-            .right = LONG(canvasItem.x + canvasItem.w),
-            .bottom = LONG(canvasItem.y + canvasItem.h),
-        };
+        RECT currentRect = ToRect(canvasItem);
         UnionRect(/*out*/&boundingRect, &boundingRect, &currentRect);
     }
     return boundingRect;
@@ -2650,10 +2674,14 @@ void RepaintWindow(HWND hwnd)
 
     HRGN updateRegion = CreateRectRgn(0, 0, 0, 0);
     GetUpdateRgn(hwnd, updateRegion, false);
+    auto cleanupUpdateRegion = DeferCleanup([=]() {DeleteRgn(updateRegion); });
 
     PAINTSTRUCT ps;
     HDC hdc = BeginPaint(hwnd, &ps);
+    auto cleanupBeginPaint = DeferCleanup([=, &ps]() {EndPaint(hwnd, &ps); });
+
     HDC memoryDc = CreateCompatibleDC(hdc); // Buffer the drawing to avoid flickering.
+    auto cleanupMemoryDc = DeferCleanup([=]() {DeleteDC(memoryDc); });
 
     // Create the temporary composited bitmap.
     // Use a DIB section instead of CreateCompatibleBitmap because:
@@ -2845,10 +2873,8 @@ void RepaintWindow(HWND hwnd)
 
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
-    DeleteDC(memoryDc);
 
-    EndPaint(hwnd, &ps);
-    DeleteRgn(updateRegion);
+    // DeleteDC, EndPaint, DeleteRgn implicitly called by cleanup.
 
     // Don't call DeleteObject(memoryBitmap) immediately, in case the user
     // is actively panning or resizing the window. Rather, delete this object later
