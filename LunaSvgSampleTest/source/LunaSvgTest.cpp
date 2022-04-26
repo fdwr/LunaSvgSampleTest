@@ -2130,8 +2130,7 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
 
         RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
-        // Limit bitmap size to avoid std::bad_alloc in case too many SVG files loaded.
-        // Plus GDI has issues with large bitmaps in StretchBlt.
+        // Limit bitmap size to avoid std::bad_alloc in case too many SVG files were loaded.
         boundingRect.right = std::min(boundingRect.right, 32768L);
         boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
 
@@ -2723,67 +2722,27 @@ void RepaintWindow(HWND hwnd)
         // Erase background around drawing.
         const uint32_t effectiveBitmapWidth  = g_bitmap.width() * g_bitmapPixelZoom;
         const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-        RECT bitmapRect =
-        {
-            LONG(-g_bitmapOffsetX),
-            LONG(-g_bitmapOffsetY),
-            LONG(effectiveBitmapWidth - g_bitmapOffsetX),
-            LONG(effectiveBitmapHeight - g_bitmapOffsetY)
-        };
+        RECT bitmapRect = {0L, 0L, LONG(effectiveBitmapWidth), LONG(effectiveBitmapHeight)};
+        OffsetRect(&bitmapRect, -g_bitmapOffsetX, -g_bitmapOffsetY);
         DrawRectangleAroundRectangle(memoryDc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
 
-        // Draw the SVG bitmap.
-        if (g_bitmapPixelZoom == 1)
-        {
-            SetDIBitsToDevice(
-                memoryDc,
-                -g_bitmapOffsetX,
-                -g_bitmapOffsetY,
-                g_bitmap.width(),
-                g_bitmap.height(),
-                0,
-                0,
-                0,
-                g_bitmap.height(),
-                g_bitmap.data(),
-                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
-                0 // colorUse
-            );
-        }
-        else // Draw scaled.
-        {
-            // todo:
-            // This would be faster if cached, but shrug, it's fast enough.
-            // Unfortunately StretchDIBits has issues when the image size
-            // and scale factor exceed 32767, even when it's clipped.
-            HBITMAP bitmap = CreateDIBitmap(
-                hdc,
-                reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
-                CBM_INIT,
-                g_bitmap.data(),
-                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
-                DIB_RGB_COLORS
-            );
-            HDC sourceHdc = CreateCompatibleDC(ps.hdc);
-            SelectObject(sourceHdc, bitmap);
+        Gdiplus::Bitmap gdiplusSurface(INT(g_cachedScreenBitmapSize.cx), INT(g_cachedScreenBitmapSize.cy), memoryBitmapRowByteStride, PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(memoryBitmapPixels));
+        Gdiplus::Bitmap gdiplusImage(INT(g_bitmap.width()), INT(g_bitmap.height()), INT(g_bitmap.width() * sizeof(PixelBgra)), PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(g_bitmap.data()));
+        Gdiplus::Graphics gdiplusGraphics(&gdiplusSurface);
+        Gdiplus::ImageAttributes imageAttributes;
+        imageAttributes.SetWrapMode(Gdiplus::WrapModeClamp);
+        gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+        gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
 
-            StretchBltFixed(
-                memoryDc,
-                -g_bitmapOffsetX,
-                -g_bitmapOffsetY,
-                g_bitmap.width() * g_bitmapPixelZoom,
-                g_bitmap.height() * g_bitmapPixelZoom,
-                sourceHdc,
-                0,
-                0,
-                g_bitmap.width(),
-                g_bitmap.height(),
-                SRCCOPY,
-                ps.rcPaint
-            );
-            DeleteDC(sourceHdc);
-            DeleteObject(bitmap);
-        }
+        gdiplusGraphics.DrawImage(
+            &gdiplusImage,
+            Gdiplus::Rect{ -g_bitmapOffsetX, -g_bitmapOffsetY, INT(g_bitmap.width() * g_bitmapPixelZoom), INT(g_bitmap.height() * g_bitmapPixelZoom) },
+            0, 0, INT(g_bitmap.width()), INT(g_bitmap.height()),
+            Gdiplus::UnitPixel,
+            &imageAttributes,
+            nullptr, // callback
+            nullptr // callbackData
+        );
     }
 
     auto GetCanvasItemRect = [](CanvasItem const& canvasItem)->RECT
