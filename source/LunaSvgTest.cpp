@@ -1895,6 +1895,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
     imageAttributes.SetWrapMode(Gdiplus::WrapModeTileFlipXY); // Try WrapModeTileFlipXY if there are edges.
     gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeBilinear);
     gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver); // TODO: use CompositingModeSourceCopy if no alpha for speed
+    gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
 
     for (const auto& canvasItem : canvasItems)
     {
