@@ -116,6 +116,28 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
 Elements:
     anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
 
+    bikeshed:
+        anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
+        alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see text-align - https://developer.mozilla.org/en-US/docs/Web/CSS/text-align)
+        adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result. (see font-size-adjust - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust)
+        arrangement - Action, process, or result of arranging or being arranged.
+        displacement - The moving of something from its place or position.
+        fit - Fix or put (something) into place. be of the right shape and size for.
+        fitment - Thing fitted to another in order to accomplish a specific purpose. The proper positioning and orientation of a thing for it to serve its designed purpose.
+        grapnel - Device consisting essentially of one or more hooks or clamps, for grasping or holding something.
+        pillar - Tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
+        frame - Rigid structure that surrounds or encloses something such as a door or window.
+        rigging - Network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
+        rig - Particular way in which a sailboat's masts, sails, and rigging are arranged.
+        ballast - Heavy material, such as gravel, sand, iron, or lead, placed low in a vessel to improve its stability.
+        hook - Piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
+        support - Thing that bears the weight of something or keeps it upright.
+        binding - Material or device used to bind such as the cover and materials that hold a book together.
+        buttress - Architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
+        fixture - Piece of equipment or furniture which is fixed in position in a building or vehicle.
+        attachment - An extra part or extension that is or can be attached to something to perform a particular function.
+        fastener - Device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
+
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
     *.grid-fit - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
