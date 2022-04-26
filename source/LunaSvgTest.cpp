@@ -2726,6 +2726,62 @@ void RepaintWindow(HWND hwnd)
         OffsetRect(&bitmapRect, -g_bitmapOffsetX, -g_bitmapOffsetY);
         DrawRectangleAroundRectangle(memoryDc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
 
+        #if 0
+        // Draw the SVG bitmap.
+        if (g_bitmapPixelZoom == 1)
+        {
+            SetDIBitsToDevice(
+                memoryDc,
+                -g_bitmapOffsetX,
+                -g_bitmapOffsetY,
+                g_bitmap.width(),
+                g_bitmap.height(),
+                0,
+                0,
+                0,
+                g_bitmap.height(),
+                g_bitmap.data(),
+                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                0 // colorUse
+            );
+        }
+        else // Draw scaled.
+        {
+            // todo:
+            // This would be faster if cached, but shrug, it's fast enough.
+            // Unfortunately StretchDIBits has issues when the image size
+            // and scale factor exceed 32767, even when it's clipped.
+            HBITMAP bitmap = CreateDIBitmap(
+                hdc,
+                reinterpret_cast<BITMAPINFOHEADER*>(&bitmapInfo),
+                CBM_INIT,
+                g_bitmap.data(),
+                reinterpret_cast<BITMAPINFO*>(&bitmapInfo),
+                DIB_RGB_COLORS
+            );
+            HDC sourceHdc = CreateCompatibleDC(ps.hdc);
+            SelectObject(sourceHdc, bitmap);
+
+            StretchBltFixed(
+                memoryDc,
+                -g_bitmapOffsetX,
+                -g_bitmapOffsetY,
+                g_bitmap.width() * g_bitmapPixelZoom,
+                g_bitmap.height() * g_bitmapPixelZoom,
+                sourceHdc,
+                0,
+                0,
+                g_bitmap.width(),
+                g_bitmap.height(),
+                SRCCOPY,
+                ps.rcPaint
+            );
+            DeleteDC(sourceHdc);
+            DeleteObject(bitmap);
+        }
+        #else
+        // Wrap the source and target bitmap (no extra copy) to draw at current zoom.
+        // GDI+ DrawImage appears to be much faster than GDI StretchBlt without the bugs for large images.
         Gdiplus::Bitmap gdiplusSurface(INT(g_cachedScreenBitmapSize.cx), INT(g_cachedScreenBitmapSize.cy), memoryBitmapRowByteStride, PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(memoryBitmapPixels));
         Gdiplus::Bitmap gdiplusImage(INT(g_bitmap.width()), INT(g_bitmap.height()), INT(g_bitmap.width() * sizeof(PixelBgra)), PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(g_bitmap.data()));
         Gdiplus::Graphics gdiplusGraphics(&gdiplusSurface);
@@ -2733,6 +2789,7 @@ void RepaintWindow(HWND hwnd)
         imageAttributes.SetWrapMode(Gdiplus::WrapModeClamp);
         gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
         gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
+        gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
 
         gdiplusGraphics.DrawImage(
             &gdiplusImage,
@@ -2743,6 +2800,7 @@ void RepaintWindow(HWND hwnd)
             nullptr, // callback
             nullptr // callbackData
         );
+        #endif
     }
 
     auto GetCanvasItemRect = [](CanvasItem const& canvasItem)->RECT
