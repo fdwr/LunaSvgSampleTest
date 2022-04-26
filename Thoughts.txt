@@ -19,6 +19,11 @@ TODO:
         - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
         - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
+    - Add roadmap
+        - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
+        - Publish spec rough draft
+        - Implement spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer
+        - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
