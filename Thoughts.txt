@@ -112,8 +112,10 @@ Elements:
     anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
 
     bikeshed:
-        anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
-        adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result.
+        anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
+        alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see text-align - https://developer.mozilla.org/en-US/docs/Web/CSS/text-align)
+        adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result. (see font-size-adjust - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust)
+        arrangement - Action, process, or result of arranging or being arranged.
         displacement - The moving of something from its place or position.
         fit - Fix or put (something) into place. be of the right shape and size for.
         fitment - Thing fitted to another in order to accomplish a specific purpose. The proper positioning and orientation of a thing for it to serve its designed purpose.
