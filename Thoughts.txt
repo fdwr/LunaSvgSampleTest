@@ -5,6 +5,24 @@ TODO:
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
     - Support non-square SVG's
+    - Add more sizes? Are these standard enough? Common enough?
+        30x30
+        36x36 Android
+        40x40 Windows
+        50x50 Windows Phone Store
+        57x57 iOS Safari
+        60x60 iOS Safari
+        70x70 Windows Phone Store
+        72 Android
+        80x80 iPhone
+        114x114 iOS Safari
+        120x120 Web/iOS Safari/Windows Phone
+        144x144 Android Chrome/iOS Safari/Windows Phone
+        150x150 Windows Phone Store
+        152x152 iOS Safari
+        180x180 iOS Safari
+        310x310 Windows Phone
+        512x512 Android Play Store
     - Upload LunaSvg changes:
         - (fixed locally) Blank canvas treated as blank
         - (fixed locally) Missing em and ex from switch statement property.cpp Length::value
