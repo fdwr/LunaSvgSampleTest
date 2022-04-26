@@ -1895,6 +1895,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
     imageAttributes.SetWrapMode(Gdiplus::WrapModeTileFlipXY); // Try WrapModeTileFlipXY if there are edges.
     gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeBilinear);
     gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver); // TODO: use CompositingModeSourceCopy if no alpha for speed
+    gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
 
     for (const auto& canvasItem : canvasItems)
     {
@@ -2130,8 +2131,7 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
         LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
 
         RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
-        // Limit bitmap size to avoid std::bad_alloc in case too many SVG files loaded.
-        // Plus GDI has issues with large bitmaps in StretchBlt.
+        // Limit bitmap size to avoid std::bad_alloc in case too many SVG files were loaded.
         boundingRect.right = std::min(boundingRect.right, 32768L);
         boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
 
@@ -2723,15 +2723,11 @@ void RepaintWindow(HWND hwnd)
         // Erase background around drawing.
         const uint32_t effectiveBitmapWidth  = g_bitmap.width() * g_bitmapPixelZoom;
         const uint32_t effectiveBitmapHeight = g_bitmap.height() * g_bitmapPixelZoom;
-        RECT bitmapRect =
-        {
-            LONG(-g_bitmapOffsetX),
-            LONG(-g_bitmapOffsetY),
-            LONG(effectiveBitmapWidth - g_bitmapOffsetX),
-            LONG(effectiveBitmapHeight - g_bitmapOffsetY)
-        };
+        RECT bitmapRect = {0L, 0L, LONG(effectiveBitmapWidth), LONG(effectiveBitmapHeight)};
+        OffsetRect(&bitmapRect, -g_bitmapOffsetX, -g_bitmapOffsetY);
         DrawRectangleAroundRectangle(memoryDc, ps.rcPaint, bitmapRect, g_backgroundWindowBrush);
 
+        #if 0
         // Draw the SVG bitmap.
         if (g_bitmapPixelZoom == 1)
         {
@@ -2784,6 +2780,28 @@ void RepaintWindow(HWND hwnd)
             DeleteDC(sourceHdc);
             DeleteObject(bitmap);
         }
+        #else
+        // Wrap the source and target bitmap (no extra copy) to draw at current zoom.
+        // GDI+ DrawImage appears to be much faster than GDI StretchBlt without the bugs for large images.
+        Gdiplus::Bitmap gdiplusSurface(INT(g_cachedScreenBitmapSize.cx), INT(g_cachedScreenBitmapSize.cy), memoryBitmapRowByteStride, PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(memoryBitmapPixels));
+        Gdiplus::Bitmap gdiplusImage(INT(g_bitmap.width()), INT(g_bitmap.height()), INT(g_bitmap.width() * sizeof(PixelBgra)), PixelFormat32bppPARGB, reinterpret_cast<BYTE*>(g_bitmap.data()));
+        Gdiplus::Graphics gdiplusGraphics(&gdiplusSurface);
+        Gdiplus::ImageAttributes imageAttributes;
+        imageAttributes.SetWrapMode(Gdiplus::WrapModeClamp);
+        gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
+        gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
+        gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
+
+        gdiplusGraphics.DrawImage(
+            &gdiplusImage,
+            Gdiplus::Rect{ -g_bitmapOffsetX, -g_bitmapOffsetY, INT(g_bitmap.width() * g_bitmapPixelZoom), INT(g_bitmap.height() * g_bitmapPixelZoom) },
+            0, 0, INT(g_bitmap.width()), INT(g_bitmap.height()),
+            Gdiplus::UnitPixel,
+            &imageAttributes,
+            nullptr, // callback
+            nullptr // callbackData
+        );
+        #endif
     }
 
     auto GetCanvasItemRect = [](CanvasItem const& canvasItem)->RECT
