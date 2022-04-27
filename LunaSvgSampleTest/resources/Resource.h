@@ -39,8 +39,10 @@
 #define IDM_SIZE15                          125
 #define IDM_SIZE16                          126
 #define IDM_SIZE17                          127
-#define IDM_SIZE_LAST                       127
-#define IDM_COPY_BITMAP                     130
+#define IDM_SIZE18                          128
+#define IDM_SIZE19                          129
+#define IDM_SIZE20                          130
+#define IDM_SIZE_LAST                       130
 #define IDM_BACKGROUND_FIRST                131
 #define IDM_BACKGROUND_TRANSPARENT_BLACK    131
 #define IDM_BACKGROUND_GRAY_CHECKERBOARD    132
@@ -126,6 +128,7 @@
 #define IDM_PRESET_WRAPPED_ICONS            243
 #define IDM_PRESET_WRAPPED_IMAGES           244
 #define IDM_SNAP_TO_PIXELS                  250
+#define IDM_COPY_BITMAP                     251
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC

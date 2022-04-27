@@ -407,7 +407,7 @@ const std::wstring_view g_defaultMessage =
     L"a = show/hide alpha channel\r\n"
     ;
 
-const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,40,48,56,64,72,80,96,112,128,160,192,224,256};
+const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,36,40,48,56,64,72,80,96,112,120,128,160,180,192,224,256};
 const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128,192,256};
 const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32,48,64,96,128};
 const uint32_t g_bitmapScrollStep = 64;
@@ -3321,7 +3321,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE15:
             case IDM_SIZE16:
             case IDM_SIZE17:
-                static_assert(IDM_SIZE17 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
+            case IDM_SIZE18:
+            case IDM_SIZE19:
+            case IDM_SIZE20:
+                static_assert(IDM_SIZE20 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;

@@ -5,24 +5,6 @@ TODO:
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
     - Support non-square SVG's
-    - Add more sizes? Are these standard enough? Common enough?
-        30x30
-        36x36 Android
-        40x40 Windows
-        50x50 Windows Phone Store
-        57x57 iOS Safari
-        60x60 iOS Safari
-        70x70 Windows Phone Store
-        72 Android
-        80x80 iPhone
-        114x114 iOS Safari
-        120x120 Web/iOS Safari/Windows Phone
-        144x144 Android Chrome/iOS Safari/Windows Phone
-        150x150 Windows Phone Store
-        152x152 iOS Safari
-        180x180 iOS Safari
-        310x310 Windows Phone
-        512x512 Android Play Store
     - Upload LunaSvg changes:
         - (fixed locally) Blank canvas treated as blank
         - (fixed locally) Missing em and ex from switch statement property.cpp Length::value
@@ -155,6 +137,8 @@ Elements:
         fixture - Piece of equipment or furniture which is fixed in position in a building or vehicle.
         attachment - An extra part or extension that is or can be attached to something to perform a particular function.
         fastener - Device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
+        node - a point at which lines or pathways intersect or branch; a central or connecting point.
+        keypoint - characteristic point of interest .
 
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
