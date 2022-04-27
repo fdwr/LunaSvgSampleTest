@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="svg1" width="200" height="200" viewBox="0 0 200 200">
+    <rect
+        style="fill:#ffcc66"
+        id="rect12"
+        width="114.1488"
+        height="120.33333"
+        x="50.33333"
+        y="100.66666"
+        rx="10.999973"
+        ry="10.000000"
+        visibility="visible"
+        >
+        <circle
+            style="fill:#ff3300"
+            id="path20"
+            cx="100.5"
+            cy="100.5"
+            r="70"
+            visibility="visible"
+        />
+    </rect>
+</svg>
