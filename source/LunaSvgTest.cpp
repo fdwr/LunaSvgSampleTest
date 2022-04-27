@@ -1169,7 +1169,7 @@ void DrawSmallDigits(
 
 
 // Given the SVG document and a desired size, compute the transformation matrix.
-lunasvg::Matrix GetMatrixForSize(lunasvg::Document const& document, uint32_t minimumSize)
+lunasvg::Matrix GetMatrixForSize(lunasvg::Document const& document, uint32_t xSize, uint32_t ySize)
 {
     auto documentWidth = document.width();
     auto documentHeight = document.height();
@@ -1177,8 +1177,12 @@ lunasvg::Matrix GetMatrixForSize(lunasvg::Document const& document, uint32_t min
     {
         return {};
     }
-    auto largerDocumentSize = std::max(documentWidth, documentHeight);
-    lunasvg::Matrix matrix{minimumSize / largerDocumentSize, 0, 0, minimumSize / largerDocumentSize, 0, 0};
+
+    double xScale = xSize / documentWidth;
+    double yScale = ySize / documentHeight;
+    double scale  = std::min(xScale, yScale);
+
+    lunasvg::Matrix matrix{ scale, 0, 0, scale, 0, 0};
     return matrix;
 }
 
@@ -1948,8 +1952,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
                     );
 
                     // TODO: Check g_snapToPixels to pass pixel snapping flags to document::render.
-                    uint32_t pixelSize = std::min(canvasItem.w, canvasItem.h);
-                    auto matrix = GetMatrixForSize(document, pixelSize);
+                    auto matrix = GetMatrixForSize(document, canvasItem.w, canvasItem.h);
                     document.render(subbitmap, matrix);
                 }
             }
@@ -2879,8 +2882,7 @@ void RepaintWindow(HWND hwnd)
                         Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
                         GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
 
-                        uint32_t const pixelSize = std::min(canvasItem.w, canvasItem.h);
-                        auto const svgMatrix = GetMatrixForSize(document, pixelSize);
+                        auto const svgMatrix = GetMatrixForSize(document, canvasItem.w, canvasItem.h);
                         document.enumerateContours(contourSink, svgMatrix);
                     }
                 }
