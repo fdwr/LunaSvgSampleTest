@@ -3514,6 +3514,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_pixelGridVisible = true;
                 g_outlinesVisible = true;
                 ChangeBitmapZoomCentered(hwnd, 16);
+                InvalidateClientRect(hwnd);
                 break;
 
             case IDM_PRESET_OVERVIEW:
@@ -3521,6 +3522,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_pixelGridVisible = false;
                 g_outlinesVisible = false;
                 ChangeBitmapZoomCentered(hwnd, 1);
+                InvalidateClientRect(hwnd);
                 break;
 
             case IDM_PRESET_WRAPPED_IMAGES:
