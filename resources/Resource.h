@@ -129,6 +129,10 @@
 #define IDM_PRESET_WRAPPED_IMAGES           244
 #define IDM_SNAP_TO_PIXELS                  250
 #define IDM_COPY_BITMAP                     251
+#define IDM_NUDGE_LEFT                      252
+#define IDM_NUDGE_RIGHT                     253
+#define IDM_NUDGE_UP                        254
+#define IDM_NUDGE_DOWN                      255
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC

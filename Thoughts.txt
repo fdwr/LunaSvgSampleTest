@@ -20,6 +20,7 @@ TODO:
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
         - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
         - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent
+        - MicrosoftSharePointFiles.svg top right corner because aligning the edges does not align the folder corner, and there's shear
     - Add roadmap
         - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
         - Publish spec rough draft
@@ -116,6 +117,7 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
 
 Elements:
     anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
+    grid-rounding in defs? It could be useful if you have multiple grid-rounding patterns repeated.
 
     bikeshed:
         anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-

@@ -419,6 +419,8 @@ uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
 uint32_t g_gridSize = 8;
 int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans right.
 int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans down.
+double g_svgNudgeOffsetX = 0; // A tiny adjustment to add to the rendering transform.
+double g_svgNudgeOffsetY = 0; // A tiny adjustment to add to the rendering transform.
 CanvasItem::FlowDirection g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
 bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
@@ -1182,7 +1184,7 @@ lunasvg::Matrix GetMatrixForSize(lunasvg::Document const& document, uint32_t xSi
     double yScale = ySize / documentHeight;
     double scale  = std::min(xScale, yScale);
 
-    lunasvg::Matrix matrix{ scale, 0, 0, scale, 0, 0};
+    lunasvg::Matrix matrix{ scale, 0, 0, scale, g_svgNudgeOffsetX, g_svgNudgeOffsetY };
     return matrix;
 }
 
@@ -1491,6 +1493,9 @@ void ClearDocumentList()
     g_filenameList.clear();
     g_bitmap = lunasvg::Bitmap();
     g_errorMessage.clear();
+
+    g_svgNudgeOffsetX = 0;
+    g_svgNudgeOffsetY = 0;
 }
 
 
@@ -3508,6 +3513,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_NAVIGATE_END_RIGHT:  HandleBitmapScrolling(hwnd, SB_RIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
             case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
             case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+
+            case IDM_NUDGE_LEFT:  g_svgNudgeOffsetX -= 0.125; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_RIGHT: g_svgNudgeOffsetX += 0.125; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_UP:    g_svgNudgeOffsetY -= 0.125; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_DOWN:  g_svgNudgeOffsetY += 0.125; RedrawCanvasItemsLater(hwnd); break;
 
             case IDM_PRESET_INSPECT:
                 g_gridVisible = true;
