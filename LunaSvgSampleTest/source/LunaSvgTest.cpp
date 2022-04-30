@@ -1,4 +1,4 @@
-// LunaSvgTest.cpp: Main application.
+﻿// LunaSvgTest.cpp: Main application.
 
 #include "precomp.h"
 #include "LunaSvgTest.h"
@@ -337,7 +337,7 @@ union PixelBgra
     static inline PixelBgra InvertSoftAverage(PixelBgra existingColor) noexcept
     {
         uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
-        shade += (shade >= 128) ? -64 : 64;
+        shade += (shade >= 96) ? -64 : 64;
         return PixelBgra{ .i = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000 };
     }
 };
@@ -3110,9 +3110,11 @@ CanvasItem* GetCanvasItemAtPoint(int32_t pointX, int32_t pointY)
 void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
 {
     // Find which canvas item was clicked after rescaling mouse coordinates.
-    double canvasPointX = double(mouseX + g_bitmapOffsetX) / g_bitmapPixelZoom;
-    double canvasPointY = double(mouseY + g_bitmapOffsetY) / g_bitmapPixelZoom;
-    auto* canvasItem = GetCanvasItemAtPoint(int32_t(canvasPointX), int32_t(canvasPointY));
+    double const canvasPointX = double(mouseX + g_bitmapOffsetX) / g_bitmapPixelZoom;
+    double const canvasPointY = double(mouseY + g_bitmapOffsetY) / g_bitmapPixelZoom;
+    int32_t const intCanvasPointX = int32_t(canvasPointX);
+    int32_t const intCanvasPointY = int32_t(canvasPointY);
+    CanvasItem* canvasItem = GetCanvasItemAtPoint(intCanvasPointX, intCanvasPointY);
 
     if (canvasItem == nullptr || canvasItem->itemType == CanvasItem::ItemType::SizeLabel)
     {
@@ -3164,6 +3166,23 @@ void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
         return;
     }
 
+    // Get pixel color at clicked coordinate in bitmap.
+    uint32_t redValue   = 0;
+    uint32_t greenValue = 0;
+    uint32_t blueValue  = 0;
+    uint32_t alphaValue = 0;
+    uint32_t const bitmapHeight = g_bitmap.height();
+    uint32_t const bitmapWidth = g_bitmap.width();
+    if (uint32_t(intCanvasPointX) <= bitmapHeight && uint32_t(intCanvasPointY) <= bitmapWidth)
+    {
+        size_t const byteOffset = intCanvasPointY * g_bitmap.stride() + intCanvasPointX * sizeof(PixelBgra);
+        PixelBgra const pixel = *reinterpret_cast<PixelBgra const*>(g_bitmap.data() + byteOffset);
+        redValue   = pixel.r;
+        greenValue = pixel.g;
+        blueValue  = pixel.b;
+        alphaValue = pixel.a;
+    }
+    
     // Remap screen pixel coordinate back to original image coordinate.
     double const canvasItemPointX = canvasPointX - canvasItem->x;
     double const canvasItemPointY = canvasPointY - canvasItem->y;
@@ -3175,7 +3194,7 @@ void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
     _snwprintf_s(
         windowTitle,
         sizeof(windowTitle),
-        L"%s - (%0.2f,%0.2f) %ux%u - (%0.2f,%0.2f) %0.2fx%0.2f - %s",
+        L"%s - (%0.2f,%0.2f) %ux%u / (%0.2f,%0.2f) %0.2fx%0.2f / r%u g%u b%u a%u - %s",
         g_applicationTitle,
         canvasItemPointX,
         canvasItemPointY,
@@ -3185,6 +3204,10 @@ void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
         imagePointY,
         imageWidth,
         imageHeight,
+        redValue,
+        greenValue,
+        blueValue,
+        alphaValue,
         fileName
     );
     SetWindowText(hwnd, windowTitle);

@@ -13,11 +13,12 @@ TODO:
         - (added locally) enumerate contours
         - Eventually grid fitting
     - Screenshot candidates
-        - icons8-fluency-fill-color.svg lavendar paint needs proportional shear to maintain shape 24x24
+        - icons8-fluency-fill-color.svg lavender paint needs proportional shear to maintain shape 24x24
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
         - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
+        - icons8-color-check-circle checkmark can round points only to pixel corners or centers on both axes or else 45 angle would distort
         - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
         - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent
         - MicrosoftSharePointFiles.svg top right corner because aligning the edges does not align the folder corner, and there's shear
@@ -189,13 +190,17 @@ Attribute details:
                 b. translate                [[1,  0  ], [0,  1  ], [dx, dy ]
                 c. scale & translate        [[s,  0  ], [0,  s  ], [dx, dy ]
                 d. arbitrary                [[sx, hy ], [hx, sy ], [dx, dy ]
-            3.a perpendicular path bias     [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] rotated by perpendicular of lines segments
-            3.b prebias(dx dy)              [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-            4. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
-            5. floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop of 'none' rounding mode
-            6. size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
-            7. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
-            7. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
+            3. ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
+            4. anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments
+            5. origin subtraction           [[1,  0  ], [0,  1  ], [ox, oy ] nop if origin equals current point (origin is in screen space too)
+            6. ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
+            7. prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
+            8. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
+            9. floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
+            10.size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+            11.delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
+            12. postbias(dx dy)             [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
+            13. minimum distance            [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
             ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
             none - no grid rounding along x or y. e.g "x none; y floor"
@@ -209,9 +214,9 @@ Attribute details:
             scale - a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense.
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
-            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor)
+            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor). Should it only apply to anchors? Should it be a separate attribute and not part of grid rounding?
             transform-reinterprets(true/false) - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
-            require-axis-alignmentment(true/false)- only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+            require-axis-alignmentment(true/false) - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
             direction-inverts(true/false) - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
             winding-inverts(true/false) - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
