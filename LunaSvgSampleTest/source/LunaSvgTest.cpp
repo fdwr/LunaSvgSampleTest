@@ -3173,7 +3173,7 @@ void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
     uint32_t alphaValue = 0;
     uint32_t const bitmapHeight = g_bitmap.height();
     uint32_t const bitmapWidth = g_bitmap.width();
-    if (uint32_t(intCanvasPointX) <= bitmapHeight && uint32_t(intCanvasPointY) <= bitmapWidth)
+    if (uint32_t(intCanvasPointX) <= bitmapWidth && uint32_t(intCanvasPointY) <= bitmapHeight)
     {
         size_t const byteOffset = intCanvasPointY * g_bitmap.stride() + intCanvasPointX * sizeof(PixelBgra);
         PixelBgra const pixel = *reinterpret_cast<PixelBgra const*>(g_bitmap.data() + byteOffset);
