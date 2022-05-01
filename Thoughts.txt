@@ -20,6 +20,8 @@ TODO:
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
         - icons8-color-check-circle checkmark can round points only to pixel corners or centers on both axes or else 45 angle would distort
         - Microsoft Teams View 16x16 needs midline to be crisp, so utilize rounding via scale every 2 pixels
+        - Google news.svg 18x18 show individual points snapped vs 4-part, 19x19 will have uneven stem widths horizontally vs vertically
+        - YouTube apps icon 28 through 40 in waterfall
         - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent
         - MicrosoftSharePointFiles.svg top right corner because aligning the edges does not align the folder corner, and there's shear
     - Add roadmap
