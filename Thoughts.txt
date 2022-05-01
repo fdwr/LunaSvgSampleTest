@@ -78,6 +78,8 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
     Minimum constraints
         Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
+    Not turing complete
+        No loops, intermediate variables, or functions, just math statements
 
 Read:
     A vector format for Flutter by Google - https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
@@ -141,11 +143,13 @@ Elements:
         fixture - Piece of equipment or furniture which is fixed in position in a building or vehicle.
         attachment - An extra part or extension that is or can be attached to something to perform a particular function.
         fastener - Device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
-        node - a point at which lines or pathways intersect or branch; a central or connecting point.
-        keypoint - characteristic point of interest.
-        project - extend outward beyond something else; protrude.
-        displace - cause (something) to move from its proper or usual place.
-        protrude - extend beyond or above a surface.
+        node - Point at which lines or pathways intersect or branch; a central or connecting point.
+        keypoint - Characteristic point of interest.
+        project - Extend outward beyond something else; protrude.
+        displace - Cause (something) to move from its proper or usual place.
+        protrude - Extend beyond or above a surface.
+        warp - Twist or distortion in the shape or form of something.
+        delta - Difference between two things or values.
 
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -183,24 +187,23 @@ Attribute details:
                 todo: consider even/odd parity shift and rounding lines to nearest tangent (e.g. a 1.5 pixel wide vertical line left or right)
                 orthogonalAxisValue += (axisRoundedValue - axisValue) * slope of perpendicular edge
         transform order:
-            1. world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
-               (now in screen space)
-            2. anchor(s) grid fit/align
-                a. nop                      [[1,  0  ], [0,  1  ], [0,  0  ] nop
-                b. translate                [[1,  0  ], [0,  1  ], [dx, dy ]
-                c. scale & translate        [[s,  0  ], [0,  s  ], [dx, dy ]
-                d. arbitrary                [[sx, hy ], [hx, sy ], [dx, dy ]
-            3. ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
-            4. anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments
-            5. origin subtraction           [[1,  0  ], [0,  1  ], [ox, oy ] nop if origin equals current point (origin is in screen space too)
-            6. ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
-            7. prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-            8. inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
-            9. floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
-            10.size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
-            11.delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
-            12. postbias(dx dy)             [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
-            13. minimum distance            [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
+            1.  world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+                (now in screen space)
+            2.  anchor(s) grid fit/align
+                a. nop                       [[1,  0  ], [0,  1  ], [0,  0  ] nop
+                b. translate                 [[1,  0  ], [0,  1  ], [dx, dy ]
+                c. scale & translate         [[s,  0  ], [0,  s  ], [dx, dy ]
+                d. arbitrary                 [[sx, hy ], [hx, sy ], [dx, dy ]
+            3.  ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
+            4.  anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
+            5.  ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
+            6.  prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
+            7.  inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
+            8.  floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
+            9.  size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+            10. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
+            11. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
+            12. minimum distance             [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
             ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
             none - no grid rounding along x or y. e.g "x none; y floor"
@@ -214,7 +217,7 @@ Attribute details:
             scale - a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense.
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
-            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor). Should it only apply to anchors? Should it be a separate attribute and not part of grid rounding?
+            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor). Should it only apply to anchors? Should it be a separate attribute and not part of grid rounding? mindist(x,y,dist) = iif(dist > 0, max(x + dist, y), iif(dist < 0, min(x + dist, y), y);
             transform-reinterprets(true/false) - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
             require-axis-alignmentment(true/false) - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
             direction-inverts(true/false) - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
@@ -241,6 +244,7 @@ Attribute details:
             nearest-right - Equals `floor(x+.5)`.
             nearest-up - ...
             nearest-down - ...
+            nearest-diagonal-half - snap to pixel corners or pixel centers on both axes. Equivalent to: prebias(1 1 -1 1 0.5 0.5) floor postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
             todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halves-up? fraction-up? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down".
             center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
             center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
