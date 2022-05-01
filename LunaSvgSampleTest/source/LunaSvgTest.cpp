@@ -415,6 +415,7 @@ const uint32_t g_bitmapScrollStep = 64;
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapSizePerDocument = 64; // in pixels
+uint32_t g_bitmapMaximumSize = UINT32_MAX; // useful for the waterfall to set a maximum range
 uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
 uint32_t g_gridSize = 8;
 int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans right.
@@ -1681,6 +1682,9 @@ void GenerateCanvasItems(
         {
             for (uint32_t bitmapSize : g_waterfallBitmapSizes)
             {
+                if (bitmapSize > g_bitmapMaximumSize)
+                    break;
+
                 // Append a label of the current pixel size.
                 CanvasItem labelCanvasItem =
                 {
@@ -1719,6 +1723,9 @@ void GenerateCanvasItems(
                 // Append all labels, one for each size.
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
                 {
+                    if (bitmapSize > g_bitmapMaximumSize)
+                        break;
+
                     CanvasItem canvasItem =
                     {
                         .itemType = CanvasItem::ItemType::SizeLabel,
@@ -1736,6 +1743,9 @@ void GenerateCanvasItems(
                 // Append all SVG documents or raster images at the current size.
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
                 {
+                    if (bitmapSize > g_bitmapMaximumSize)
+                        break;
+
                     auto& image = g_images[index];
                     CanvasItem canvasItem =
                     {
@@ -3357,7 +3367,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 static_assert(IDM_SIZE20 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
-                g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                // If the shift key is held down, then just set the maximum size of whatever is currently set
+                // (useful for waterfall displays) rather than change to fixed size.
+                if (GetKeyState(VK_SHIFT) & 0x80)
+                {
+                    g_bitmapMaximumSize = g_bitmapSizePerDocument;
+                }
+                else
+                {
+                    g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                }
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
