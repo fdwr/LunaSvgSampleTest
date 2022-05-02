@@ -121,8 +121,9 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg * pluto) Line 426	C
 
 Elements:
-    anchor - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out".
-    grid-rounding in defs? It could be useful if you have multiple grid-rounding patterns repeated.
+    anchor - invisible point for other shapes to align/fit to (translation). Can be used as a point in an anchor set.
+    anchor-set - invisible point(s) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out" grid rounding mode.
+    grid-rounding - element in defs to avoid repeating the same rounding so often?
 
     bikeshed:
         anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
@@ -155,7 +156,11 @@ Elements:
 
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
-    *.grid-fit - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
+    *.grid-fit/align - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
+        Anchors and anchor sets may be referenced by id. Only id's of type anchors and anchor sets may be used, not arbitrary objects. https://www.w3.org/TR/SVG/linking.html
+        References may not be circular and cannot refer to parent elements (which would yield a paradox because the parent alignment already affects the children)
+        Invalid/non-existent references are treated as nops
+        Require prefix # or no # in name?
     *.grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
     *.grid-offset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead?
     *.grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
@@ -166,7 +171,7 @@ Attributes:
     *.anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
-    path.anchor-list - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
+    path.anchor-list - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string). naming: anchors?
     path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor".
     anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     anchor.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
@@ -175,7 +180,7 @@ Attributes:
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
 Attribute details:
-    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5) min(1 otherAnchor); y ceil`, `up left`
+    grid-rounding: e.g. `floor(x 0.5 2 -0.5) ceil(y)`, `up left` or `x floor prebias(0.5) scale(2) postbias(-0.5); y ceil`, `up left`
         main equation:
             if world transform is axis aligned or rounding does not require axis aligment
                 if transform reinterpretation matters
@@ -330,17 +335,18 @@ Example:
 
     One anchor can be defined relative to another one.
     Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
-    todo: second anchor is relative to the rounded location rather than user coordinates, right?
-    todo: should I use an explicit attribute like grid-minimum="1px" instead of rounding, that way nearest can be used?
+        <anchor x="20" y="30" grid-minimum-distance="otherAnchor 1 0; secondAnchor 0 -1"/>
+    todo: second anchor is relative to the first anchor's rounded screen location rather than user coordinates.
     todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
     todo: what about 45 degree angles, so that two octagons keep the same distance from each other? It's okay if the corners
     todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
           are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
           A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
-    todo: can you have relative inline anchors, such as <rect ...><anchor position="0% 100%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
+    todo: can you have relative inline anchors, such as <rect ...><anchor position="0% 0%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
           How do you align to it though? Does it need an id, just for that one case, which kinda defeats the convenience factor?
           Or <rect ... anchor-points="0% 100%" anchor-rounding="up" grid-rounding="out"/></rect> ?
           Percentages are similar in concept to primitiveUnits="objectBoundingBox" which make the lengths relative to the referencing object's bounding box https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/primitiveUnits
+          Anchor set percentages in <defs> could be treated as userSpaceOnUse or objectBoundingBox?
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
@@ -429,8 +435,10 @@ Example:
 
     Just say:
         <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(23 42 up left)"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-align="points(0%,0% 100%,100%) rounding(up left))"/>
 
-    Note aligning the anchor is different from aligning all the points individually, which would change the height/width:
+    Note aligning a single anchor point is different from aligning all the points individually, which would change the height/width:
         <rect x1="23" y1="42" width="20" height="10" grid-point-rounding="up left"/>
 
     Or maybe:
@@ -438,7 +446,10 @@ Example:
         <rect x1="23" y1="42" width="20" height="10" grid-points="0%,0%" anchor-rounding="up left"/> // translate by rounded top left
 
     Minimum stroke:
-        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" minimum-stroke-width="1px"/>
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" grid-minimum-stroke-width="1px"/>
+
+    Pixel aligned stroke width (e.g. rounded to nearest whole pixel):
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" grid-stroke-width-rounding="ceil"/>
 
     Using the art picture frame:
 
@@ -627,6 +638,10 @@ Related:
         Cairo rendering API - https://cairographics.org/download/
         SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
         SVG Native Viewer - https://github.com/adobe/svg-native-viewer
+        CodePen - https://codepen.io/mattdesl/pen/QjMrXV
+    Libraries
+        parse-svg-path - https://www.npmjs.com/package/parse-svg-path
+        normalize-svg-path - https://www.npmjs.com/package/normalize-svg-path
     Guidance
         Material Design "Clarity (Pixel perfection)" - https://material.io/design/iconography/system-icons.html#grid-and-keyline-shapes
         Adobe Spectrum Iconography - https://spectrum.adobe.com/page/iconography/#Characteristics
@@ -638,5 +653,7 @@ Related:
         Icon Design Vector vs Bitmap by Josh Williams - https://web.archive.org/web/20130209065422/http://www.firewheeldesign.com/sparkplug/2006/April/icon_design_bitmap_vs_vector.php 2022-04-25
         Pixel-snapping in icon design by Helena Zhang - https://uxdesign.cc/pixel-snapping-in-icon-design-a-rendering-test-6ecd5b516522 2022-04-25
         Precision With Every Pixel by Ashley Chang - https://blog.readme.com/precision-with-every-pixel/ 2022-04-25
-        The Designer's Guide to Pixel Hinting by Dustin Cartwright *Note he uses the term incorrectly. It's not called "pixel hinting" in this context - https://www.webdesignerdepot.com/2014/03/the-designers-guide-to-pixel-hinting/.
-        My Illustrator snapping settings by Bjango https://bjango.com/articles/illustratorsnapping/
+        The Designer's Guide to Pixel Hinting by Dustin Cartwright *Note he uses the term incorrectly. It's not called "pixel hinting" in this context - https://www.webdesignerdepot.com/2014/03/the-designers-guide-to-pixel-hinting/.  2014-03-17
+        My Illustrator snapping settings by Bjango https://bjango.com/articles/illustratorsnapping/  2022-05-22
+        The one killer feature icon fonts have over svg OR: why github icons look like shit now https://swatinem.de/blog/the-one-killer-feature-of-icon-fonts/ 2016-01-31
+        Pixel Hinting for Crisp Icons by Danelle Bailey http://danellebailey.com/design-blog/2016/9/29/pixel-hinting-for-crisp-icons 2016-10-05
