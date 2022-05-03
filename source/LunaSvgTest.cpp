@@ -407,9 +407,9 @@ const std::wstring_view g_defaultMessage =
     L"a = show/hide alpha channel\r\n"
     ;
 
-const uint32_t g_waterfallBitmapSizes[] = {16,20,24,28,32,36,40,48,56,64,72,80,96,112,120,128,160,180,192,224,256};
-const uint32_t g_zoomFactors[] = {1,2,3,4,6,8,12,16,24,32,48,64,96,128,192,256};
-const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,7,8,12,16,24,32,48,64,96,128};
+const uint32_t g_waterfallBitmapSizes[] = {8,12,16,20,24,28,32,36,40,48,56,64,72,80,96,112,120,128,160,180,192,224,256};
+const uint32_t g_zoomFactors[] = {1,2,3,4,5,6,8,12,16,24,32,48,64,96,128,192,256};
+const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,8,12,16,24,32,48,64,96,128,192,256};
 const uint32_t g_bitmapScrollStep = 64;
 
 BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
@@ -3364,7 +3364,9 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_SIZE18:
             case IDM_SIZE19:
             case IDM_SIZE20:
-                static_assert(IDM_SIZE20 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
+            case IDM_SIZE21:
+            case IDM_SIZE22:
+                static_assert(IDM_SIZE22 + 1 - IDM_SIZE0 == _countof(g_waterfallBitmapSizes));
                 static_assert(IDM_SIZE_LAST + 1 - IDM_SIZE_FIRST == _countof(g_waterfallBitmapSizes));
                 g_bitmapSizePerDocument = g_waterfallBitmapSizes[wmId - IDM_SIZE0];
                 // If the shift key is held down, then just set the maximum size of whatever is currently set
@@ -3472,7 +3474,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM13:
             case IDM_ZOOM14:
             case IDM_ZOOM15:
-                static_assert(IDM_ZOOM15 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
+            case IDM_ZOOM16:
+                static_assert(IDM_ZOOM16 + 1 - IDM_ZOOM0 == _countof(g_zoomFactors), "g_zoomFactors is not the correct size");
                 ChangeBitmapZoomCentered(hwnd, g_zoomFactors[wmId - IDM_ZOOM0]);
                 break;
 
@@ -3525,7 +3528,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_4:
             case IDM_GRID_SIZE_5:
             case IDM_GRID_SIZE_6:
-            case IDM_GRID_SIZE_7:
             case IDM_GRID_SIZE_8:
             case IDM_GRID_SIZE_12:
             case IDM_GRID_SIZE_16:
@@ -3535,9 +3537,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_64:
             case IDM_GRID_SIZE_96:
             case IDM_GRID_SIZE_128:
+            case IDM_GRID_SIZE_192:
+            case IDM_GRID_SIZE_256:
                 g_gridVisible = true;
                 static_assert(IDM_GRID_SIZE_0 == IDM_GRID_SIZE_FIRST);
-                static_assert(IDM_GRID_SIZE_128 == IDM_GRID_SIZE_LAST);
+                static_assert(IDM_GRID_SIZE_256 == IDM_GRID_SIZE_LAST);
                 static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
                 g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
                 InvalidateClientRectBitmap(hwnd);

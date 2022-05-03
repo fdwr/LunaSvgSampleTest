@@ -176,6 +176,7 @@ Attributes:
     anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     anchor.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
+    anchor.grid-anchor-units - objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
 
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
@@ -287,6 +288,7 @@ Attribute details:
         interactions
             calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
             axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
+            shape-rendering crispEdges is not affected https://www.w3.org/TR/SVG11/painting.html#ShapeRenderingProperty
         questions:
             How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
             ?How does vector-effect="non-scaling-stroke" interact?
