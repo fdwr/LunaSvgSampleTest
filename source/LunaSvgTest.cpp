@@ -2559,9 +2559,8 @@ public:
     {
     }
 
-    void DrawPointIndicator(double x, double y)
+    void DrawPointIndicator(double x, double y, float ellipseRadius = 0.5f)
     {
-        const float ellipseRadius = 0.5f;
         Gdiplus::PointF point = {float(x), float(y)};
         currentTransform_.TransformPoints(&point);
         nodePath_.AddEllipse(
@@ -2570,6 +2569,39 @@ public:
             ellipseRadius * 2,
             ellipseRadius * 2
         );
+    }
+
+    void DrawDirectionIndicator(double x1, double y1, double x2, double y2, float lineLength = 8.0f)
+    {
+        // x1/y1 is the initial point to draw from.
+        // x2/y2 with x1/y1 form the vector direction.
+        // x3/y3 with x1/y1 determine the vector lenth.
+        Gdiplus::PointF point1 = {float(x1), float(y1)};
+        Gdiplus::PointF point2 = {float(x2), float(y2)};
+        currentTransform_.TransformPoints(&point1);
+        currentTransform_.TransformPoints(&point2);
+
+        // Compute two directions for triangle head.
+        Gdiplus::PointF primaryVector = point2 - point1;
+        Gdiplus::PointF perpendicularVector = {primaryVector.Y, -primaryVector.X};
+
+        // Normalize and scale triangle size.
+        auto computeQuadrance = [](Gdiplus::PointF p) -> float { return (p.X * p.X) + (p.Y * p.Y);};
+        float const quadrance = computeQuadrance(primaryVector);
+        float const scale = (quadrance > lineLength) ? lineLength * sqrt(quadrance) / quadrance : 1;
+        primaryVector.X *= scale;
+        primaryVector.Y *= scale;
+        perpendicularVector.X *= scale / 2;
+        perpendicularVector.Y *= scale / 2;
+        Gdiplus::PointF point3 = point1 + primaryVector;
+        Gdiplus::PointF point4 = point1 + perpendicularVector;
+
+        // Draw the triangle head.
+        nodePath_.StartFigure();
+        nodePath_.AddLine(point1, point3);
+        nodePath_.AddLine(point3, point4);
+        nodePath_.AddLine(point4, point1);
+        nodePath_.CloseFigure();
     }
 
     void SetTransform(const lunasvg::Matrix& transform) override
@@ -2586,7 +2618,7 @@ public:
 
     void Move(double x, double y) override
     {
-        DrawPointIndicator(x, y);
+        DrawPointIndicator(x, y, /*ellipseRadius =*/ 3.0f);
         contourPath_.StartFigure();
     }
 
@@ -2594,6 +2626,7 @@ public:
     {
         contourPath_.AddLine(float(x1), float(y1), float(x2), float(y2));
         DrawPointIndicator(x2, y2);
+        DrawDirectionIndicator(x1, y1, x2, y2);
     }
 
     void Cubic(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) override
@@ -2611,7 +2644,7 @@ public:
         // Draw nodes.
         DrawPointIndicator(x2, y2);
         DrawPointIndicator(x3, y3);
-        DrawPointIndicator(x4, y4);
+        DrawDirectionIndicator(x1, y1, x2, y2);
     }
 
     void Anchor(double x, double y) override
@@ -3204,7 +3237,7 @@ void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
     _snwprintf_s(
         windowTitle,
         sizeof(windowTitle),
-        L"%s - (%0.2f,%0.2f) %ux%u / (%0.2f,%0.2f) %0.2fx%0.2f / r%u g%u b%u a%u - %s",
+        L"%s - (%0.2f,%0.2f) %ux%upx - (%0.2f,%0.2f) %0.2fx%0.2fus - r%u g%u b%u a%u - %s",
         g_applicationTitle,
         canvasItemPointX,
         canvasItemPointY,
