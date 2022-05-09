@@ -1,0 +1,11 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  version="1.1">
+  <path
+    style="fill:#FF80FF"
+    d="M 32,1 L 63,63 1,63 32,1 Z" 
+  />
+</svg>
