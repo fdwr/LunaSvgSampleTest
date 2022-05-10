@@ -13,6 +13,67 @@ using Microsoft::WRL::ComPtr;
 #define RETURN_IF_FAILED(expression) {auto hr_ = (expression); if (FAILED(hr_)) {return hr_;}}
 #define RETURN_IF_FAILED_V(expression, returnValue) if (FAILED(expression)) return (returnValue);
 
+// Union of D2D and DWrite's matrix to facilitate
+// usage between them, while not breaking existing
+// applications that use one or the other.
+union Matrix3x2f
+{
+    // Explicity named fields for clarity.
+    struct
+    {
+        FLOAT xx; // x affects x (horizontal scaling / cosine of rotation)
+        FLOAT xy; // x affects y (vertical shear     / sine of rotation)
+        FLOAT yx; // y affects x (horizontal shear   / negative sine of rotation)
+        FLOAT yy; // y affects y (vertical scaling   / cosine of rotation)
+        FLOAT dx; // displacement of x, always orthogonal regardless of rotation
+        FLOAT dy; // displacement of y, always orthogonal regardless of rotation
+    };
+    struct // D2D Win7
+    {
+        FLOAT _11;
+        FLOAT _12;
+        FLOAT _21;
+        FLOAT _22;
+        FLOAT _31;
+        FLOAT _32;
+    };
+    struct // DWrite Win7
+    {
+        FLOAT m11;
+        FLOAT m12;
+        FLOAT m21;
+        FLOAT m22;
+        FLOAT m31;
+        FLOAT m32;
+    };
+    float m[6]; // Would [3][2] be better, more useful?
+
+    __if_exists(DWRITE_MATRIX)
+    {
+        DWRITE_MATRIX dwrite;
+    }
+    __if_exists(D2D1_MATRIX_3X2_F)
+    {
+        D2D1_MATRIX_3X2_F d2d;
+    }
+    __if_exists(XFORM)
+    {
+        XFORM gdi;
+    }
+    __if_exists(DXGI_MATRIX_3X2_F)
+    {
+        DXGI_MATRIX_3X2_F dxgi;
+    }
+};
+
+void ComputeInverseMatrix(
+    _In_  Matrix3x2f const& matrix,
+    _Out_ Matrix3x2f& result
+);
+
+float GetDeterminant(_In_ Matrix3x2f const& matrix);
+
+
 // Redefine the bitmap header structs so inheritance works.
 // Who needlessly prefixed every field with {bi, bc, bv5} so that generic
 // code could not work with different versions of the structs? (sigh, face palm)
@@ -2536,6 +2597,72 @@ CreateDIBSection32bpp(HDC memoryDc, SIZE size)
 }
 
 
+void ComputeInverseMatrix(
+    _In_  Matrix3x2f const& matrix,
+    _Out_ Matrix3x2f& result
+    )
+{
+    assert(&matrix != &result);
+
+    float invdet = 1.f / GetDeterminant(matrix);
+    result.xx =  matrix.yy * invdet;
+    result.xy = -matrix.xy * invdet;
+    result.yx = -matrix.yx * invdet;
+    result.yy =  matrix.xx * invdet;
+    result.dx = (matrix.yx * matrix.dy - matrix.dx * matrix.yy) * invdet;
+    result.dy = (matrix.dx * matrix.xy - matrix.xx * matrix.dy) * invdet;
+}
+
+
+#if 0
+// In and out rects are allowed to be the same variable.
+void TransformRect(Matrix3x2f const& transform, D2D_RECT_F const& rectIn, _Out_ D2D_RECT_F& rectOut)
+{
+    // Equivalent to calling D2D1::Matrix3x2f.TransformPoint on each
+    // corner of the rect, but half the multiplies and additions.
+
+    float leftX = rectIn.left * transform._11;
+    float leftY = rectIn.left * transform._12;
+    float rightX = rectIn.right * transform._11;
+    float rightY = rectIn.right * transform._12;
+    float topX = rectIn.top * transform._21;
+    float topY = rectIn.top * transform._22;
+    float bottomX = rectIn.bottom * transform._21;
+    float bottomY = rectIn.bottom * transform._22;
+
+    D2D_POINT_2F points[4];
+    points[0].x = leftX + topX;
+    points[0].y = leftY + topY;
+    points[1].x = rightX + topX;
+    points[1].y = rightY + topY;
+    points[2].x = leftX + bottomX;
+    points[2].y = leftY + bottomY;
+    points[3].x = rightX + bottomX;
+    points[3].y = rightY + bottomY;
+
+    rectOut.left = rectOut.right = points[0].x;
+    rectOut.top = rectOut.bottom = points[0].y;
+    for (uint32_t i = 1; i < 4; ++i)
+    {
+        if (points[i].x < rectOut.left)   rectOut.left = points[i].x;
+        if (points[i].x > rectOut.right)  rectOut.right = points[i].x;
+        if (points[i].y < rectOut.top)    rectOut.top = points[i].y;
+        if (points[i].y > rectOut.bottom) rectOut.bottom = points[i].y;
+    }
+    rectOut.left   += transform._31;
+    rectOut.right  += transform._31;
+    rectOut.top    += transform._32;
+    rectOut.bottom += transform._32;
+}
+#endif
+
+
+float GetDeterminant(_In_ Matrix3x2f const& matrix)
+{
+    return matrix.xx * matrix.yy - matrix.xy * matrix.yx;
+}
+
+
 class GdiplusEnumerateContoursSink : public lunasvg::EnumerateContoursSink
 {
 private:
@@ -2543,72 +2670,125 @@ private:
     Gdiplus::Pen contourPen_{ Gdiplus::Color(0xFF0000FF), 0.0f }; // Blue
     Gdiplus::Pen nodePen_{ Gdiplus::Color(0xFFFFFF00), 0.0f }; // yellow
     Gdiplus::Pen handlePen_{ Gdiplus::Color(0xFFFF8000), 0.0f }; // orange
-    Gdiplus::Matrix const& baseTransform_;
-    Gdiplus::Matrix currentTransform_;
     Gdiplus::GraphicsPath contourPath_;
     Gdiplus::GraphicsPath nodePath_;
     Gdiplus::GraphicsPath handlePath_;
+    Gdiplus::Matrix baseTransform_;
+    Gdiplus::Matrix currentTransform_;
+    float strokeScale_ = 1.0f;
+    float effectiveStrokeScale_ = 1.0f; // Caller passed strokeScale_ scaled by current transform if small.
 
 public:
     GdiplusEnumerateContoursSink(
         Gdiplus::Graphics& graphics,
-        Gdiplus::Matrix const& transform
+        Gdiplus::Matrix const& transform,
+        float strokeScale // Just affects path thickness - does not scale, which is done by the transform.
         )
     :   graphics_(graphics),
-        baseTransform_(transform)
+        strokeScale_(strokeScale)
     {
+        // GDI+ seriously lacks a .SetElements(float*) method?? -_-
+        float m[6];
+        transform.GetElements(/*out*/ m);
+        baseTransform_.SetElements(m[0], m[1], m[2], m[3], m[4], m[5]);
+        currentTransform_.SetElements(m[0], m[1], m[2], m[3], m[4], m[5]);
+
+        contourPen_.SetWidth(strokeScale_);
+        nodePen_.SetWidth(strokeScale_);
+        handlePen_.SetWidth(strokeScale_);
     }
 
     void DrawPointIndicator(double x, double y, float ellipseRadius = 0.5f)
     {
         Gdiplus::PointF point = {float(x), float(y)};
         currentTransform_.TransformPoints(&point);
+        float const adjustedEllipseRadius = ellipseRadius * effectiveStrokeScale_;
         nodePath_.AddEllipse(
-            float(point.X - ellipseRadius),
-            float(point.Y - ellipseRadius),
-            ellipseRadius * 2,
-            ellipseRadius * 2
+            float(point.X - adjustedEllipseRadius),
+            float(point.Y - adjustedEllipseRadius),
+            adjustedEllipseRadius * 2,
+            adjustedEllipseRadius * 2
         );
     }
 
-    void DrawDirectionIndicator(double x1, double y1, double x2, double y2, float lineLength = 8.0f)
+    void DrawDirectionIndicator(
+        double baseX,
+        double baseY,
+        double nearX,
+        double nearY,
+        double farX,
+        double farY,
+        float triangleLength = 8.0f
+        )
     {
         // x1/y1 is the initial point to draw from.
         // x2/y2 with x1/y1 form the vector direction.
         // x3/y3 with x1/y1 determine the vector lenth.
-        Gdiplus::PointF point1 = {float(x1), float(y1)};
-        Gdiplus::PointF point2 = {float(x2), float(y2)};
-        currentTransform_.TransformPoints(&point1);
-        currentTransform_.TransformPoints(&point2);
+        Gdiplus::PointF triangleBase = {float(baseX), float(baseY)};
+        Gdiplus::PointF nearPoint = {float(nearX), float(nearY)};
+        Gdiplus::PointF farPoint = {float(farX), float(farY)};
+        currentTransform_.TransformPoints(&triangleBase);
+        currentTransform_.TransformPoints(&nearPoint);
+        currentTransform_.TransformPoints(&farPoint);
 
         // Compute two directions for triangle head.
-        Gdiplus::PointF primaryVector = point2 - point1;
+        Gdiplus::PointF primaryVector = nearPoint - triangleBase;
+        Gdiplus::PointF farVector = farPoint - triangleBase;
         Gdiplus::PointF perpendicularVector = {primaryVector.Y, -primaryVector.X};
 
-        // Normalize and scale triangle size.
+        // Normalize length for triangle size.
+        // Ensure:
+        // - the triangle points along the primary vector
+        // - triangle length isn't greater than half the far vector length
+        // - the scale doesn't blow up
         auto computeQuadrance = [](Gdiplus::PointF p) -> float { return (p.X * p.X) + (p.Y * p.Y);};
-        float const quadrance = computeQuadrance(primaryVector);
-        float const scale = (quadrance > lineLength) ? lineLength * sqrt(quadrance) / quadrance : 1;
-        primaryVector.X *= scale;
-        primaryVector.Y *= scale;
-        perpendicularVector.X *= scale / 2;
-        perpendicularVector.Y *= scale / 2;
-        Gdiplus::PointF point3 = point1 + primaryVector;
-        Gdiplus::PointF point4 = point1 + perpendicularVector;
+        float const maximumFarLengthFraction = 1.0f / 8.0f;
+        float const primaryLength = sqrt(computeQuadrance(primaryVector));
+        float const farLength = sqrt(computeQuadrance(farVector));
+        float const finalTriangleLength = std::min(triangleLength * effectiveStrokeScale_, farLength * maximumFarLengthFraction);
+        float const scale = finalTriangleLength / std::max(primaryLength, FLT_EPSILON);
+        float const clampedScale = std::min(scale, 1.0f);
+
+        // Scale triangle head.
+        primaryVector.X *= clampedScale;
+        primaryVector.Y *= clampedScale;
+        perpendicularVector.X *= clampedScale / 2;
+        perpendicularVector.Y *= clampedScale / 2;
+        Gdiplus::PointF const triangleTip = triangleBase + primaryVector;
+        Gdiplus::PointF const triangleFoot = triangleBase + perpendicularVector;
 
         // Draw the triangle head.
         nodePath_.StartFigure();
-        nodePath_.AddLine(point1, point3);
-        nodePath_.AddLine(point3, point4);
-        nodePath_.AddLine(point4, point1);
+        nodePath_.AddLine(triangleBase, triangleTip);
+        nodePath_.AddLine(triangleTip, triangleFoot);
+        nodePath_.AddLine(triangleFoot, triangleBase);
         nodePath_.CloseFigure();
     }
 
     void SetTransform(const lunasvg::Matrix& transform) override
     {
+        // Combine the base transform with the current path transform.
         currentTransform_.SetElements(float(transform.a), float(transform.b), float(transform.c), float(transform.d), float(transform.e), float(transform.f));
         currentTransform_.Multiply(&baseTransform_, Gdiplus::MatrixOrderAppend);
         graphics_.SetTransform(&currentTransform_);
+
+        // Compute the effective stroke scale, so that really small transforms reduce the size of the strokes and indicators.
+        float m[6];
+        currentTransform_.GetElements(/*out*/ m);
+        float majorScaleFactor = float(std::max(sqrt(m[0] * m[0] + m[1] * m[1]), sqrt(m[2] * m[2] + m[3] * m[3])));
+        float clampedScaleFactor = std::min(majorScaleFactor, 1.0f);
+        effectiveStrokeScale_ = strokeScale_ * clampedScaleFactor;
+
+        // Invert the pen size, because otherwise GDI+ annoyingly scales the pen width along with the scaled outline.
+        Gdiplus::Matrix* inverseTransform = currentTransform_.Clone();
+        inverseTransform->Invert();
+        if (majorScaleFactor < 1.0f)
+        {
+            inverseTransform->Scale(majorScaleFactor, majorScaleFactor, Gdiplus::MatrixOrderAppend);
+        }
+        contourPen_.SetTransform(inverseTransform);
+        handlePen_.SetTransform(inverseTransform);
+        delete inverseTransform;
     }
 
     void Begin() override
@@ -2618,7 +2798,7 @@ public:
 
     void Move(double x, double y) override
     {
-        DrawPointIndicator(x, y, /*ellipseRadius =*/ 3.0f);
+        DrawPointIndicator(x, y, /*ellipseRadius =*/ 2.0f);
         contourPath_.StartFigure();
     }
 
@@ -2626,7 +2806,7 @@ public:
     {
         contourPath_.AddLine(float(x1), float(y1), float(x2), float(y2));
         DrawPointIndicator(x2, y2);
-        DrawDirectionIndicator(x1, y1, x2, y2);
+        DrawDirectionIndicator(x1, y1, x2, y2, x2, y2);
     }
 
     void Cubic(double x1, double y1, double x2, double y2, double x3, double y3, double x4, double y4) override
@@ -2644,7 +2824,7 @@ public:
         // Draw nodes.
         DrawPointIndicator(x2, y2);
         DrawPointIndicator(x3, y3);
-        DrawDirectionIndicator(x1, y1, x2, y2);
+        DrawDirectionIndicator(x1, y1, x2, y2, x4, y4);
     }
 
     void Anchor(double x, double y) override
@@ -2913,6 +3093,12 @@ void RepaintWindow(HWND hwnd)
         GdiFlush();
         Gdiplus::Graphics graphics(memoryDc);
 
+        // Could use the DPI or screen size to enlarge the strokes...
+        //  int const horizontalSize = GetDeviceCaps(ps.hdc, HORZRES);
+        //  float const strokeScale = (horizontalSize > 2048) ? float(horizontalSize) / 2048 : 1.0f;
+        // ...but keeping 1.0 for now.
+        float const strokeScale = 1.0f;
+
         for (const auto& canvasItem : g_canvasItems)
         {
             switch (canvasItem.itemType)
@@ -2928,7 +3114,7 @@ void RepaintWindow(HWND hwnd)
                     if (IntersectRect(/*out*/&gridRectDummy, &itemRect, &clientRect) && RectInRegion(updateRegion, &itemRect))
                     {
                         Gdiplus::Matrix const gdipMatrix(float(g_bitmapPixelZoom), 0, 0, float(g_bitmapPixelZoom), float(itemRect.left), float(itemRect.top));
-                        GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix);
+                        GdiplusEnumerateContoursSink contourSink(graphics, gdipMatrix, strokeScale);
 
                         auto const svgMatrix = GetMatrixForSize(document, canvasItem.w, canvasItem.h);
                         document.enumerateContours(contourSink, svgMatrix);
