@@ -1975,7 +1975,7 @@ void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap&
     imageAttributes.SetWrapMode(Gdiplus::WrapModeTileFlipXY); // Try WrapModeTileFlipXY if there are edges.
     gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeBilinear);
     gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceOver); // TODO: use CompositingModeSourceCopy if no alpha for speed
-    gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
+    gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are logical.
 
     for (const auto& canvasItem : canvasItems)
     {
@@ -3021,7 +3021,7 @@ void RepaintWindow(HWND hwnd)
         imageAttributes.SetWrapMode(Gdiplus::WrapModeClamp);
         gdiplusGraphics.SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);
         gdiplusGraphics.SetCompositingMode(Gdiplus::CompositingModeSourceCopy);
-        gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are sane.
+        gdiplusGraphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are logical.
 
         gdiplusGraphics.DrawImage(
             &gdiplusImage,
@@ -3092,6 +3092,7 @@ void RepaintWindow(HWND hwnd)
     {
         GdiFlush();
         Gdiplus::Graphics graphics(memoryDc);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHalf); // Fix ridiculous default. Pixel corners are logical.
 
         // Could use the DPI or screen size to enlarge the strokes...
         //  int const horizontalSize = GetDeviceCaps(ps.hdc, HORZRES);
