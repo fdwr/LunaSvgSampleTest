@@ -31,6 +31,7 @@ TODO:
         - Publish spec rough draft
         - Implement spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
+        - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
