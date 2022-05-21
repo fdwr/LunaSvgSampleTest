@@ -413,6 +413,7 @@ HWND g_toolTipWindowHandle;
 WCHAR g_applicationTitle[MAX_LOADSTRING];       // The title bar text.
 WCHAR g_windowClassName[MAX_LOADSTRING];        // The main window class name.
 const HBRUSH g_backgroundWindowBrush = HBRUSH(COLOR_3DFACE + 1);
+bool g_isIconic = false;
 
 TOOLINFO g_toolTipInfo =
 {
@@ -3807,15 +3808,24 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     case WM_WINDOWPOSCHANGED:
         if (!(reinterpret_cast<WINDOWPOS*>(lParam)->flags & (SWP_SHOWWINDOW | SWP_HIDEWINDOW | SWP_NOSIZE)))
         {
-            if (IsBitmapSizingDisplayResizeable(g_bitmapSizingDisplay))
+            // Only resize if the window actually changed size, not just minimizing or restoring
+            // from being minimized. Sadly win32 offers no clear way to distinguish these cases
+            // as the WM_SIZE SIZE_RESTORED is incorrectly reported for both restored windows
+            // and also ordinary border resizing. So, keep track of the previous minimized state.
+            bool wasIconic = g_isIconic;
+            g_isIconic = IsIconic(hwnd);
+            if (!(wasIconic | g_isIconic))
             {
-                RelayoutCanvasItemsLater(hwnd);
+                if (IsBitmapSizingDisplayResizeable(g_bitmapSizingDisplay))
+                {
+                    RelayoutCanvasItemsLater(hwnd);
+                }
+                else
+                {
+                    InvalidateClientRectBitmap(hwnd);
+                }
+                ConstrainBitmapOffsetsLater();
             }
-            else
-            {
-                InvalidateClientRectBitmap(hwnd);
-            }
-            ConstrainBitmapOffsetsLater();
         }
         break;
 
