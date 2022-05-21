@@ -47,13 +47,15 @@ PreserveAspectRatio SVGElement::preserveAspectRatio() const
 
 std::unique_ptr<LayoutSymbol> SVGElement::layoutDocument(const ParseDocument* document) const
 {
-    if(isDisplayNone())
-        return nullptr;
+    // CHANGE: Return a valid but empty document.
+    // if(isDisplayNone())
+    //     return nullptr;
 
     auto w = this->width();
     auto h = this->height();
-    if(w.isZero() || h.isZero())
-        return nullptr;
+    // CHANGE: Return a valid but empty document.
+    // if(w.isZero() || h.isZero())
+    //     return nullptr;
 
     LengthContext lengthContext(this);
     auto _x = lengthContext.valueForLength(x(), LengthMode::Width);
