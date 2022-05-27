@@ -173,7 +173,7 @@ Elements:
 
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
-    *.grid-fit/align - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
+    *.grid-fit/align/adjust - fit shape to anchor points via translation and/or scaling (stretch/scale) given anchor ids. todo: Only anchor names or coordinates? It may be convenient, but mixing the two would be confusing. Naming: grid-align? grid-adjust? grid-nudge? grid-distort?
         Anchors and anchor sets may be referenced by id. Only id's of type anchors and anchor sets may be used, not arbitrary objects. https://www.w3.org/TR/SVG/linking.html
         References may not be circular and cannot refer to parent elements (which would yield a paradox because the parent alignment already affects the children)
         Invalid/non-existent references are treated as nops
@@ -193,7 +193,7 @@ Attributes:
     anchor.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     anchor.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosing-region - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
-    anchor.grid-anchor-units - objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
+    anchor.grid-anchor-units - objectBoundingBox or userSpaceOnUse. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
 
     todo: like-this or likeThis? SVG is a goofy mix of the two.
 
@@ -268,10 +268,10 @@ Attribute details:
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
         aliases:
-            left - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x).
-            right - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x).
-            up - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
-            down - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
+            leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? round-left? "left" is already used in SVG transform-origin to mean side rather than direction. So use leftward to distinguish.
+            rightward - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x). naming: rightward? east? round-right?
+            upward - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
+            downward - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
             nearest-ties-low - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
             nearest-ties-high - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
             nearest-left - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
@@ -287,6 +287,10 @@ Attribute details:
             center-right
             center-up
             center-down
+            edge-leftward
+            edge-rightward
+            edge-upward
+            edge-downward
             nearest-center-left
             nearest-center-right
             nearest-center-up
@@ -304,7 +308,7 @@ Attribute details:
             in-ccw-nearest-center - ...
             out-cw-nearest-center - ...
             out-ccw-nearest-center - ...
-            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)`
+            evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
             evenodd-high
             evenodd-left
             evenodd-right
@@ -345,21 +349,21 @@ Example:
             </g>
         </g>
 
-        <svg xmlns="http://www.w3.org/2000/svg">
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:ps="https://github.com/fdwr/LunaSvgSampleTest">
           ...
-          <anchor id="plusSignCenter" x="38" y="38" grid-rounding="up left" />
+          <ps:anchor id="plusSignCenter" x="38" y="38" grid-rounding="up left" />
           ...
-          <g grid-align="plusSignCenter">
+          <g ps:grid-align="plusSignCenter">
             <circle cx="38" cy="38" r="10"/>
             <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
             <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
           </g>
           ...
           <switch>
-            <g ppu-range="0 16">
+            <g ps:ppu-range="0 16">
               <!-- less detailed version for less than 16 pixels per unit... -->
             </g>
-            <g ppu-range="16">
+            <g ps:ppu-range="16">
               <!-- tiny details visible at higher ppu, at least 16 PPU... -->
             </g>
           </switch>
@@ -378,7 +382,7 @@ Example:
           How do you align to it though? Does it need an id, just for that one case, which kinda defeats the convenience factor?
           Or <rect ... anchor-points="0% 100%" anchor-rounding="up" grid-rounding="out"/></rect> ?
           Percentages are similar in concept to primitiveUnits="objectBoundingBox" which make the lengths relative to the referencing object's bounding box https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/primitiveUnits
-          Anchor set percentages in <defs> could be treated as userSpaceOnUse or objectBoundingBox?
+          Anchor set percentages in <defs> could be treated as userSpaceOnUse or objectBoundingBox? Rather than gradientUnits or patternUnits, have anchorUnits.
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
@@ -397,6 +401,11 @@ Example:
         <g grid-rounding="x floor scale(2) prebias(-0.5) postbias(0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
         <g grid-rounding="x floor scale(0.5)"><!-- round to every half a pixel -->
 
+        <g grid-rounding="floor(x 1 0.5)"><!-- round down to pixel centers -->
+        <g grid-rounding="floor(x 2 0.0)"><!-- scale grid by 2x -->
+        <g grid-rounding="floor(x 2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="floor(x 0.5)"><!-- round to every half a pixel -->
+
     Referring to the same anchor twice in a nested group will be a nop, since the outer group
     already aligned the anchor. (but how to achieve this? how to know the outer one applied?)
 
@@ -412,6 +421,17 @@ Example:
         <anchor id="topLeftCorner" x="40" y="40" grid-rounding="up left">
         <anchor id="bottomRightCorner" x="60" y="60" grid-rounding="down right">
         <g grid-fit="topLeftCorner bottomRightCorner">
+            <circle cx="50" cy="50" r="10"/>
+        </g>
+
+        More concise:
+        <g adjust="bounds out">  OR  align="bounds out"
+            <circle cx="50" cy="50" r="10"/>
+        </g>
+
+    You should be able to stretch along vertical or horizontal and retain the aspect ratio for the other:
+
+        <g adjust="width out top up">  VS  width-retain-ratio  VS  width-uniform
             <circle cx="50" cy="50" r="10"/>
         </g>
 
@@ -446,6 +466,10 @@ Example:
 
         <anchor-set id="anchorSetA" anchors="42,36 anchorB 0%,50% left,top"/>
 
+    Or points and rounding?
+
+        <anchor-set id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
+
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
     An anchors attribute is preferred over points, and points over child elements.
 
@@ -473,6 +497,7 @@ Example:
     Just say:
         <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(23 42 up left)"/>
         <rect x1="23" y1="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-align="bounds round-out)"/>
         <rect x1="23" y1="42" width="20" height="10" grid-align="points(0%,0% 100%,100%) rounding(up left))"/>
 
     Note aligning a single anchor point is different from aligning all the points individually, which would change the height/width:
