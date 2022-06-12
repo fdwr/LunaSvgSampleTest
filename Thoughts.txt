@@ -50,19 +50,24 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         It has no fill, stroke, or visibility.
         Bounding box and clipping path calculations do not apply (so getBBox, getBoundingClientRect, getClientRects). Though SVG editors may have a more inclusive bounding box to show anchors.
         Pointer or keyboard events do not apply.
-        Anchor sets contain multiple anchors, each potentially with different rounding modes
+        Anchor sets/frames contain multiple anchors, each potentially with different rounding modes
             1 point yields translation
             2 points yield uniform scaling along both axes - for asymmetric scaling, use 3 (e.g. x=10,y=20 to x=30,y=20)
             3 points yield arbitrary transformation (asymmetric scaling, shear, rotation)
-            4+ points are unsupported, but a future version could treat them like a mesh warp.
-        Can the points be expressed inline, and if so, via (a) anchor(12 42 floor(x)) (b) 12,42, 13,66 floor(x) (c) 12,42; 13,16; top,left floor(x).
+            4+ points are ignored (only the first 3 matter), but a future version could treat them like a mesh warp.
+        Can the points be expressed inline, and if so, via
+            (a) anchor(12 42 floor(x))
+            (b) 12,42, 13,66 floor(x)
+            (c) 12,42; 13,16; top,left floor(x).
         Semicolons have precedent in svg.elements.animate.keyTimes https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/keyTimes
         Semicolons are also oddly used to separate attributes inside attributes svgView(viewBox(0,0,200,200);preserveAspectRatio(none))) https://svgwg.org/svg-next/linking.html#SVGFragmentIdentifiersDefinitions
         They need not be on-counter. Indeed, for rounded rectangles, off-contour corners are desired.
-    Grid fitting
+    Grid fitting / object alignment / pixel snapping / fine adjustment
         Align group of objects to adjusted/aligned point
-        Translate anchor and entire grouped object and then stretch by other anchor
-        transform-grid(translate(...) scale(...)
+        Translate anchor and entire grouped object and then stretch by other anchor frame
+        grid-transform(translate(...) scale(...))
+        grid-align(...)
+        grid-adjust(...)
     Rounding
         Modes:
             floor, ceil
@@ -70,16 +75,17 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
             toZero, toInfinity
             in, out
             up, down, left, right
-        rounding-origin for in (toward zero) and out (toward infinity) rounding, or maybe an offset inside the rounding mode. e.g. to-zero(x 0 -23 0)
+        rounding-origin for in (toward zero) and out (toward infinity) rounding, or maybe an offset inside the rounding mode. e.g. toward-zero(x 0 -23 0)
             Similar to https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin
         inward and outward rounding based on path direction clockwise vs counterclockwise
         Round relative to another point
-        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)" or odd-shift(2)
-        Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)"
+        Round even/odd (e.g. 1/3/5 odd pixel lines to half pixel vs 2/4/6 even pixel lines to pixel intersection) grid-rounding="evenodd(2)" or odd-shift(2) or parity-shift(ppu-scale=1 postbias=0 oddshift=0.5 evenshift=0)
+        Round at a fraction of the grid, such as half pixels grid-rounding="x floor half"? grid-scale="0.5 0.5"? grid-transform="scale(0.5 0.5)" or just parameter to floor? floor(x 0 0 0.5) where floor(axis=xy scale=1 prebias=0 postbias=prebias)
         No rounding mode supported for halves toward even numbers (also called "banker's rounding" or "convergent").
-        Round conditionally depending on whether axis aligned. e.g. grid-rounding="axis-aligned(x) non-axis-aligned(y)" 
+        Round conditionally depending on whether axis aligned. e.g. grid-rounding="axis-aligned(x) non-axis-aligned(y)"
         Reinterpret rounding direction depending on rotation or mirroring, such that a mirrored/rotated graphic looked the same as a rotated/mirrored bitmap. reinterpet-on-transform(true)
-        At the lower level, these resolve to bit flags: enabled/disabled per axis, floor/ceil, enabled when axis aligned true/false, flip on winding orientation, reinterpret on transform (default true) 
+        At the lower level, these resolve to bit flags: enabled/disabled per axis, floor/ceil, enabled when axis aligned true/false, flip on winding orientation, reinterpret on transform (default true)
+        Displacement/projection/widening of path up to nearest whole pixel. e.g. fattening a thin path up to a whole pixel before parity rounding. e.g. project-ppu(axis=xy ppu-scale=1 postbias=0 fraction=0.5)
     Conditional details
         Conditional visibility based on device pixels per canvas unit (PPU)
         If the condition is false, all children are hidden too (more like display:none than visibility:hidden).
