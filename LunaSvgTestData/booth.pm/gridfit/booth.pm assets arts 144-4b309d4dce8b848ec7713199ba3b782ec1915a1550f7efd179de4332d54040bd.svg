@@ -1,0 +1,121 @@
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+<anchor id="outer-left" x="2" y="23" rounding="nearest-low"/>
+<anchor id="outer-right" x="38" y="23" rounding="nearest-high"/>
+<anchor id="outer-top" x="20" y="10" rounding="nearest-low"/>
+<anchor id="outer-bottom" x="20" y="38" rounding="nearest-hight"/>
+
+<anchor id="outer-top-left" x="2" y="10" rounding="nearest-low(x) nearest-low(y)"/>
+<anchor id="outer-top-right" x="38" y="10" rounding="nearest-high(x) nearest-low(y)"/>
+<anchor id="outer-bottom-left" x="2" y="38" rounding="nearest-low(x) nearest-high(y)"/>
+<anchor id="outer-bottom-right" x="38" y="38" rounding="nearest-high(x) nearest-high(y)"/>
+
+<z><!-- briefer using adjustments to existing anchors rather than repeating grid-rounding -->
+<anchor id="outer-top-left" x="2" y="10" adjust="#outer-left #outer-top"/>
+<anchor id="outer-top-right" x="38" y="10" adjust="#outer-left #outer-top"/>
+<anchor id="outer-bottom-left" x="2" y="38" adjust="#outer-left #outer-top"/>
+<anchor id="outer-bottom-right" x="38" y="38" adjust="#outer-left #outer-top"/>
+</z>
+
+<anchor id="inner-top-left" x="8" y="16" rounding="nearest-low(x) nearest-low(y)" adjust="#outer-top-left" minimum-distance="3 3 #outer-top-left"/>
+<anchor id="inner-top-right" x="32" y="16" rounding="nearest-high(x) nearest-low(y)" adjust="#outer-top-right" minimum-distance="-3 3 #outer-top-right"/>
+<anchor id="inner-bottom-left" x="8" y="32" rounding="nearest-low(x) nearest-high(y)" adjust="#outer-bottom-left" minimum-distance="3 -3 #outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="32" y="32" rounding="nearest-high(x) nearest-high(y)" adjust="#outer-bottom-right" minimum-distance="-3 -3 #outer-bottom-right"/>
+
+<z><!-- alternately using stateful x y -->
+<anchor id="inner-top-left" x="8" y="16" rounding="x nearest-low y nearest-low" adjust="#outer-top-left" minimum-distance="3 3 #outer-top-left"/>
+<anchor id="inner-top-right" x="32" y="16" rounding="x nearest-high y nearest-low" adjust="#outer-top-right" minimum-distance="-3 3 #outer-top-right"/>
+<anchor id="inner-bottom-left" x="8" y="32" rounding="x nearest-low y nearest-high" adjust="#outer-bottom-left" minimum-distance="3 -3 #outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="32" y="32" rounding="x nearest-high y nearest-high" adjust="#outer-bottom-right" minimum-distance="-3 -3 #outer-bottom-right"/>
+</z>
+
+<z><!-- precomposed x y alias -->
+<anchor id="inner-top-left" x="8" y="16" rounding="nearest-leftward nearest-upward" adjust="#outer-top-left" minimum-distance="3 3 #outer-top-left"/>
+<anchor id="inner-top-right" x="32" y="16" rounding="nearest-rightward nearest-upward" adjust="#outer-top-right" minimum-distance="-3 3 #outer-top-right"/>
+<anchor id="inner-bottom-left" x="8" y="32" rounding="nearest-leftward nearest-downward" adjust="#outer-bottom-left" minimum-distance="3 -3 #outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="32" y="32" rounding="nearest-rightward nearest-downward" adjust="#outer-bottom-right" minimum-distance="-3 -3 #outer-bottom-right"/>
+</z>
+
+<z><!-- relative x y via origin -->
+<anchor id="inner-top-left" x="6" y="6" rounding="toward-infinity" origin="#outer-top-left" minimum-distance="3 3"/>
+<anchor id="inner-top-right" x="-6" y="6" rounding="toward-infinity" origin="#outer-top-right" minimum-distance="-3 3"/>
+<anchor id="inner-bottom-left" x="6" y="-6" rounding="toward-infinity" origin="#outer-bottom-left" minimum-distance="3 -3"/>
+<anchor id="inner-bottom-right" x="-6" y="-6" rounding="toward-infinity" origin="#outer-bottom-right" minimum-distance="-3 -3"/>
+</z>
+
+<z><!-- relative x y via origin with minimum-distance inside rounding -->
+<anchor id="inner-top-left" x="6" y="6" rounding="toward-infinity minimum-distance(3 3)" origin="#outer-top-left"/>
+<anchor id="inner-top-right" x="-6" y="6" rounding="toward-infinity minimum-distance(-3 3)" origin="#outer-top-right"/>
+<anchor id="inner-bottom-left" x="6" y="-6" rounding="toward-infinity minimum-distance(3 -3)" origin="#outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="-6" y="-6" rounding="toward-infinity minimum-distance(-3 -3)" origin="#outer-bottom-right"/>
+</z>
+
+<z><!-- relative x y via origin with at-least inside rounding -->
+<anchor id="inner-top-left" x="6" y="6" rounding="toward-infinity at-least(3)" origin="#outer-top-left"/>
+<anchor id="inner-top-right" x="-6" y="6" rounding="toward-infinity at-least(3)" origin="#outer-top-right"/>
+<anchor id="inner-bottom-left" x="6" y="-6" rounding="toward-infinity at-least(3)" origin="#outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="-6" y="-6" rounding="toward-infinity at-least(3)" origin="#outer-bottom-right"/>
+</z>
+
+<path
+adjustment-list="#inner-top-left #inner-top-right #inner-bottom-left #inner-bottom-right"
+grid-d="G2 M38 11"
+d="
+M38 11
+C38 10.9 38 10.7 37.9 10.6
+C37.8 10.4 37.6 10.2 37.4 10.1
+C37.3 10 37.1 10 37 10
+H33.3
+L22.8 2.80002
+C21.1 1.60002 18.8 1.60002 17.1 2.80002
+L6.7 10
+H3
+C2.9 10 2.7 10 2.6 10.1
+C2.4 10.2 2.2 10.4 2.1 10.6
+C2 10.7 2 10.9 2 11
+V37
+C2 37.1 2 37.3 2.1 37.4
+C2.2 37.6 2.4 37.8 2.6 37.9
+C2.7 38 2.9 38 3 38
+H37
+C37.1 38 37.3 38 37.4 37.9
+C37.6 37.8 37.8 37.6 37.9 37.4
+C38 37.3 38 37.1 38 37
+V11Z
+M34.6 12
+L32.6 14
+H7.4
+L5.4 12
+H34.6Z
+M8 16
+H32
+V32
+H8
+V16Z
+M6 15.4
+V32.6
+L4 34.6
+V13.4
+L6 15.4Z
+M7.4 34
+H32.6
+L34.6 36
+H5.4
+L7.4 34Z
+M34 32.6
+V15.4
+L36 13.4
+V34.6
+L34 32.6Z
+M20 4.00002
+C20.6 4.00002 21 4.40002 21 5.00002
+C21 5.60002 20.6 6.00002 20 6.00002
+C19.4 6.00002 19 5.60002 19 5.00002
+C19 4.40002 19.4 4.00002 20 4.00002Z
+M17 5.30002
+C17.2 6.80002 18.4 8.00002 20 8.00002
+C21.6 8.00002 22.8 6.80002 23 5.30002
+L29.8 10
+H10.2L17 5.30002Z
+" fill="#7F8D9F"/>
+</svg>
