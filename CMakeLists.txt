@@ -10,7 +10,19 @@ set(BUILD_SHARED_LIBS OFF)
 set(PLUTOVG_BGRA_PIXEL_ORDER ON CACHE BOOL "Use BGRA order instead of RGBA, useful for Windows GDI." FORCE)
 add_subdirectory(external/lunasvg)
 
-add_executable(LunaSvgTest source/LunaSvgTest.cpp source/LunaSvgTest.h resources/LunaSvgTest.rc resources/LunaSvgTest.manifest)
+add_executable(LunaSvgTest
+    source/precomp.h
+    source/Common.h
+    source/Common.cpp
+    source/RenderView.h
+    source/RenderView.cpp
+    source/LunaSvgTest.h
+    source/LunaSvgTest.cpp
+    source/EditingWindow.h
+    source/EditingWindow.cpp
+    resources/LunaSvgTest.rc
+    resources/LunaSvgTest.manifest
+)
 add_dependencies(LunaSvgTest lunasvg)
 target_link_libraries(LunaSvgTest lunasvg gdiplus.lib windowscodecs.lib)
 set_target_properties(LunaSvgTest PROPERTIES WIN32_EXECUTABLE TRUE)
