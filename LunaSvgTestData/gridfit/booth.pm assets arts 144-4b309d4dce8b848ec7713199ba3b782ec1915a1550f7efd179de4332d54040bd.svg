@@ -51,10 +51,11 @@
 </z>
 
 <z><!-- relative x y via origin with at-least inside rounding -->
-<anchor id="inner-top-left" x="6" y="6" rounding="toward-infinity at-least(3)" origin="#outer-top-left"/>
-<anchor id="inner-top-right" x="-6" y="6" rounding="toward-infinity at-least(3)" origin="#outer-top-right"/>
-<anchor id="inner-bottom-left" x="6" y="-6" rounding="toward-infinity at-least(3)" origin="#outer-bottom-left"/>
-<anchor id="inner-bottom-right" x="-6" y="-6" rounding="toward-infinity at-least(3)" origin="#outer-bottom-right"/>
+<grid-rounding id="inf-min-3" rounding="toward-infinity at-least(3)"/>
+<anchor id="inner-top-left" x="6" y="6" rounding="#inf-min-3" origin="#outer-top-left"/>
+<anchor id="inner-top-right" x="-6" y="6" rounding="#inf-min-3" origin="#outer-top-right"/>
+<anchor id="inner-bottom-left" x="6" y="-6" rounding="#inf-min-3" origin="#outer-bottom-left"/>
+<anchor id="inner-bottom-right" x="-6" y="-6" rounding="#inf-min-3" origin="#outer-bottom-right"/>
 </z>
 
 <path
