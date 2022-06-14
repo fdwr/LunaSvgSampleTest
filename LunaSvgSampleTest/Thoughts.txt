@@ -62,6 +62,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Semicolons have precedent in svg.elements.animate.keyTimes https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/keyTimes
         Semicolons are also oddly used to separate attributes inside attributes svgView(viewBox(0,0,200,200);preserveAspectRatio(none))) https://svgwg.org/svg-next/linking.html#SVGFragmentIdentifiersDefinitions
         They need not be on-counter. Indeed, for rounded rectangles, off-contour corners are desired.
+        Anchor adjustments can apply to multiple objects, including ones that are far away. For example a keyboard full of keys might have only one anchor to snap a keycap to whole pixels, but every other keycap can reuse that same anchor.
     Grid fitting / object alignment / pixel snapping / fine adjustment
         Align group of objects to adjusted/aligned point
         Translate anchor and entire grouped object and then stretch by other anchor frame
@@ -99,6 +100,9 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
     Not turing complete
         No loops, intermediate variables, or functions, just math statements
+    Issues
+        Seams - see vertical midpoint seam in icons8-fluency-afro-pick.svg
+        Alpha overlap - see right arrow tip in icons8-fluency-right.svg is thicker/darker than it should be.
 
 Read:
     A vector format for Flutter by Google - https://docs.google.com/document/d/1YWffrlc6ZqRwfIiR1qwp1AOkS9JyA_lEURI8p5PsZlg/edit#heading=h.8crpi5305nr
@@ -187,6 +191,7 @@ Elements:
     <grid-rounding/> - element in defs to avoid repeating the same rounding so often?
         id = name of object, which can be referred by other object's grid-round attribute.
         formulas = A series of operations (e.g. floor, ceil...) that modify the points. See below.
+        [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
 
 Attributes:
     *.ppu-range - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -197,17 +202,19 @@ Attributes:
         Require prefix # or no # in name?
         Can you mix coordinates, percentages, keywords, and anchor names? e.g. grid-adjust="top,50% #firstAnchor 42,0%"
         [naming] "adjustment" would be more consistent with the general nounness of attributes, but there's already precedent for "adjust" in "font-size-adjust" and "lengthAdjust".
-    *.grid-origin - relative origin in user coordinates. When anchor names are given, it's relative to the snapped position, not the original.
+        Should it just be "grid-transform" since anchors and anchor-frames yield transforms.
+    *.grid-origin - relative origin in user coordinates. e.g. <anchor id="foo" x="13" y="42" origin="bar"/>. When anchor names are given, it's relative to the snapped position, not the original user coordinates.
     *.grid-offset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead?
     *.grid-scale - multiplier for the device grid, such as rounding to every half pixel instead.
     *.grid-transform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
     *.grid-rounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
     *.anchor-rounding - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
-    *.stroke-rounding - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths.
+    *.stroke-rounding - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
     *.anchor-points - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
-    path.anchor-list - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string). naming: anchors?
+    path.anchor-list - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
+        [naming?] anchors? adjustment-list? adjustments?
     path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor".
     grid-frame.points - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     grid-frame.list - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
@@ -283,10 +290,12 @@ Attribute details:
                  useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
                 ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
             position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
-            project-ppu/ceil-ppu/displace(axis=xy round=ceil size=1 bias=0 fraction=0.5 minimum=1) displace? x += (max(ceil(ppu*size + bias), minimum) - ppu*size) * fraction. 0.5 fraction can be used to apply half expansion on either side of a path line.
+            project-ppu/ceil-ppu/displace(axis=xy round=ceil size=1 bias=0 fraction=0.5 minimum=1 scale/multiple=1) displace? x += (max(ceil(ppu*size + bias, multiple), minimum) - ppu*size) * fraction. 0.5 fraction can be used to apply half expansion on either side of a path line.
                 nudge perpendicular to strokes based on ppu (grid size agnostic) to widen or narrow a path to whole pixels. Can apply 0.5 to adjust half on either side of a path.
+                should there be a scale/multiple to round stems to even widths? e.g. icons8-fluency-right.svg Otherwise they will remain blurry, unless combined with a vertical adjustment.
             Should anchor-rounding be a separate attribute in that case to avoid points also being rounded?
             ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
+            adjust-by - adjust the current position by some pixel delta or an anchor. adjust-by(#anchorname xscale yscale xshear=0 yshear=0) or standard matrix form [sx hy hx sy dx dy]?
         aliases:
             leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? round-left? "left" is already used in SVG transform-origin to mean side rather than direction. So use leftward to distinguish.
             rightward - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x). naming: rightward? east? round-right?
@@ -296,18 +305,18 @@ Attribute details:
             nearest-ties-high - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearest-left and nearest-up.
             nearest-left - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
             nearest-right - Equals `floor(x+.5)`.
-            nearest-up - ...
-            nearest-down - ...
+            nearest-upward - ...
+            nearest-downward - ...
             nearest-diagonal-half - snap to pixel corners or pixel centers on both axes. Equivalent to: prebias(1 1 -1 1 0.5 0.5) floor postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
             rotate-ccw-45-sqrt-two - Equivalent to: prebias(1 1 -1 1 0.5 0.5)
             rotate-cw-45-inverse-sqrt-two - Equivalent to: postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
             todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halves-up? fraction-up? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down".
             center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`.
-            center-left - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
-            center-right
-            center-up
-            center-down
-            edge-leftward
+            center-leftward - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
+            center-rightward
+            center-upward
+            center-downward
+            edge-leftward - round to pixel edge (not center)
             edge-rightward
             edge-upward
             edge-downward
@@ -317,25 +326,25 @@ Attribute details:
             nearest-center-right
             nearest-center-up
             nearest-center-down
-            nearest-up - preferring this one
-            in - snap pixel inward (equivalent to outward on counter-clockwise shape). e.g. in(x) out(y) alias for "floor direction-inverts(true) winding-inverts(true)"
-            in-cw - snap pixel inward if clockwise winding (outward on counter-clockwise shape). "floor direction-inverts(true) winding-inverts(false)"
-            out - ... alias for "direction-inverts(true) winding-inverts(true) ceil(xy)"
-            out-cw - ... snap pixel outward if clockwise winding (inward on counter-clockwise shape).
-            in-cw-center - ...
-            in-ccw-center - ...
-            out-cw-center - ...
-            out-ccw-center - ...
-            in-cw-nearest-center - ...
-            in-ccw-nearest-center - ...
-            out-cw-nearest-center - ...
-            out-ccw-nearest-center - ...
+            nearest-upward - preferring this one
+            inward - snap pixel inward (equivalent to outward on counter-clockwise shape). e.g. in(x) out(y) alias for "floor direction-inverts(true) winding-inverts(true)"
+            inward-cw - snap pixel inward if clockwise winding (outward on counter-clockwise shape). "floor direction-inverts(true) winding-inverts(false)"
+            outward - ... alias for "direction-inverts(true) winding-inverts(true) ceil(xy)"
+            outward-cw - ... snap pixel outward if clockwise winding (inward on counter-clockwise shape).
+            inward-cw-center - ...
+            inward-ccw-center - ...
+            outward-cw-center - ...
+            outward-ccw-center - ...
+            inward-cw-nearest-center - ...
+            inward-ccw-nearest-center - ...
+            outward-cw-nearest-center - ...
+            outward-ccw-nearest-center - ...
             evenodd-low - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
             evenodd-high
-            evenodd-left
-            evenodd-right
-            evenodd-up
-            evenodd-down
+            evenodd-leftward
+            evenodd-rightward
+            evenodd-upward
+            evenodd-downward
             odd-shift?
             parity-shift?
             nearest edge shift? When stems could be closer to the left edge or right edge, choose whichever edge is closer. Maybe a subclass of parity-shift, customizable by accepting numeric parameters?
