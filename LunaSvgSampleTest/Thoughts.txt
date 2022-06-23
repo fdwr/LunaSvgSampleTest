@@ -172,6 +172,7 @@ Bikeshed terms:
     hook - Piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
     keypoint - Characteristic point of interest.
     node - Point at which lines or pathways intersect or branch; a central or connecting point.
+    orthogonal - of or involving right angles; at right angles.
     pillar - Tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
     project - Extend outward beyond something else; protrude.
     protrude - Extend beyond or above a surface.
@@ -224,7 +225,7 @@ Attributes:
     grid-framePoints - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     grid-frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosingRegion - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
-    anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like ‘gradientUnits’ https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
+    anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like ï¿½gradientUnitsï¿½ https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
 
     todo: like-this or likeThis? SVG is a goofy mix of the two, both camel-case and hypenated/kebab case.
         "Property or method names start with the initial keyword in lowercase, and each subsequent word starts with a capital letter." https://svgwg.org/svg2-draft/types.html#SVGDOMNamingConventions
@@ -239,8 +240,15 @@ Attribute details:
         `up left`
         `floor(0.5 -0.5 2, 0.5 -0.5 2)`
         `transform(1 1 -1 1 0.5 0.5)`
+        grammar
+            parameterValue = number | true | false | list
+            list = "[" number* "]"
+            positionalParameterValue = parameterValue
+            namedParameter = identifier
+            functionName = identifier
+            functionCall = functionName "(" positionalParameterValue* [namedParameter "=" parameterValue]* ")"
         main equation of uberround:
-            if rounding requires axis alignment
+            if rounding requires axis alignment (axis orthogonality)
                 if neither edge adjacent to point is axis aligned (0, 90, 180, 270), return
                 otherwise at least one edge is axis aligned, and so proceed, locking the other one
             subtract grid origin (if present)
@@ -318,6 +326,7 @@ Attribute details:
             requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
             directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
             windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
+                [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
             proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
                 proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias. naming: delta-shear? displacement-scale? delta-multiplier?
                 ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
