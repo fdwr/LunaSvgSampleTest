@@ -12,6 +12,7 @@
 #define IDM_GRID                             95
 #define IDM_HELP                             96
 #define IDM_PRESET                           97
+#define IDM_MAIN_CONTEXT_MENU                98
 #define IDD_LUNASVGTEST_DIALOG              102
 #define IDD_ABOUTBOX                        103
 #define IDM_ABOUT                           104
@@ -137,6 +138,7 @@
 #define IDM_BACKGROUND_LAST                 263
 #define IDM_GRID_VISIBLE                    270
 #define IDM_PIXEL_GRID_VISIBLE              271
+#define IDM_COPY_BITMAP_SELECTION           272
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC
