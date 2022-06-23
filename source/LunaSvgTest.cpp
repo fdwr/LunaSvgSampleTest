@@ -244,7 +244,9 @@ const std::wstring_view g_defaultMessage =
     L"ctrl c = copy bitmap to clipboard\r\n"
     L"\r\n"
     L"left mouse click = show item & coordinate\r\n"
-    L"middle mouse drag = pan\r\n"
+    L"right mouse click = context menu\r\n"
+    L"left mouse drag = pan\r\n"
+    L"right mouse drag = select for copying\r\n"
     L"mouse wheel = pan vertically\r\n"
     L"mouse wheel + shift = pan horizontally\r\n"
     L"mouse wheel + ctrl = zoom\r\n"
@@ -284,8 +286,11 @@ bool g_rasterFillsStrokesVisible = true; // Fills and strokes are visible.
 bool g_pixelGridVisible = false; // Display points per pixel.
 bool g_snapToPixels = false; // Display points per pixel.
 
-int32_t g_previousMouseX = 0; // Used for middle drag.
+int32_t g_previousMouseX = 0; // Used for pan;
 int32_t g_previousMouseY = 0;
+int32_t g_selectionStartMouseX = 0; // Used for right drag.
+int32_t g_selectionStartMouseY = 0;
+bool g_isRightDragging = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1752,6 +1757,24 @@ RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
 }
 
 
+// Returns the bounding rectangle of all canvas items that intersect the given rectangle.
+// This is useful for highlighting based on a mouse selection/click.
+RECT DetermineCanvasItemsRowBoundingRect(std::span<CanvasItem const> canvasItems, RECT const& intersectionRect)
+{
+    RECT boundingRect = {};
+    RECT dummyRect = {};
+    for (auto& canvasItem : canvasItems)
+    {
+        RECT currentRect = ToRect(canvasItem);
+        if (IntersectRect(/*out*/ &dummyRect, &currentRect, &intersectionRect))
+        {
+            UnionRect(/*out*/&boundingRect, &boundingRect, &currentRect);
+        }
+    }
+    return boundingRect;
+}
+
+
 // Redraw all canvas items into the given bitmap.
 // The screen was already cleared.
 void RedrawCanvasItems(std::span<CanvasItem const> canvasItems, lunasvg::Bitmap& bitmap)
@@ -2128,16 +2151,24 @@ void RedrawCanvasBackgroundAndItems(HWND hwnd)
 // Fill in a GDI BITMAPHEADER from the bitmap information.
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
+    RECT const& clipRect,
     /*out*/ BITMAPHEADERv5& bitmapInfo
     )
 {
+    SIZE size = {LONG(bitmap.width()), LONG(bitmap.height())};
+    size.cx   = std::min(clipRect.right, size.cx);
+    size.cy   = std::min(clipRect.bottom, size.cy);
+    size.cx  -= std::max(clipRect.left, LONG(0));
+    size.cy  -= std::max(clipRect.top, LONG(0));
+    LONG rowByteStride = (size.cx * sizeof(uint32_t) + 3) & ~3; // round to 4 byte multiple
+
     bitmapInfo.size = sizeof(bitmapInfo);
-    bitmapInfo.width = bitmap.width();
-    bitmapInfo.height = -LONG(bitmap.height());
+    bitmapInfo.width = size.cx;
+    bitmapInfo.height = -size.cy;
     bitmapInfo.planes = 1;
     bitmapInfo.bitCount = 32;
     bitmapInfo.compression = BI_BITFIELDS;
-    bitmapInfo.sizeImage = bitmap.stride() * bitmap.height();
+    bitmapInfo.sizeImage = rowByteStride * size.cy;
     bitmapInfo.xPelsPerMeter = 3780;
     bitmapInfo.yPelsPerMeter = 3780;
     bitmapInfo.clrUsed = 0;
@@ -2196,6 +2227,7 @@ void DrawRectangleAroundRectangle(
 // Why is using the clipboard so much more complicated than it ought to be?
 void CopyBitmapToClipboard(
     lunasvg::Bitmap& bitmap,
+    RECT const& clipRect,
     HWND hwnd
     )
 {
@@ -2205,8 +2237,11 @@ void CopyBitmapToClipboard(
         {
             EmptyClipboard();
 
+            RECT clampedClipRect = {LONG(0), LONG(0), LONG(bitmap.width()), LONG(bitmap.height())};
+            IntersectRect(/*out*/ &clampedClipRect, &clipRect, &clampedClipRect);
+
             BITMAPHEADERv5 bitmapInfo;
-            FillBitmapInfoFromLunaSvgBitmap(bitmap, /*out*/bitmapInfo);
+            FillBitmapInfoFromLunaSvgBitmap(bitmap, clampedClipRect, /*out*/bitmapInfo);
 
             uint32_t totalBytes = sizeof(bitmapInfo) + bitmapInfo.sizeImage;
 
@@ -2241,16 +2276,18 @@ void CopyBitmapToClipboard(
 
                     // Point to the beginning of the pixel data.
                     uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
-                    uint32_t bytesPerRow = (bitmapInfo.width * bitmapInfo.bitCount) / 8u; // Already 32-bit aligned.
-                    assert(bitmapInfo.height * bytesPerRow == bitmapInfo.sizeImage);
+                    uint32_t const sourceBytesPerRow = bitmap.width() * bitmapInfo.bitCount / 8u;
+                    uint32_t const destBytesPerRow = ((bitmapInfo.width * bitmapInfo.bitCount / 8u) + 3) & ~3u;
+                    assert(bitmapInfo.height * destBytesPerRow == bitmapInfo.sizeImage);
 
                     // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
-                    uint8_t* bitmapData = bitmap.data() + bitmap.stride() * bitmap.height();
+                    uint8_t const* sourceBitmapData = bitmap.data() + bitmap.stride() * clampedClipRect.bottom + (bitmapInfo.bitCount * clampedClipRect.left / 8u);
                     for (uint32_t y = 0; y < uint32_t(bitmapInfo.height); ++y)
                     {
-                        bitmapData -= bytesPerRow;
-                        memcpy(clipboardPixels, bitmapData, bytesPerRow);
-                        clipboardPixels += bytesPerRow;
+                        sourceBitmapData -= sourceBytesPerRow;
+                        assert(sourceBitmapData >= bitmap.data());
+                        memcpy(clipboardPixels, sourceBitmapData, destBytesPerRow);
+                        clipboardPixels += destBytesPerRow;
                     }
                 }
                 GlobalUnlock(memory);
@@ -2674,7 +2711,7 @@ void RepaintWindow(HWND hwnd)
     else // g_bitmap.valid()
     {
         BITMAPHEADERv5 bitmapInfo = {};
-        FillBitmapInfoFromLunaSvgBitmap(g_bitmap, /*out*/ bitmapInfo);
+        FillBitmapInfoFromLunaSvgBitmap(g_bitmap, {0, 0, INT_MAX, INT_MAX}, /*out*/ bitmapInfo);
 
         // Erase background around drawing.
         const uint32_t effectiveBitmapWidth  = g_bitmap.width() * g_bitmapPixelZoom;
@@ -2796,6 +2833,18 @@ void RepaintWindow(HWND hwnd)
         }
     }
 
+    // Draw selection rectangle.
+    if (g_isRightDragging)
+    {
+        RECT startMouseRect = {g_selectionStartMouseX, g_selectionStartMouseY, g_selectionStartMouseX + 1, g_selectionStartMouseY + 1};
+        RECT mouseRect = {g_previousMouseX, g_previousMouseY, g_previousMouseX + 1, g_previousMouseY + 1};
+        UnionRect(/*out*/ &mouseRect, &startMouseRect, &mouseRect);
+
+        const uint32_t w = mouseRect.right - mouseRect.left;
+        const uint32_t h = mouseRect.bottom - mouseRect.top;
+        DrawGridFast32bpp(mouseRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+    }
+
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
 
@@ -2897,7 +2946,7 @@ void HandleBitmapScrolling(HWND hwnd, uint32_t scrollBarCode, int32_t delta, boo
 }
 
 
-// Handle 2D scrolling like middle mouse drag.
+// Handle 2D scrolling like mouse drag.
 void HandleBitmapScrolling(HWND hwnd, int32_t deltaX, int32_t deltaY)
 {
     if (deltaX == 0 && deltaY == 0)
@@ -3006,6 +3055,13 @@ CanvasItem* GetCanvasItemAtPoint(int32_t pointX, int32_t pointY)
     return nullptr;
 }
 
+
+POINT ClientSpaceMouseCoordinateToImageCoordinate(int32_t mouseX, int32_t mouseY)
+{
+    LONG const canvasPointX = (mouseX + g_bitmapOffsetX) / g_bitmapPixelZoom;
+    LONG const canvasPointY = (mouseY + g_bitmapOffsetY) / g_bitmapPixelZoom;
+    return {canvasPointX, canvasPointY};
+}
 
 void ShowClickedCanvasItem(HWND hwnd, int32_t mouseX, int32_t mouseY)
 {
@@ -3375,7 +3431,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_COPY_BITMAP:
-                CopyBitmapToClipboard(g_bitmap, hwnd);
+                CopyBitmapToClipboard(g_bitmap, {0, 0, INT_MAX, INT_MAX}, hwnd);
                 break;
 
             case IDM_BACKGROUND_GRAY_CHECKERBOARD:
@@ -3587,6 +3643,63 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         ReleaseCapture();
         break;
 
+    case WM_RBUTTONDOWN:
+        g_selectionStartMouseX = g_previousMouseX = GET_X_LPARAM(lParam);
+        g_selectionStartMouseY = g_previousMouseY = GET_Y_LPARAM(lParam);
+        g_isRightDragging = true;
+        InvalidateClientRect(hwnd);
+        break;
+
+    case WM_RBUTTONUP:
+        {
+            g_isRightDragging = false;
+
+            POINT mousePoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            POINT menuPoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            ClientToScreen(hwnd, /*inout*/ &menuPoint);
+
+            HMENU menu = LoadMenu(g_instanceHandle, (LPCWSTR)IDM_MAIN_CONTEXT_MENU);
+            HMENU submenu = GetSubMenu(menu, 0);
+            int command = TrackPopupMenu(
+                submenu,
+                TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RIGHTBUTTON | TPM_NOANIMATION | TPM_RETURNCMD,
+                menuPoint.x,
+                menuPoint.y,
+                0, // reserved
+                hwnd,
+                nullptr // optional rectangle
+            );
+            DestroyMenu(menu);
+
+            switch (command)
+            {
+            // Can't handle this command in the standard WM_COMMAND because the clicked mouse coordinate is lost by then.
+            case IDM_COPY_BITMAP_SELECTION:
+                {
+                    // Get the rectangle between the right button press and right button release.
+                    POINT startPoint = ClientSpaceMouseCoordinateToImageCoordinate(mousePoint.x, mousePoint.y);
+                    POINT endPoint = ClientSpaceMouseCoordinateToImageCoordinate(g_selectionStartMouseX, g_selectionStartMouseY);
+                    RECT startMouseRect = {startPoint.x, startPoint.y, startPoint.x + 1, startPoint.y + 1};
+                    RECT mouseRect = {endPoint.x, endPoint.y, endPoint.x + 1, endPoint.y + 1};
+                    UnionRect(/*out*/ &mouseRect, &startMouseRect, &mouseRect);
+
+                    RECT clipRect = DetermineCanvasItemsRowBoundingRect(g_canvasItems, mouseRect);
+                    CopyBitmapToClipboard(g_bitmap, clipRect, hwnd);
+                }
+                break;
+
+            case 0: // User canceled.
+                break;
+
+            default:
+                PostMessage(hwnd, WM_COMMAND, command, 0);
+                break;
+            }
+
+            InvalidateClientRect(hwnd);
+        }
+        break;
+
     case WM_MOUSEMOVE:
         if (wParam & MK_LBUTTON)
         {
@@ -3596,6 +3709,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             g_previousMouseX = x;
             g_previousMouseY = y;
         }
+        else if (wParam & MK_RBUTTON)
+        {
+            g_previousMouseX = GET_X_LPARAM(lParam);
+            g_previousMouseY = GET_Y_LPARAM(lParam);
+            InvalidateClientRect(hwnd);
+        }
+        break;
+
+    case WM_CAPTURECHANGED:
+        g_isRightDragging = false;
         break;
 
     case WM_NCDESTROY:
