@@ -1077,7 +1077,7 @@ void DrawCheckerboardBackground(
 
 // Draws a color underneath the already existing image, as if the color had been drawn first and then the image later.
 void DrawBackgroundColorUnderneath(
-    uint8_t* pixels, // BGRA
+    std::byte* pixels, // BGRA
     uint32_t x,
     uint32_t y,
     uint32_t width,
@@ -1090,7 +1090,7 @@ void DrawBackgroundColorUnderneath(
     PixelBgra bgraColor{ .i = backgroundColor };
 
     //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
-    PixelBgra* pixel = AddByteOffset<uint8_t, PixelBgra>(pixels, y * byteStridePerRow + x * sizeof(PixelBgra));
+    PixelBgra* pixel = AddByteOffset<std::byte, PixelBgra>(pixels, y * byteStridePerRow + x * sizeof(PixelBgra));
 
     for (uint32_t j = 0; j < height; ++j)
     {
@@ -1100,6 +1100,46 @@ void DrawBackgroundColorUnderneath(
         }
         pixel = AddByteOffset(pixel, byteStridePerRow);
     }
+}
+
+
+// Draws a color underneath the already existing image, as if the color had been drawn first and then the image later.
+void DrawBackgroundColorOver(
+    std::byte* pixels, // BGRA
+    uint32_t x,
+    uint32_t y,
+    uint32_t width,
+    uint32_t height,
+    uint32_t byteStridePerRow,
+    uint32_t backgroundColor // BGRA
+    )
+{
+    //!!!
+    static_assert(sizeof(PixelBgra) == sizeof(uint32_t));
+    PixelBgra bgraColor{ .i = backgroundColor };
+
+    //blend(source, dest)  =  source.rgb + (dest.rgb * (1 - source.a))
+    PixelBgra* pixel = AddByteOffset<std::byte, PixelBgra>(pixels, y * byteStridePerRow + x * sizeof(PixelBgra));
+
+    for (uint32_t j = 0; j < height; ++j)
+    {
+        for (uint32_t i = 0; i < width; ++i)
+        {
+            pixel[i] = PixelBgra::Blend(pixel[i], bgraColor);
+        }
+        pixel = AddByteOffset(pixel, byteStridePerRow);
+    }
+}
+
+
+void DrawBackgroundColorOver(
+    std::byte* pixels, // BGRA
+    RECT const& rect,
+    uint32_t byteStridePerRow,
+    uint32_t backgroundColor // BGRA
+    )
+{
+    return DrawBackgroundColorOver(pixels, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, byteStridePerRow, backgroundColor);
 }
 
 
@@ -2093,6 +2133,22 @@ void InvalidateClientRectBitmap(HWND hwnd)
 }
 
 
+void UnionMouseSelectionRect(/*inout*/ RECT& rect, int32_t x1, int32_t y1)
+{
+    RECT mousePoint = {x1, y1, x1 + 1, y1 + 1};
+    UnionRect(/*out*/ &rect, &rect, &mousePoint);
+}
+
+
+RECT GetMouseSelectionRect(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+{
+    RECT rect = {};
+    UnionMouseSelectionRect(/*inout*/ rect, x1, y1);
+    UnionMouseSelectionRect(/*inout*/ rect, x2, y2);
+    return rect;
+}
+
+
 // Redraw all the SVG canvas items.
 void RedrawCanvasItemsLater(HWND hwnd)
 {
@@ -2836,17 +2892,36 @@ void RepaintWindow(HWND hwnd)
     // Draw selection rectangle.
     if (g_isRightDragging)
     {
-        RECT startMouseRect = {g_selectionStartMouseX, g_selectionStartMouseY, g_selectionStartMouseX + 1, g_selectionStartMouseY + 1};
-        RECT mouseRect = {g_previousMouseX, g_previousMouseY, g_previousMouseX + 1, g_previousMouseY + 1};
-        UnionRect(/*out*/ &mouseRect, &startMouseRect, &mouseRect);
-
-        const uint32_t w = mouseRect.right - mouseRect.left;
-        const uint32_t h = mouseRect.bottom - mouseRect.top;
-        DrawGridFast32bpp(mouseRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+        RECT selectionRect = GetMouseSelectionRect(g_selectionStartMouseX, g_selectionStartMouseY, g_previousMouseX, g_previousMouseY);
+        const uint32_t w = selectionRect.right - selectionRect.left;
+        const uint32_t h = selectionRect.bottom - selectionRect.top;
+        DrawGridFast32bpp(selectionRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+        RECT selectionRectMinusOne;
+        IntersectRect(/*out*/ &selectionRectMinusOne, &selectionRect, &clientRect);
+        DrawBackgroundColorOver(memoryBitmapPixels, selectionRectMinusOne, memoryBitmapRowByteStride, 0x60003060);
     }
 
     // Draw composited image to screen.
     BitBlt(ps.hdc, 0, 0, clientRect.right, clientRect.bottom, memoryDc, 0, 0, SRCCOPY);
+
+    #ifdef DEBUG_REDRAWING
+    static uint32_t color = 0x00FF00FF;
+    color = (color + 0x807060) & 0x00FFFFFF;
+    HBRUSH brush = CreateSolidBrush(color);
+    FillRect(ps.hdc, &clientRect, brush);
+    DeleteBrush(brush);
+
+    wchar_t windowTitle[1000];
+    static uint32_t redrawCounter = 0;
+    _snwprintf_s(
+        windowTitle,
+        sizeof(windowTitle),
+        L"redraw = %u",
+        redrawCounter
+    );
+    ++redrawCounter;
+    SetWindowText(hwnd, windowTitle);
+    #endif
 
     // DeleteDC, EndPaint, DeleteRgn implicitly called by cleanup.
 
@@ -3655,7 +3730,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             g_isRightDragging = false;
 
             POINT mousePoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
-            POINT menuPoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            POINT menuPoint = mousePoint;
             ClientToScreen(hwnd, /*inout*/ &menuPoint);
 
             HMENU menu = LoadMenu(g_instanceHandle, (LPCWSTR)IDM_MAIN_CONTEXT_MENU);
@@ -3701,19 +3776,29 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         break;
 
     case WM_MOUSEMOVE:
-        if (wParam & MK_LBUTTON)
         {
             int32_t x = GET_X_LPARAM(lParam);
             int32_t y = GET_Y_LPARAM(lParam);
-            HandleBitmapScrolling(hwnd, g_previousMouseX - x, g_previousMouseY - y);
+            if (wParam & MK_LBUTTON)
+            {
+                HandleBitmapScrolling(hwnd, g_previousMouseX - x, g_previousMouseY - y);
+            }
+            else if (wParam & MK_RBUTTON)
+            {
+                // Compute the area between the last selection and the current one.
+                // Inflate the rect some to mitigate a weird bug (in user32?) where the
+                // selection rectangle appears to delay behind the mouse and flicker.
+                // Interestingly the issue also disappears if drawing into the
+                // nonclient region like updating the window title bar.
+                RECT rect = {};
+                UnionMouseSelectionRect(/*inout*/ rect, x, y);
+                UnionMouseSelectionRect(/*inout*/ rect, g_previousMouseX, g_previousMouseY);
+                UnionMouseSelectionRect(/*inout*/ rect, g_selectionStartMouseX, g_selectionStartMouseY);
+                InflateRect(&rect, 10, 10);
+                InvalidateRect(hwnd, &rect, false); //!!!
+            }
             g_previousMouseX = x;
             g_previousMouseY = y;
-        }
-        else if (wParam & MK_RBUTTON)
-        {
-            g_previousMouseX = GET_X_LPARAM(lParam);
-            g_previousMouseY = GET_Y_LPARAM(lParam);
-            InvalidateClientRect(hwnd);
         }
         break;
 
