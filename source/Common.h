@@ -118,13 +118,13 @@ struct BITMAPHEADERv5 : BITMAPHEADERv4 // BITMAPV5HEADER
 };
 
 template <typename OriginalType, typename TargetType = OriginalType>
-TargetType* AddByteOffset(OriginalType* p, size_t byteOffset) noexcept
+inline TargetType* AddByteOffset(OriginalType* p, size_t byteOffset) noexcept
 {
     return reinterpret_cast<TargetType*>(reinterpret_cast<uint8_t*>(p) + byteOffset);
 }
 
 template <typename OriginalType, typename TargetType = OriginalType>
-TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset) noexcept
+inline TargetType const* AddByteOffset(OriginalType const* p, size_t byteOffset) noexcept
 {
     return reinterpret_cast<TargetType const*>(reinterpret_cast<uint8_t const*>(p) + byteOffset);
 }
