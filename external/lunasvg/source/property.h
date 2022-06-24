@@ -226,6 +226,9 @@ private:
     std::vector<PathCommand> m_commands;
     std::vector<Point> m_points;
     // TODO: GRIDFIT HERE
+    // Store anchors here in Path object, or in higher level object?
+    // Store rounding list here in path, or higher level object?
+    // TODO: Method to generate new Path based on anchors and rounding.
 };
 
 class PathIterator

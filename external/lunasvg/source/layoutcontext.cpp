@@ -427,6 +427,9 @@ void LayoutShape::render(RenderState& state) const
     RenderState newState(this, state.mode());
     // TODO: GRIDFIT HERE (adjust transform based on anchors?)
     // newState.transform = gridFitTransform * transform * state.transform;
+    // TODO: Generate new path based on rounding and transform.
+    // Do it here, or inside FillData::fill?
+    // Maybe set plutovg to identity to reduce numeric error.
     newState.transform = transform * state.transform;
     newState.beginGroup(state, info);
 
