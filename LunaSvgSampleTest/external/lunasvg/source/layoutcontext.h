@@ -307,7 +307,7 @@ public:
 
 public:
     Path path;
-    // TODO: GRIDFIT HERE (include anchors, pointers or indices)
+    // TODO: GRIDFIT HERE (include anchors, as pointers or indices)
     Transform transform;
     FillData fillData;
     StrokeData strokeData;
@@ -370,6 +370,7 @@ public:
 public:
     std::shared_ptr<Canvas> canvas;
     Transform transform;
+    // TODO: Consider transform for overscale MSAA or grid fitting.
 
 private:
     // TODO: GRIDFIT HERE - add RenderOptions flags

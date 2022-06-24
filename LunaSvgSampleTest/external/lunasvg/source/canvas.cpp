@@ -101,6 +101,8 @@ void Canvas::setTexture(const Canvas* source, TextureType type, const Transform&
 void Canvas::fill(const Path& path, const Transform& transform, WindRule winding, BlendMode mode, double opacity)
 {
     // TODO: GRIDFIT HERE
+    // Either generate a new path here using all the anchors and rounding rule.
+    // Maybe set matrix to identity for plutovg, and resolve it ahead of time.
     auto matrix = to_plutovg_matrix(transform);
     plutovg_matrix_multiply(&matrix, &matrix, &translation);
     to_plutovg_path(pluto, path);
@@ -280,6 +282,8 @@ static plutovg_spread_method_t to_plutovg_spread_methood(SpreadMethod spread)
 
 static void to_plutovg_stops(plutovg_gradient_t* gradient, const GradientStops& stops)
 {
+    // TODO: GRIDFIT HERE
+    // Consider how gradient stops are affected by grid fitting.
     for(const auto& stop : stops)
     {
         auto offset = std::get<0>(stop);
