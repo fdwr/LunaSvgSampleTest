@@ -1,7 +1,6 @@
 Random thoughts for the future:
 
 TODO:
-    - Draw triange showing path start and direction
     - Add option to display size label or not
     - Wrap labels correctly if too narrow, paired with image
     - Add 'switch' element too.
@@ -14,7 +13,13 @@ TODO:
         - (added locally) enumerate contours
         - fix gradient stop offset https://github.com/fdwr/LunaSvgSampleTest/commit/8df84b5b75954ef6b439ac35427c4dd6766777fe
         - Eventually grid fitting
-    - Screenshot candidates
+    - Add roadmap
+        - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
+        - Publish spec rough draft
+        - Implement spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer
+        - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
+        - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
+    - Documentation screenshot candidates
         - icons8-fluency-fill-color.svg lavender paint needs proportional shear to maintain shape 24x24
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
@@ -38,12 +43,6 @@ TODO:
         - icons8-cleaning-service.svg the rounded corners at 24px in should still be visible like 48px.
         - icons8-clip-snapping.svg the gap in between the two halfs are blurry at 16 to 24px rather than a clear gap.
         - icons8-crib.svg vertical bars completely disappear.
-    - Add roadmap
-        - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
-        - Publish spec rough draft
-        - Implement spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer
-        - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
-        - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
