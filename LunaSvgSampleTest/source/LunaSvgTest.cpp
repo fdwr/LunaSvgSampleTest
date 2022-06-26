@@ -169,40 +169,21 @@ union PixelBgra
     // blend(dest, source) =  source.bgra + (dest.bgra * (1 - source.a))
     static inline PixelBgra Blend(PixelBgra existingColor, PixelBgra newColor) noexcept
     {
-    #if 0
-        const uint32_t bitmapAlpha = newColor.a;
-        const uint32_t inverseBitmapAlpha = 255 - bitmapAlpha;
-        if (bitmapAlpha == 255)
+        const uint32_t inverseBitmapAlpha = (~newColor.i >> 24); // Equals 255 - newColor.a
+        if (inverseBitmapAlpha == 0) // If fully opaque.
             return newColor;
-    #else
-        const uint32_t inverseBitmapAlpha = (~newColor.i >> 24);
-        if (inverseBitmapAlpha == 0)
-            return newColor;
-    #endif
 
-    #if 0
-        uint32_t blue  = (inverseBitmapAlpha * existingColor.b / 255) + newColor.b;
-        uint32_t green = (inverseBitmapAlpha * existingColor.g / 255) + newColor.g;
-        uint32_t red   = (inverseBitmapAlpha * existingColor.r / 255) + newColor.r;
-        uint32_t alpha = (inverseBitmapAlpha * existingColor.a / 255) + newColor.a;
-        uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
-    #elif 0
-        uint32_t color = (inverseBitmapAlpha * existingColor.b / 255u);
-        color         |= (inverseBitmapAlpha * existingColor.g / 255u) << 8;
-        color         |= (inverseBitmapAlpha * existingColor.r / 255u) << 16;
-        color         |= (inverseBitmapAlpha * existingColor.a / 255u) << 24;
-        uint32_t pixelValue = color + newColor.i;
-    #elif 0
-        uint32_t color = (inverseBitmapAlpha * existingColor.b >> 8u);
-        color         |= (inverseBitmapAlpha * existingColor.g >> 8u) << 8;
-        color         |= (inverseBitmapAlpha * existingColor.r >> 8u) << 16;
-        color         |= (inverseBitmapAlpha * existingColor.a >> 8u) << 24;
-        uint32_t pixelValue = color + newColor.i;
-    #elif 1
+        // uint32_t blue  = (inverseBitmapAlpha * existingColor.b / 255) + newColor.b;
+        // uint32_t green = (inverseBitmapAlpha * existingColor.g / 255) + newColor.g;
+        // uint32_t red   = (inverseBitmapAlpha * existingColor.r / 255) + newColor.r;
+        // uint32_t alpha = (inverseBitmapAlpha * existingColor.a / 255) + newColor.a;
+        // uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
+        // https://stackoverflow.com/questions/1102692/how-to-alpha-blend-rgba-unsigned-byte-color-fast
+        // Note this isn't identical to n / 255, which can be approximated by (r + 1 + (r >> 8)) >> 8 or ((x + 1) * 257) >> 16.
         uint32_t rb = (newColor.i & 0x00FF00FFu) + ( (inverseBitmapAlpha * (existingColor.i & 0x00FF00FFu)) >> 8u);
         uint32_t ag = (newColor.i & 0xFF00FF00u) + ( (inverseBitmapAlpha * (existingColor.i & 0xFF00FF00u)) >> 8u);
         uint32_t pixelValue = (rb & 0x00FF00FFu) + (ag & 0xFF00FF00u);
-    #endif
+
         return PixelBgra{ .i = pixelValue };
     }
 
