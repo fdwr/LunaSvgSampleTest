@@ -14,12 +14,12 @@ add_executable(LunaSvgTest
     source/precomp.h
     source/Common.h
     source/Common.cpp
-    source/RenderView.h
-    source/RenderView.cpp
+    #source/RenderView.h
+    #source/RenderView.cpp
     source/LunaSvgTest.h
     source/LunaSvgTest.cpp
-    source/EditingWindow.h
-    source/EditingWindow.cpp
+    #source/EditingWindow.h
+    #source/EditingWindow.cpp
     resources/LunaSvgTest.rc
     resources/LunaSvgTest.manifest
 )
