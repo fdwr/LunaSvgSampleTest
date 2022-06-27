@@ -20,7 +20,7 @@ TODO:
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
         - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
     - Documentation screenshot candidates
-        - icons8-fluency-fill-color.svg lavender paint needs proportional shear to maintain shape 24x24
+        - icons8-fluency-fill-color.svg lavender horizontal paint level needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left 
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
         - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
@@ -43,6 +43,8 @@ TODO:
         - icons8-cleaning-service.svg the rounded corners at 24px in should still be visible like 48px.
         - icons8-clip-snapping.svg the gap in between the two halfs are blurry at 16 to 24px rather than a clear gap.
         - icons8-crib.svg vertical bars completely disappear.
+        - icons8-deviantart.svg should use shear for the z-like shape's horizontal bars so they follow the slope. 24x24px. First adjust-transform="bounds outward", then "round-nearest(proportional-shear=true)"
+        - transform-heart.svg has little nub on left for 24px and blurry right edge 28px.
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
     plutovg-private.h
@@ -187,16 +189,17 @@ Elements:
         y = vertical coordinate. Like x.
         grid-rounding = Reference to a grid-rounding element #id or a series of formulas inline.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
-    <grid-frame/> - invisible frame (1 point to 4 points) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out" grid rounding mode.
+    <grid-frame/> or <anchor-frame/> - invisible frame (1 point to 4 points) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out" grid rounding mode.
         id = name of object, which can be referred by other object's grid-adjust attribute.
         points/anchors/anchor-list = semicolon delimited? list of anchors by id. possibly inline points.
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
         [naming?] grid-anchor-frame, anchor-set
-    <grid-rounding/> - element in defs to avoid repeating the same rounding so often?
+    <grid-rounding/> or <adjustment value=""/> - element in defs to avoid repeating the same rounding so often? Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
         id = name of object, which can be referred by other object's grid-round attribute.
-        formulas = A series of operations (e.g. floor, ceil...) that modify the points. See below.
+        value/formulas = A series of operations (e.g. floor, ceil...) that modify the points. See below.
         [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
+            And not all adjustments actually round. e.g. none is a possible value which does no rounding. adjust-by can translate by anchors, but the coordinates may not be rounded.
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -227,6 +230,7 @@ Attributes:
     grid-frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosingRegion - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
     anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like "gradientUnits" https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
+    *.anchor? - Instead of "adjust" e.g. <rect anchor="top" transform-adjust="upward"/> or just stick with <rect transform-adjust="top floor"/>? or <rect transform-adjust="anchor(top floor)"/>?
 
     todo: like-this or likeThis? SVG is a goofy mix of the two, both camel-case and hypenated/kebab case.
         "Property or method names start with the initial keyword in lowercase, and each subsequent word starts with a capital letter." https://svgwg.org/svg2-draft/types.html#SVGDOMNamingConventions
@@ -265,12 +269,14 @@ Attribute details:
                     [1 1]->[-1 1], yielding [[1 1],[-1 1]] which rotates 45 CW and scales 1.414x.
                 multiply coordinates by built transform
             if unscaled bias given
-                prebias += ppu * unscaled-bias
-                postbias += ppu * unscaled-bias
+                scaled-bias = ppu * unscaled-bias
+                prebias += scaled-bias
+                postbias += scaled-bias
                 todo: Where does "bias-modulo" fit into this? Should it apply to just (ppu * unscaled-bias) or the whole (prebias + scale-bias)?
-            roundedCoordinateValue = modeFunction((originalCoordinateValue - prebias) / scale) * scale + postbias)
+                should this be a separate function, not jamming it into the already complex round?
+            roundedCoordinateValue = modeFunction((originalCoordinateValue - prebias) / scale) * scale + postbias
             if explicit vector given, unmultiply
-            if should apply shear based on edge angle
+            if should apply shear based on edge angle (proportional-shear=true)
                 orthogonalAxisValue += (roundCoordinateValue - originalCoordinateValue) * slope of perpendicular edge
             zero delta for locked axis values
             todo: consider minimum delta (e.g. ensuring at least one pixel displacement for line thickness)
@@ -307,7 +313,7 @@ Attribute details:
             vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
                 Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
             vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-            vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = -floor(-x)).
+            vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = = -scale * floor(x / -scale) = -floor(-x)).
             toInfinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
             toZero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
             bias - combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5). bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
@@ -397,6 +403,10 @@ Attribute details:
             inwardCcwNearestCenter - ...
             outwardCwNearestCenter - ...
             outwardCcwNearestCenter - ...
+            evenHigh/Low - round to nearest even number
+            oddHigh/Low - round to nearest odd number
+            evenNearestLow - round to nearest even number
+            oddNearestLow - round to nearest odd number
             evenOddLow - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
             evenOddHigh
             evenOddLeftward
@@ -412,6 +422,7 @@ Attribute details:
             shape-rendering crispEdges is not affected https://www.w3.org/TR/SVG11/painting.html#ShapeRenderingProperty
             stroke-alignment (https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment) and outline projection are independent. Imo Gavin Kistner's stroke-alignment is currently insufficiently defined, as inner and outer are ambiguous in too many cases, but it's a step forward. There should also be a 'left' and 'right' side enum, depending on the stroke direction. Clipping and masks are another way to achieve them: https://alexwlchan.net/2021/03/inner-outer-strokes-svg/.
             vector effects (https://dev.w3.org/SVG/modules/vectoreffects/master/SVGVectorEffectsPrimer.html) apply to the individual shapes, not the result.
+            filter effects should support rounding adjustment. e.g. feDropShadow has deltaAdjust to round dx and dy to whole pixels. feImage supports transformAdjust to snap images to tile whole pixels, which avoids Moire patterns.
         questions:
             How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
             ?How does vector-effect="non-scaling-stroke" interact?
@@ -443,8 +454,12 @@ Attribute details:
                     y-ceil
 
 Example:
-    Grid alignment cannot be part of the existing transform() as browsers (Chrome and Edge anyway) ignore the entire transform attribute entirely upon seeing any unrecognized calls, ruining forwards compatibility with older clients (e.g. transform="grid-align(plusSignCenter) translate(13 24)" also ignores the translate).
-    Additionally grid alignment needs to be relative to the actual device space, thus a 
+    Grid alignment can be part of the existing transform="..." attribute, because browsers (Chrome and Edge anyway) ignore the remainder of the transforms upon seeing any unrecognized calls.
+        e.g. transform="scale(3) grid-align(plusSignCenter) translate(13 24)"
+        Chrome ignores scale and translate. LunaSvg respects everything before the unrecognized token, meaning scale but not translate.
+        So (short of changing browser behavior) it must be a separate attribute, like transform-adjust.
+        Additionally it should be distinct from "transform" to reside in its own namespace.
+        Additionally fine adjustments/grid alignment need to be relative to the actual device pixel space, whereas transform is relative to user coordinate space.
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid:rounding="up left" />
@@ -460,6 +475,24 @@ Example:
                      Multiple anchors can apply to multiple points,
                      such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
                 <path grid:adjustment-list="leftPart rightPart anotherPart" d="m 10 10 h20 v20 z" grid:d="ga0 m 10 10 ga1 h20 ga0 2 v20 z"/>
+            </g>
+        </g>
+
+        Newer syntax:
+        <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" ps:point-adjust="upward leftward" />
+        <g ps:transform-adjust="#plusSignTopLeftCorner">
+            <anchor id="plusSignCenter" x="38" y="38" ps:rounding="edgeTieLow(multiple=0.5)"/><!-- round to nearest half pixel -->
+            <g ps:transform-adjust="#plusSignCenter">
+                <circle cx="38" cy="38" r="10"/>
+                <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
+                <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
+
+                ...
+                <!-- 3 anchors are used in the path for displacement.
+                     Multiple anchors can apply to multiple points,
+                     such as leftPart (#0) and anotherPart (#2) applying to the last point. -->
+                <path ps:adjustment-list="#leftPart #rightPart #anotherPart" d="m 10 10 h20 v20 z" ps:d="ga0 m 10 10 ga1 h20 ga0 2 v20 z"/>
             </g>
         </g>
 
@@ -545,13 +578,26 @@ Example:
         </g>
 
         More concise:
-        <g adjust="bounds out">  OR  align="bounds out"
+        <g adjust="bounds outward">  OR  align="bounds outward"
             <circle cx="50" cy="50" r="10"/>
         </g>
 
+    Inline notation?
+
+        <rect anchor="top" transform-adjust="upward"/>
+        <rect transform-adjust="top upward"/>
+        <rect transform-adjust="anchor(top upward)"/>
+        <rect transform-adjust="bounds upward"/> // round top and bottom upward
+        <rect transform-adjust="round-edges-upward"/> // round top and bottom upward (bounds are implicit if not given)
+
+    Center in position vs rounding ambiguity?
+
+        <rect transform-adjust="center round-upward"/> // rounds the center upward to a pixel edge
+        <rect transform-adjust="round-center-upward"/> // rounds the bounds to a pixel center. round-half-upward?
+
     You should be able to stretch along vertical or horizontal and retain the aspect ratio for the other:
 
-        <g adjust="width out top up">  VS  width-retain-ratio  VS  width-uniform
+        <g transform-adjust="bounds-horizontal outward top upward">  VS  width-retain-ratio  VS  width-uniform
             <circle cx="50" cy="50" r="10"/>
         </g>
 
