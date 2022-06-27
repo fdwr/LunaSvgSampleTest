@@ -138,7 +138,8 @@
 #define IDM_BACKGROUND_LAST                 263
 #define IDM_GRID_VISIBLE                    270
 #define IDM_PIXEL_GRID_VISIBLE              271
-#define IDM_COPY_BITMAP_SELECTION           272
+#define IDM_ITEM_BORDER_VISIBLE             272
+#define IDM_COPY_BITMAP_SELECTION           273
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC

@@ -288,6 +288,7 @@ bool g_gridVisible = false; // Display rectangular grid using g_gridSize.
 bool g_outlinesVisible = false; // Display path outlines of each document.
 bool g_rasterFillsStrokesVisible = true; // Fills and strokes are visible.
 bool g_pixelGridVisible = false; // Display points per pixel.
+bool g_itemBorderVisible = true; // Display border around canvas items.
 bool g_snapToPixels = false; // Display points per pixel.
 
 int32_t g_previousMouseX = 0; // Used for pan;
@@ -630,7 +631,7 @@ void ConstrainBitmapOffsetsLater()
 }
 
 
-#if 1
+#if 0
 // GDI SetPixel is really slow even on memory bitmaps.
 // So don't call this version.
 // Draw horizontal and vertical lines using the given color.
@@ -2813,7 +2814,7 @@ void RepaintWindow(HWND hwnd)
     // Draw the grid.
     int32_t gridSize = (g_gridSize > 0) ? g_gridSize : INT32_MAX / 2;
     int32_t gridSpacing = std::min(LONG(gridSize), clientRect.right) * g_bitmapPixelZoom;
-    if (g_gridVisible || g_pixelGridVisible)
+    if (g_gridVisible || g_pixelGridVisible || g_itemBorderVisible)
     {
         gridSpacing = std::max(gridSpacing, 2);
 
@@ -2836,11 +2837,13 @@ void RepaintWindow(HWND hwnd)
                     {
                         // Draw internal grid.
                         DrawGridFast32bpp(itemRect, gridSpacing, gridSpacing, 0x00000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
-
+                    }
+                    if (g_itemBorderVisible)
+                    {
                         // Draw item border.
                         const uint32_t w = itemRect.right - itemRect.left;
                         const uint32_t h = itemRect.bottom - itemRect.top;
-                        DrawGridFast32bpp(itemRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(itemRect, w - 1, h - 1, 0x80004080 /*not opaque 0xFF0080FF*/, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
@@ -2964,6 +2967,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
     {
         {IDM_GRID, IDM_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_gridVisible); }},
         {IDM_GRID, IDM_PIXEL_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_pixelGridVisible); }},
+        {IDM_GRID, IDM_ITEM_BORDER_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_itemBorderVisible); }},
         {IDM_BACKGROUND, IDM_BACKGROUND_FIRST, IDM_BACKGROUND_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
         {IDM_BACKGROUND, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
         {IDM_BACKGROUND, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
@@ -3542,6 +3546,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
             case IDM_PIXEL_GRID_VISIBLE:
                 g_pixelGridVisible = !g_pixelGridVisible;
+                InvalidateClientRectBitmap(hwnd);
+                break;
+
+            case IDM_ITEM_BORDER_VISIBLE:
+                g_itemBorderVisible = !g_itemBorderVisible;
                 InvalidateClientRectBitmap(hwnd);
                 break;
 
