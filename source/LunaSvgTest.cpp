@@ -3406,6 +3406,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 else
                 {
                     g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
+                    g_bitmapMaximumSize = std::max(g_bitmapMaximumSize, g_bitmapSizePerDocument);
                 }
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
@@ -3627,6 +3628,16 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 g_bitmapSizeWrapped = true;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 g_bitmapSizePerDocument = 64;
+                RelayoutAndRedrawCanvasItemsLater(hwnd);
+                RealignBitmapOffsetsLater();
+                break;
+
+            case IDM_PRESET_WATERFALL_UP_TO_64:
+                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                g_bitmapSizeWrapped = true;
+                g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
+                g_bitmapSizePerDocument = 64;
+                g_bitmapMaximumSize = 64;
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;

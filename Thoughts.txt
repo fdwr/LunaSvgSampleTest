@@ -43,7 +43,9 @@ TODO:
         - icons8-cleaning-service.svg the rounded corners at 24px in should still be visible like 48px.
         - icons8-clip-snapping.svg the gap in between the two halfs are blurry at 16 to 24px rather than a clear gap.
         - icons8-crib.svg vertical bars completely disappear.
-        - icons8-deviantart.svg should use shear for the z-like shape's horizontal bars so they follow the slope. 24x24px. First adjust-transform="bounds outward", then "round-nearest(proportional-shear=true)"
+        - icons8-deviantart.svg should use shear for the z-like shape's horizontal bars so they follow the slope. 24x24px. First adjust-transform="bounds outward", then "round-nearest(proportional-shear=true)".
+        - icons8-cheese.svg 20px left circle would be slightly distorted (an oval) if transforming entire shape.
+        - icons8-violin.svg 36px the handle would be better stretched via transform along the diagonals outward.
         - transform-heart.svg has little nub on left for 24px and blurry right edge 28px.
 
 Fix void Canvas::rgba() to use macros. canvas.cpp line 195
@@ -105,7 +107,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
             Perspective orientation when the icon is large, but flat when tiny (e.g. Windows 7 Notepad in Alt+Tab vs top left system icon)
             Fewer objects, such as a pad with pencil at large sizes but just the pad for smaller sizes.
     Minimum constraints
-        Set minimum path width minimum-strokewidth="1px" (e.g. no thinner than 1 pixel)
+        Set minimum path width minimum-stroke-width="1px" (e.g. no thinner than 1 pixel) (or stroke-width-rounding="ceil(bias=0.5 minimum=1)")
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
     Not turing complete
         No loops, intermediate variables, or functions, just math statements
