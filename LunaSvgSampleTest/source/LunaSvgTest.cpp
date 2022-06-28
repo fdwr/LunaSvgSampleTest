@@ -1495,7 +1495,7 @@ void AppendError(std::wstring_view message)
     // To increase the tooltip visibility, add a blank line before and after.
     if (g_errorMessage.empty())
     {
-        g_errorMessage.push_back('\n ');
+        g_errorMessage.append(L"\n ");
     }
 
     g_errorMessage.append(message);
