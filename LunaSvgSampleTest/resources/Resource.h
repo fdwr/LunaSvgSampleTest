@@ -124,6 +124,7 @@
 #define IDM_PRESET_OVERVIEW                 242
 #define IDM_PRESET_WRAPPED_ICONS            243
 #define IDM_PRESET_WRAPPED_IMAGES           244
+#define IDM_PRESET_WATERFALL_UP_TO_64       245
 #define IDM_SNAP_TO_PIXELS                  250
 #define IDM_COPY_BITMAP                     251
 #define IDM_NUDGE_LEFT                      252
