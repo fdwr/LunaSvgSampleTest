@@ -2,7 +2,7 @@
   "configurations": [
     {
       "name": "x64-Debug",
-      "generator": "Ninja",
+      "generator": "Visual Studio 16 2019",
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64_x64" ],
       "buildRoot": "${projectDir}\\build\\${name}",
@@ -13,7 +13,7 @@
     },
     {
       "name": "x64-Release",
-      "generator": "Ninja",
+      "generator": "Visual Studio 16 2019",
       "configurationType": "MinSizeRel",
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\build\\${name}\\install",
@@ -24,7 +24,7 @@
     },
     {
       "name": "x86-Debug",
-      "generator": "Ninja",
+      "generator": "Visual Studio 16 2019",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\build\\${name}\\install",
@@ -35,6 +35,17 @@
     },
     {
       "name": "x86-Release",
+      "generator": "Visual Studio 16 2019",
+      "configurationType": "MinSizeRel",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\${name}\\install",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x86" ]
+    },
+    {
+      "name": "x86-Release-ninja",
       "generator": "Ninja",
       "configurationType": "MinSizeRel",
       "buildRoot": "${projectDir}\\build\\${name}",
