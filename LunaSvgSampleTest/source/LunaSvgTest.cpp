@@ -3145,8 +3145,8 @@ CanvasItem* GetCanvasItemAtPoint(int32_t pointX, int32_t pointY)
 
 POINT ClientSpaceMouseCoordinateToImageCoordinate(int32_t mouseX, int32_t mouseY)
 {
-    LONG const canvasPointX = (mouseX + g_bitmapOffsetX) / g_bitmapPixelZoom;
-    LONG const canvasPointY = (mouseY + g_bitmapOffsetY) / g_bitmapPixelZoom;
+    LONG const canvasPointX = (mouseX + g_bitmapOffsetX) / int32_t(g_bitmapPixelZoom);
+    LONG const canvasPointY = (mouseY + g_bitmapOffsetY) / int32_t(g_bitmapPixelZoom);
     return {canvasPointX, canvasPointY};
 }
 
@@ -3750,7 +3750,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         g_selectionStartMouseX = g_previousMouseX = GET_X_LPARAM(lParam);
         g_selectionStartMouseY = g_previousMouseY = GET_Y_LPARAM(lParam);
         g_isRightDragging = true;
-        InvalidateClientRect(hwnd);
+        SetCapture(hwnd);
         break;
 
     case WM_RBUTTONUP:
@@ -3782,10 +3782,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                     // Get the rectangle between the right button press and right button release.
                     POINT startPoint = ClientSpaceMouseCoordinateToImageCoordinate(mousePoint.x, mousePoint.y);
                     POINT endPoint = ClientSpaceMouseCoordinateToImageCoordinate(g_selectionStartMouseX, g_selectionStartMouseY);
-                    RECT startMouseRect = {startPoint.x, startPoint.y, startPoint.x + 1, startPoint.y + 1};
-                    RECT mouseRect = {endPoint.x, endPoint.y, endPoint.x + 1, endPoint.y + 1};
-                    UnionRect(/*out*/ &mouseRect, &startMouseRect, &mouseRect);
-
+                    RECT mouseRect = GetMouseSelectionRect(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
                     RECT clipRect = DetermineCanvasItemsRowBoundingRect(g_canvasItems, mouseRect);
                     CopyBitmapToClipboard(g_bitmap, clipRect, hwnd);
                 }
