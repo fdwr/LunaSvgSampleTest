@@ -189,10 +189,11 @@ union PixelBgra
 
     // Lighten dark colors and darken light colors using the average grayscale,
     // useful for displaying grid lines or dots.
-    static inline PixelBgra InvertSoftAverage(PixelBgra existingColor) noexcept
+    // "adjustment" ranges 0 to 255, but anything beyond 96 will be saturated on one end.
+    static inline PixelBgra AverageInverseGray(PixelBgra existingColor, int32_t adjustment) noexcept
     {
-        uint32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
-        shade += (shade >= 96) ? -64 : 64;
+        int32_t shade = ((existingColor.r + existingColor.g + existingColor.b) * 341) >> 10;
+        shade = std::clamp(shade + ((shade >= 96) ? -adjustment : adjustment), 0, 255);
         return PixelBgra{ .i = (shade << 0) | (shade << 8) | (shade << 16) | 0xFF000000 };
     }
 };
@@ -714,8 +715,9 @@ void DrawGridFast32bpp(
     RECT const& gridRect,
     uint32_t xSpacing,
     uint32_t ySpacing,
-    uint32_t color, // B,G,R,A in byte memory order (no alpha blending done). If 0, then softly invert the color.
-    bool drawLines,
+    uint32_t color, // B,G,R,A in byte memory order (no alpha blending done). If adjustColor == true, then must be 0 to 255.
+    bool drawDots, // Draw dots instead of lines.
+    bool adjustColor, // Adjust color instead of blending, interpreting the color parameter differently.
     std::byte* pixels,
     uint32_t rowByteStride,
     RECT const& bitmapBoundingRect
@@ -724,6 +726,7 @@ void DrawGridFast32bpp(
     assert(bitmapBoundingRect.left >= 0);
     assert(bitmapBoundingRect.top >= 0);
     assert(rowByteStride >= bitmapBoundingRect.right * sizeof(uint32_t));
+    assert(!adjustColor || color <= 255);
 
     xSpacing = std::max(xSpacing, 1u);
     ySpacing = std::max(ySpacing, 1u);
@@ -743,13 +746,13 @@ void DrawGridFast32bpp(
 
     PixelBgra bgraColor{ .i = color };
 
-    auto drawHorizontalLine = [](PixelBgra* pixel, int32_t x0, int32_t x1, uint32_t xSpacing, PixelBgra bgraColor)
+    auto drawHorizontalLine = [](PixelBgra* pixel, int32_t x0, int32_t x1, uint32_t xSpacing, PixelBgra bgraColor, bool adjustColor)
     {
-        if (bgraColor.i == 0)
+        if (adjustColor)
         {
             for (int32_t x = x0; x < x1; x += xSpacing)
             {
-                pixel[x] = PixelBgra::InvertSoftAverage(pixel[x]);
+                pixel[x] = PixelBgra::AverageInverseGray(pixel[x], bgraColor.i);
             }
         }
         else
@@ -761,14 +764,14 @@ void DrawGridFast32bpp(
         }
     };
 
-    auto drawVerticalLine = [](PixelBgra* pixel, int32_t y0, int32_t y1, uint32_t ySpacing, uint32_t rowByteStride, PixelBgra bgraColor)
+    auto drawVerticalLine = [](PixelBgra* pixel, int32_t y0, int32_t y1, uint32_t ySpacing, uint32_t rowByteStride, PixelBgra bgraColor, bool adjustColor)
     {
         pixel = AddByteOffset(pixel, y0 * rowByteStride);
-        if (bgraColor.i == 0)
+        if (adjustColor)
         {
             for (int32_t y = y0; y < y1; ++y)
             {
-                *pixel = PixelBgra::InvertSoftAverage(*pixel);
+                *pixel = PixelBgra::AverageInverseGray(*pixel, bgraColor.i);
                 pixel = AddByteOffset(pixel, rowByteStride);
             }
         }
@@ -783,23 +786,7 @@ void DrawGridFast32bpp(
     };
 
 
-    if (drawLines)
-    {
-        // Vertical lines drawn left to right.
-        for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
-        {
-            PixelBgra* pixel = AddByteOffset<std::byte, PixelBgra>(pixels, x * sizeof(PixelBgra));
-            drawVerticalLine(pixel, y0, y1, 1, rowByteStride, bgraColor);
-        }
-
-        // Horizontal lines drawn top to bottom.
-        for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
-        {
-            PixelBgra* pixelRow = AddByteOffset<std::byte, PixelBgra>(pixels, y * rowByteStride);
-            drawHorizontalLine(pixelRow, x0, x1, 1, bgraColor);
-        }
-    }
-    else
+    if (drawDots)
     {
         // This is several times faster than GDI SetPixel,
         // where drawing a full page of dots on my 1920x1080
@@ -807,7 +794,23 @@ void DrawGridFast32bpp(
         for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
         {
             PixelBgra* pixelRow = AddByteOffset<std::byte, PixelBgra>(pixels, y * rowByteStride);
-            drawHorizontalLine(pixelRow, x0Adjusted, x1, xSpacing, bgraColor);
+            drawHorizontalLine(pixelRow, x0Adjusted, x1, xSpacing, bgraColor, adjustColor);
+        }
+    }
+    else // Draw lines
+    {
+        // Vertical lines drawn left to right.
+        for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
+        {
+            PixelBgra* pixel = AddByteOffset<std::byte, PixelBgra>(pixels, x * sizeof(PixelBgra));
+            drawVerticalLine(pixel, y0, y1, 1, rowByteStride, bgraColor, adjustColor);
+        }
+
+        // Horizontal lines drawn top to bottom.
+        for (int32_t y = y0Adjusted; y < y1; y += ySpacing)
+        {
+            PixelBgra* pixelRow = AddByteOffset<std::byte, PixelBgra>(pixels, y * rowByteStride);
+            drawHorizontalLine(pixelRow, x0, x1, 1, bgraColor, adjustColor);
         }
     }
 }
@@ -2836,19 +2839,21 @@ void RepaintWindow(HWND hwnd)
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        DrawGridFast32bpp(itemRect, gridSpacing, gridSpacing, 0x00000000, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        int32_t averagecolorAdjustment = std::clamp(gridSpacing * 4u, 32u, 64u); // Scale color adjustment by spacing amount.
+                        DrawGridFast32bpp(itemRect, gridSpacing, gridSpacing, averagecolorAdjustment, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_itemBorderVisible)
                     {
                         // Draw item border.
                         const uint32_t w = itemRect.right - itemRect.left;
                         const uint32_t h = itemRect.bottom - itemRect.top;
-                        DrawGridFast32bpp(itemRect, w - 1, h - 1, 0x80004080 /*not opaque 0xFF0080FF*/, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        DrawGridFast32bpp(itemRect, w - 1, h - 1, 0x80004080 /*not opaque 0xFF0080FF*/, /*drawDots:*/false, /*adjustColor:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
                         // Draw internal points.
-                        DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, 0x00000000, /*drawLines:*/false, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        int32_t averagecolorAdjustment = std::clamp(22 + g_bitmapPixelZoom * 6u, 32u, 255u); // Scale color adjustment by spacing amount.
+                        DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, averagecolorAdjustment, /*drawDots:*/true, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
@@ -2901,7 +2906,7 @@ void RepaintWindow(HWND hwnd)
         RECT selectionRect = GetMouseSelectionRect(g_selectionStartMouseX, g_selectionStartMouseY, g_previousMouseX, g_previousMouseY);
         const uint32_t w = selectionRect.right - selectionRect.left;
         const uint32_t h = selectionRect.bottom - selectionRect.top;
-        DrawGridFast32bpp(selectionRect, w - 1, h - 1, 0xFF0080FF, /*drawLines:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+        DrawGridFast32bpp(selectionRect, w - 1, h - 1, 96, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
         RECT selectionRectMinusOne;
         IntersectRect(/*out*/ &selectionRectMinusOne, &selectionRect, &clientRect);
         DrawBackgroundColorOver(memoryBitmapPixels, selectionRectMinusOne, memoryBitmapRowByteStride, 0x60003060);
