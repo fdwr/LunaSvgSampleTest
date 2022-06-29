@@ -58,10 +58,11 @@ message(RUNTIME_OUTPUT_DIRECTORY="${RUNTIME_OUTPUT_DIRECTORY}")
 #set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT LunaSvgTest)
 
 if(WIN32)
-    set(CMAKE_SHARED_LINKER_FLAGS /MANIFEST:NO)
+    set(CMAKE_SHARED_LINKER_FLAGS /MANIFEST:NO) # Use our own, thanks.
 endif(WIN32)
 
-# This is needed for the Ninja generator for some reason (shrug), but using MS Build instead doesn't need it.
+# This was needed for the Ninja generator in CMake 3.4 for some reason (shrug), but it appears no longer
+# necessary in CMake 3.6. Keep it for now in case someone wants to use the slightly older version.
 # Also, this arcanery is not intuitive at all.
 #add_custom_command(
 #    TARGET
@@ -70,5 +71,5 @@ endif(WIN32)
 #    COMMAND
 #        "mt.exe" -manifest \"${CMAKE_CURRENT_SOURCE_DIR}\\resources\\LunaSvgTest.manifest\" -outputresource:\"${CMAKE_CURRENT_BINARY_DIR}\\LunaSvgTest.exe\"\;\#2
 #    COMMENT
-#        "Adding custom manifest containing MSVCRT80 dependency..." 
+#        "Adding custom manifest containing MSVCRT80 dependency..."
 #)
