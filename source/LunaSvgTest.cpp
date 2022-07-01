@@ -1478,7 +1478,6 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
     }
 
     g_filenameList.push_back(filePath);
-    RealignBitmapOffsetsLater();
 }
 
 
@@ -1529,6 +1528,7 @@ void LoadDocumentFiles(std::vector<std::wstring>&& fileList)
     {
         AppendSingleDocumentFile(fileName.c_str());
     }
+    ConstrainBitmapOffsetsLater();
     ShowErrors();
 }
 
@@ -3314,6 +3314,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         }
 
                         LoadDocumentFiles(std::move(filenameList));
+                        RealignBitmapOffsetsLater();
                         RelayoutAndRedrawCanvasItemsLater(hwnd);
                     }
                 }
@@ -3366,7 +3367,6 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 if (!g_filenameList.empty())
                 {
                     LoadDocumentFiles(std::move(g_filenameList));
-                    ShowErrors();
                     RelayoutAndRedrawCanvasItemsLater(hwnd);
                 }
                 break;
@@ -3679,6 +3679,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             {
                 RedrawCanvasItemsLater(hwnd);
                 LoadDocumentFiles(std::move(filenameList));
+                RealignBitmapOffsetsLater();
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
             }
         }
