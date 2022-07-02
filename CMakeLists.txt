@@ -50,6 +50,12 @@ set_target_properties(
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 )
 
+# Enable multithreaded builds which halves build time (why is this not default?...)
+if(MSVC)
+    target_compile_options(LunaSvgTest PRIVATE "/MP")
+    target_compile_options(lunasvg PRIVATE "/MP")
+endif()
+
 message(PROJECT_SOURCE_DIR="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(CMAKE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 message(CMAKE_CURRENT_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}")
