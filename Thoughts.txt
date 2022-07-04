@@ -415,7 +415,7 @@ Attribute details:
             oddHigh/Low - round to nearest odd number
             evenNearestLow - round to nearest even number
             oddNearestLow - round to nearest odd number
-            evenOddLow - Round to pixel coordinate if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
+            evenOddLow - Round to pixel edge if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
             evenOddHigh
             evenOddLeftward
             evenOddRightward
@@ -435,6 +435,7 @@ Attribute details:
             How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
             ?How does vector-effect="non-scaling-stroke" interact?
             When fitting to two anchors, where one of the other anchors was also displaced by an anchor, is the displacement just the final grid rounding delta or the whole delta from the original ideal coordinate in world space?
+            should text elements (https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text) have bounds that encompass the whole text (from ascenders to descenders) or just the baseline (single horizontal line). Aligning the baseline is more important than the top and bottom.
     Rounding outward diagram:
         out clockwise:
 
