@@ -40,19 +40,35 @@ struct CanvasItem
     enum class Flags : uint8_t
     {
         Default = 0, // Default
-        NewLine = 1, // Wrap this item to a new row/column (depending on flow direction)
-        SetIndent = 2, // This items sets an indent for wrapped items
     };
     enum class FlowDirection
     {
-        RightDown,
-        DownRight,
+        Right    = 0x0,
+        Left     = 0x1, // Negative,
+        Down     = 0x2, // Vertical,
+        Up       = 0x3, // Vertical | Negative,
+        Negative = 1, // x or y coordinates flow negatively (left or up)
+        Vertical = 2,
         Total,
+    };
+    enum class Alignment
+    {
+        LeftTop     = 0x0, // Left | Top,
+        RightTop    = 0x1, // Right | Top,
+        LeftBottom  = 0x2, // Left | Bottom,
+        RightBottom = 0x3, // Right | Bottom,
+        NegativeHorizontal = 0x1, // bitmask
+        NegativeVertical = 0x2, // bitmask
+        Left = 0,
+        Top = 0,
+        Right = NegativeHorizontal,
+        Bottom = NegativeVertical,
+        Total = 3,
     };
 
     ItemType itemType;
     Flags flags;
-    uint8_t padding1;
+    uint8_t level;
     uint8_t padding2;
     union
     {
@@ -71,6 +87,26 @@ struct CanvasItem
             && pointY >= int32_t(y)
             && pointY <  int32_t(y + h);
     }
+
+    constexpr bool static IsVerticalFlowDirection(FlowDirection flowDirection)
+    {
+        return uint32_t(flowDirection) & uint32_t(FlowDirection::Vertical);
+    }
+
+    constexpr bool static IsHorizontalFlowDirection(FlowDirection flowDirection)
+    {
+        return !IsVerticalFlowDirection(flowDirection);
+    }
+
+    constexpr bool static IsNegativeHorizontalAlignment(Alignment alignment)
+    {
+        return uint32_t(alignment) & uint32_t(Alignment::NegativeHorizontal);
+    }
+
+    constexpr bool static IsNegativeVerticalAlignment(Alignment alignment)
+    {
+        return uint32_t(alignment) & uint32_t(Alignment::NegativeVertical);
+    }
 };
 
 
@@ -78,11 +114,12 @@ bool operator==(CanvasItem const& a, CanvasItem const& b) noexcept
 {
     return a.itemType == b.itemType
         && a.flags == b.flags
+        && a.level == b.level
         && memcmp(&a.value, &b.value, sizeof(b.value)) == 0
         && a.x == b.x
         && a.y == b.y
         && a.w == b.w
-        && a.h == b.w;
+        && a.h == b.h;
 }
 
 struct RasterImage
@@ -271,7 +308,7 @@ const uint32_t g_zoomFactors[] = {1,2,3,4,5,6,8,12,16,24,32,48,64,96,128,192,256
 const uint32_t g_gridSizes[] = {0,1,2,3,4,5,6,8,12,16,24,32,48,64,96,128,192,256};
 const uint32_t g_bitmapScrollStep = 64;
 
-BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallObjectThenSize;
+BitmapSizingDisplay g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
 BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboard;
 uint32_t g_bitmapSizePerDocument = 64; // in pixels
 uint32_t g_bitmapMaximumSize = UINT32_MAX; // useful for the waterfall to set a maximum range
@@ -281,7 +318,10 @@ int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmap
 int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans down.
 double g_svgNudgeOffsetX = 0; // A tiny adjustment to add to the rendering transform.
 double g_svgNudgeOffsetY = 0; // A tiny adjustment to add to the rendering transform.
-CanvasItem::FlowDirection g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+constexpr std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirectionRightThenDown = {CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down, CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down};
+constexpr std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirectionDownThenRight = {CanvasItem::FlowDirection::Down, CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down, CanvasItem::FlowDirection::Right};
+std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
+CanvasItem::FlowDirection g_menuFlowDirections[] = {CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down};
 bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
@@ -1562,7 +1602,7 @@ void AppendCanvasItemsGivenSize(
 // flow direction, and bitmap sizing display. Layout of x,y coordinates occurs later.
 void GenerateCanvasItems(
     RECT const& boundingRect,
-    CanvasItem::FlowDirection flowDirection,
+    std::span<CanvasItem::FlowDirection const> directions,
     /*out*/ std::vector<CanvasItem>& canvasItems
     )
 {
@@ -1571,8 +1611,8 @@ void GenerateCanvasItems(
     constexpr uint32_t maximumSmallDigitNumbers = 4;
     const uint32_t maximumDigitPixelsWide = (g_smallDigitWidth + 1) * maximumSmallDigitNumbers;
     const uint32_t totalDocuments = static_cast<uint32_t>(g_images.size());
-    const bool isHorizontalLayout = (flowDirection == CanvasItem::FlowDirection::RightDown);
-    static_assert(uint32_t(CanvasItem::FlowDirection::Total) == 2);
+    const CanvasItem::FlowDirection flowDirection = directions.front();
+    const bool isHorizontalLayout = CanvasItem::IsHorizontalFlowDirection(flowDirection);
 
     // Draw the image to a bitmap.
     switch (g_bitmapSizingDisplay)
@@ -1593,12 +1633,15 @@ void GenerateCanvasItems(
                 CanvasItem labelCanvasItem =
                 {
                     .itemType = CanvasItem::ItemType::SizeLabel,
-                    .flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent,
+                    .flags = CanvasItem::Flags::Default,
+                    .level = 3,
                     .value = {.labelSize = bitmapSize},
                     .w = isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
                     .h = isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
                 };
                 canvasItems.push_back(std::move(labelCanvasItem));
+
+                uint8_t itemLevel = 2;
 
                 // Append all SVG documents or raster images at the current size.
                 for (uint32_t index = 0; index < totalDocuments; ++index)
@@ -1608,11 +1651,13 @@ void GenerateCanvasItems(
                     {
                         .itemType = image.GetCanvasItemType(),
                         .flags = CanvasItem::Flags::Default,
+                        .level = itemLevel,
                         .value = {.imageIndex = index},
                         .w = bitmapSize,
                         .h = bitmapSize,
                     };
                     canvasItems.push_back(std::move(svgCanvasItem));
+                    itemLevel = 0;
                 }
             }
         }
@@ -1622,27 +1667,7 @@ void GenerateCanvasItems(
         {
             for (uint32_t index = 0; index < totalDocuments; ++index)
             {
-                CanvasItem::Flags flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
-
-                // Append all labels, one for each size.
-                for (uint32_t bitmapSize : g_waterfallBitmapSizes)
-                {
-                    if (bitmapSize > g_bitmapMaximumSize)
-                        break;
-
-                    CanvasItem canvasItem =
-                    {
-                        .itemType = CanvasItem::ItemType::SizeLabel,
-                        .flags = flags,
-                        .value = {.labelSize = bitmapSize},
-                        .w = !isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
-                        .h = !isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
-                    };
-                    canvasItems.push_back(std::move(canvasItem));
-                    flags = CanvasItem::Flags::Default;
-                }
-
-                flags = CanvasItem::Flags::NewLine | CanvasItem::Flags::SetIndent;
+                uint8_t labelLevel = 3;
 
                 // Append all SVG documents or raster images at the current size.
                 for (uint32_t bitmapSize : g_waterfallBitmapSizes)
@@ -1650,17 +1675,29 @@ void GenerateCanvasItems(
                     if (bitmapSize > g_bitmapMaximumSize)
                         break;
 
+                    CanvasItem labelCanvasItem =
+                    {
+                        .itemType = CanvasItem::ItemType::SizeLabel,
+                        .flags = CanvasItem::Flags::Default,
+                        .level = labelLevel,
+                        .value = {.labelSize = bitmapSize},
+                        .w = !isHorizontalLayout ? maximumDigitPixelsWide : bitmapSize,
+                        .h = !isHorizontalLayout ? bitmapSize : g_smallDigitHeight,
+                    };
+                    canvasItems.push_back(std::move(labelCanvasItem));
+                    labelLevel = 2;
+
                     auto& image = g_images[index];
-                    CanvasItem canvasItem =
+                    CanvasItem svgCanvasItem =
                     {
                         .itemType = image.GetCanvasItemType(),
-                        .flags = flags,
+                        .flags = CanvasItem::Flags::Default,
+                        .level = 1,
                         .value = {.imageIndex = index},
                         .w = bitmapSize,
                         .h = bitmapSize,
                     };
-                    canvasItems.push_back(std::move(canvasItem));
-                    flags = CanvasItem::Flags::Default;
+                    canvasItems.push_back(std::move(svgCanvasItem));
                 }
             }
         }
@@ -1706,88 +1743,100 @@ void GenerateCanvasItems(
     }
 }
 
+void AdjustCanvasItems(/*inout*/ std::span<CanvasItem> canvasItems, int32_t dx, int32_t dy)
+{
+    if (dx == 0 && dy == 0)
+        return;
 
-// Lay all the canvas item positions by flow direction.
-void LayoutCanvasItems(
+    for (auto& canvasItem : canvasItems)
+    {
+        canvasItem.x += dx;
+        canvasItem.y += dy;
+    }
+}
+
+std::tuple<RECT /*bounds*/, std::span<CanvasItem> /*items*/>
+LayoutCanvasItems(
+    uint32_t level,
     RECT const& boundingRect,
-    CanvasItem::FlowDirection flowDirection,
-    /*inout*/ std::span<CanvasItem> canvasItems
+    std::span<CanvasItem> canvasItems,
+    std::span<CanvasItem::FlowDirection const> directions,
+    std::span<CanvasItem::Alignment const> alignments
     )
 {
-    assert(boundingRect.left == 0 && boundingRect.top == 0);
-    const uint32_t bitmapMaximumVisibleWidth = boundingRect.right / g_bitmapPixelZoom;
-    const uint32_t bitmapMaximumVisibleHeight = boundingRect.bottom / g_bitmapPixelZoom;
+    assert(!directions.empty()); // Must pass at least one direction.
+    CanvasItem::FlowDirection flowDirection = level < directions.size() ? directions[level] : CanvasItem::FlowDirection::Right;
+    CanvasItem::Alignment alignment = level < alignments.size() ? alignments[level] : CanvasItem::Alignment::LeftTop;
+    bool const isPrimaryFlowDirectionHorizontal = CanvasItem::IsHorizontalFlowDirection(directions.front());
+    bool const isCurrentFlowDirectionHorizontal = CanvasItem::IsHorizontalFlowDirection(flowDirection);
 
-    uint32_t x = 0, y = 0; // Current canvas item's top left.
-    uint32_t indentX = 0, indentY = 0;
-    RECT lineRect = {}; // Accumulated rect of current line (row or column until next wrap).
+    const int32_t boundingWidth = boundingRect.right - boundingRect.left;
+    const int32_t boundingHeight = boundingRect.bottom - boundingRect.top;
+    RECT levelRect = {};
+    size_t canvasItemIndex = 0;
 
-    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
+    for (size_t itemCount = canvasItems.size(); canvasItemIndex < itemCount; )
     {
         auto& canvasItem = canvasItems[canvasItemIndex];
-        uint32_t nextX = x, nextY = y;
-        const bool isNewLine = bool(canvasItem.flags & CanvasItem::Flags::NewLine);
-        const bool hasSetIndent = bool(canvasItem.flags & CanvasItem::Flags::SetIndent);
+        if (canvasItemIndex > 0 && canvasItem.level > level)
+            break; // Bail since reached the end of this level run.
+
+        RECT subrect = {};
+        std::span<CanvasItem> subspan;
+        if (level > 0)
+        {
+            // Recurse lower level.
+            // Determine a restricted bounds for the child level, subtracting out what has already been consumed.
+            RECT subBoundingRect = boundingRect;
+            auto levelRectWidth = isCurrentFlowDirectionHorizontal ? (levelRect.right - levelRect.left) : 0L;
+            auto levelRectHeight = !isCurrentFlowDirectionHorizontal ? (levelRect.bottom - levelRect.top) : 0L;
+            subBoundingRect.right  = std::max(1L, subBoundingRect.right - levelRectWidth);
+            subBoundingRect.bottom = std::max(1L, subBoundingRect.bottom - levelRectHeight);
+            std::tie(subrect, subspan) = LayoutCanvasItems(level - 1, subBoundingRect, canvasItems.subspan(canvasItemIndex), directions, alignments);
+        }
+        else // canvasItem.level == level
+        {
+            subrect = ToRect(canvasItem);
+            subspan = canvasItems.subspan(canvasItemIndex, 1);
+        }
+
+        int32_t const w = subrect.right - subrect.left;
+        int32_t const h = subrect.bottom - subrect.top;
+        int32_t x = 0, y = 0;
 
         switch (flowDirection)
         {
-        case CanvasItem::FlowDirection::RightDown:
-            if (x + canvasItem.w > bitmapMaximumVisibleWidth || isNewLine)
-            {
-                if (isNewLine)
-                {
-                    indentX = 0;
-                }
-                if (lineRect.right > int32_t(indentX))
-                {
-                    x = indentX;
-                    y = lineRect.bottom;
-                    nextY = y;
-                    lineRect = {};
-                }
-            }
-            nextX = x + canvasItem.w;
-            if (hasSetIndent)
-            {
-                indentX = nextX;
-            }
-            break;
+        case CanvasItem::FlowDirection::Left:  x = levelRect.left - w; y = levelRect.top;     break;
+        case CanvasItem::FlowDirection::Right: x = levelRect.right;    y = levelRect.top;     break;
+        case CanvasItem::FlowDirection::Up:    x = levelRect.left;     y = levelRect.top - h; break;
+        case CanvasItem::FlowDirection::Down:  x = levelRect.left;     y = levelRect.bottom;  break;
+        }
 
-        case CanvasItem::FlowDirection::DownRight:
-            if (y + canvasItem.h > bitmapMaximumVisibleHeight || isNewLine)
+        x -= subrect.left + CanvasItem::IsNegativeHorizontalAlignment(alignment) ? w : 0;
+        y -= subrect.top  + CanvasItem::IsNegativeVerticalAlignment(alignment)   ? h : 0;
+
+        RECT newLevelRect;
+        OffsetRect(/*inout*/ &subrect, x, y);
+        UnionRect(/*out*/ &newLevelRect, &levelRect, &subrect);
+
+        // Wrap if we've exceeded the bounds along the current direction.
+        if (canvasItemIndex > 0 && level < directions.size() - 1)
+        {
+            if (isPrimaryFlowDirectionHorizontal && (newLevelRect.right - newLevelRect.left > boundingWidth)
+            || (!isPrimaryFlowDirectionHorizontal && (newLevelRect.bottom - newLevelRect.top > boundingHeight)))
             {
-                if (isNewLine)
-                {
-                    indentY = 0;
-                }
-                if (lineRect.bottom > int32_t(indentY))
-                {
-                    y = indentY;
-                    x = lineRect.right;
-                    nextX = x;
-                    lineRect = {};
-                }
+                break;
             }
-            nextY = y + canvasItem.h;
-            if (hasSetIndent)
-            {
-                indentY = nextY;
-            }
-            break;
-        };
+        }
+        levelRect = newLevelRect;
 
-        // Update the item position.
-        canvasItem.x = x;
-        canvasItem.y = y;
+        AdjustCanvasItems(subspan, x, y);
 
-        // Accumulate the current line bounds with the item.
-        RECT currentRect = ToRect(canvasItem);
-        UnionRect(/*out*/&lineRect, &lineRect, &currentRect);
-
-        // Update the coordinates for the next item.
-        x = nextX;
-        y = nextY;
+        assert(subspan.size() > 0);
+        canvasItemIndex += subspan.size();
     }
+
+    return {levelRect, canvasItems.subspan(0, canvasItemIndex)};
 }
 
 
@@ -2066,14 +2115,18 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
             canvasItemsCopy = g_canvasItems;
         }
 
-        RECT const& layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
-        GenerateCanvasItems(clientRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
-        LayoutCanvasItems(layoutRect, g_canvasFlowDirection, /*inout*/g_canvasItems);
+        GenerateCanvasItems(clientRect, g_canvasFlowDirections, /*inout*/g_canvasItems);
 
-        RECT boundingRect = DetermineCanvasItemsBoundingRect(g_canvasItems);
+        RECT layoutRect = g_bitmapSizeWrapped ? clientRect : RECT{0,0, INT_MAX, INT_MAX};
+        layoutRect.right /= g_bitmapPixelZoom;
+        layoutRect.bottom /= g_bitmapPixelZoom;
+
+        uint32_t layoutLevels = uint32_t(g_canvasFlowDirections.size() - 1);
+        auto [boundingRect, items] = LayoutCanvasItems(layoutLevels, layoutRect, /*inout*/ g_canvasItems, g_canvasFlowDirections, {});
+
         // Limit bitmap size to avoid std::bad_alloc in case too many SVG files were loaded.
-        boundingRect.right = std::min(boundingRect.right, 32768L);
-        boundingRect.bottom = std::min(boundingRect.bottom, 32768L);
+        boundingRect.right = std::min(boundingRect.right, 16384L);
+        boundingRect.bottom = std::min(boundingRect.bottom, 16384L);
 
         bool bitmapChangedSize = (g_bitmap.width() != boundingRect.right || g_bitmap.height() != boundingRect.bottom);
         if (bitmapChangedSize)
@@ -2081,10 +2134,15 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
             g_bitmap.reset(boundingRect.right, boundingRect.bottom);
             g_canvasItemsNeedRedrawing = true;
         }
+        bool work = canvasItemsCopy == g_canvasItems;
         if (!g_canvasItemsNeedRedrawing && canvasItemsCopy != g_canvasItems)
         {
             // The relayout caused items to move around. So redraw.
             g_canvasItemsNeedRedrawing = true;
+        }
+        if (!g_bitmap.valid())
+        {
+            throw std::bad_alloc();
         }
 
         g_relayoutCanvasItems = false;
@@ -2979,7 +3037,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
         {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
         {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
-        {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(g_canvasFlowDirection); }},
+        {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<CanvasItem::FlowDirection>(g_menuFlowDirections, g_canvasFlowDirections.front())); }},
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
         {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
         {IDM_VIEW, IDM_RASTER_FILLS_STROKES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_rasterFillsStrokesVisible); }},
@@ -3465,13 +3523,15 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_SIZE_FLOW_RIGHT_DOWN:
-                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                static_assert(std::size(g_menuFlowDirections) == 2);
+                g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
 
             case IDM_SIZE_FLOW_DOWN_RIGHT:
-                g_canvasFlowDirection = CanvasItem::FlowDirection::DownRight;
+                static_assert(std::size(g_menuFlowDirections) == 2);
+                g_canvasFlowDirections = g_canvasFlowDirectionDownThenRight;
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
                 RealignBitmapOffsetsLater();
                 break;
@@ -3621,7 +3681,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_PRESET_WRAPPED_IMAGES:
-                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
                 g_bitmapSizeWrapped = true;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::Natural;
                 RelayoutAndRedrawCanvasItemsLater(hwnd);
@@ -3629,7 +3689,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_PRESET_WRAPPED_ICONS:
-                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
+                g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
                 g_bitmapSizeWrapped = true;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::FixedSize;
                 g_bitmapSizePerDocument = 64;
@@ -3638,8 +3698,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_PRESET_WATERFALL_UP_TO_64:
-                g_canvasFlowDirection = CanvasItem::FlowDirection::RightDown;
-                g_bitmapSizeWrapped = true;
+                g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
+                g_bitmapSizeWrapped = false;
                 g_bitmapSizingDisplay = BitmapSizingDisplay::WaterfallSizeThenObject;
                 g_bitmapSizePerDocument = 64;
                 g_bitmapMaximumSize = 64;

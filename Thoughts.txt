@@ -286,6 +286,12 @@ Attribute details:
             readd grid origin (if present)
             todo: consider a means to round shapes to nearest left or right edge depending on which is nearer (e.g. a 1.5 pixel wide vertical line left or right)
         main equation of displacement:
+            create two temporary points at the current vertex
+            compute the normal vectors for both edges
+            determine rounding using similar rules to rounding (rounding mode, bias, scale...)
+            adjust each point along the normal vector, respecting the applies=before/after
+            compute the new vertex using the intersection of the two adjusted points
+            todo: prevent shape inversions by clamping if the edge would become negative?
             todo: should be a similar equation to uberround, maybe even the same but with one additional boolean parameter to follow the path perpendicular automatically rather than an explicit vector
             todo: for minimum displacement (e.g. keep path at least 1px thick), how should it interact with bias and unscaled bias? With vector? Before or after the vector scaling?
         transform order:
