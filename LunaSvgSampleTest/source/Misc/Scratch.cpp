@@ -1,6 +1,94 @@
 // Scratch code that I don't want to delete, but that shouldn't go in the main code.
 
 
+#if 1
+// Lay all the canvas item positions by flow direction.
+void LayoutCanvasItems(
+    RECT const& boundingRect,
+    std::span<CanvasItem::FlowDirection const> directions,
+    /*inout*/ std::span<CanvasItem> canvasItems
+)
+{
+    assert(boundingRect.left == 0 && boundingRect.top == 0);
+    const uint32_t bitmapMaximumVisibleWidth = boundingRect.right / g_bitmapPixelZoom;
+    const uint32_t bitmapMaximumVisibleHeight = boundingRect.bottom / g_bitmapPixelZoom;
+
+    CanvasItem::FlowDirection flowDirection = directions.front();
+
+    uint32_t x = 0, y = 0; // Current canvas item's top left.
+    uint32_t indentX = 0, indentY = 0;
+    RECT lineRect = {}; // Accumulated rect of current line (row or column until next wrap).
+
+                        // TODO: Do this recursively based on the item level.
+
+    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
+    {
+        auto& canvasItem = canvasItems[canvasItemIndex];
+        uint32_t nextX = x, nextY = y;
+
+        switch (flowDirection)
+        {
+        case CanvasItem::FlowDirection::Right:
+            if (x + canvasItem.w > bitmapMaximumVisibleWidth || isNewLine)
+            {
+                if (isNewLine)
+                {
+                    indentX = 0;
+                }
+                if (lineRect.right > int32_t(indentX))
+                {
+                    x = indentX;
+                    y = lineRect.bottom;
+                    nextY = y;
+                    lineRect = {};
+                }
+            }
+            nextX = x + canvasItem.w;
+            if (hasSetIndent)
+            {
+                indentX = nextX;
+            }
+            break;
+
+        case CanvasItem::FlowDirection::Down:
+            if (y + canvasItem.h > bitmapMaximumVisibleHeight || isNewLine)
+            {
+                if (isNewLine)
+                {
+                    indentY = 0;
+                }
+                if (lineRect.bottom > int32_t(indentY))
+                {
+                    y = indentY;
+                    x = lineRect.right;
+                    nextX = x;
+                    lineRect = {};
+                }
+            }
+            nextY = y + canvasItem.h;
+            if (hasSetIndent)
+            {
+                indentY = nextY;
+            }
+            break;
+        };
+
+        // Update the item position.
+        canvasItem.x = x;
+        canvasItem.y = y;
+
+        // Accumulate the current line bounds with the item.
+        RECT currentRect = ToRect(canvasItem);
+        UnionRect(/*out*/&lineRect, &lineRect, &currentRect);
+
+        // Update the coordinates for the next item.
+        x = nextX;
+        y = nextY;
+    }
+}
+#endif
+
+
 #if INCLUDE_PREMULTIPY_FUNCTIONAL_TEST
 void PremultiplyBgraData(uint8_t* pixels, uint32_t pixelByteCount)
 {
