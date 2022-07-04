@@ -322,6 +322,7 @@ constexpr std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirectionRightThe
 constexpr std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirectionDownThenRight = {CanvasItem::FlowDirection::Down, CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down, CanvasItem::FlowDirection::Right};
 std::array<CanvasItem::FlowDirection, 4> g_canvasFlowDirections = g_canvasFlowDirectionRightThenDown;
 CanvasItem::FlowDirection g_menuFlowDirections[] = {CanvasItem::FlowDirection::Right, CanvasItem::FlowDirection::Down};
+CanvasItem::Alignment g_canvasAlignments[] = {CanvasItem::Alignment::LeftTop};
 bool g_bitmapSizeWrapped = false; // Wrap the items to the window size.
 bool g_invertColors = false; // Negate all the bitmap colors.
 bool g_showAlphaChannel = false; // Display alpha channel as monochrome grayscale.
@@ -1765,8 +1766,9 @@ LayoutCanvasItems(
     )
 {
     assert(!directions.empty()); // Must pass at least one direction.
-    CanvasItem::FlowDirection flowDirection = level < directions.size() ? directions[level] : CanvasItem::FlowDirection::Right;
-    CanvasItem::Alignment alignment = level < alignments.size() ? alignments[level] : CanvasItem::Alignment::LeftTop;
+    assert(!alignments.empty()); // Must pass at least one alignment.
+    CanvasItem::FlowDirection flowDirection = level < directions.size() ? directions[level] : directions.back();
+    CanvasItem::Alignment alignment = level < alignments.size() ? alignments[level] : alignments.back();
     bool const isPrimaryFlowDirectionHorizontal = CanvasItem::IsHorizontalFlowDirection(directions.front());
     bool const isCurrentFlowDirectionHorizontal = CanvasItem::IsHorizontalFlowDirection(flowDirection);
 
@@ -1806,14 +1808,27 @@ LayoutCanvasItems(
 
         switch (flowDirection)
         {
-        case CanvasItem::FlowDirection::Left:  x = levelRect.left - w; y = levelRect.top;     break;
-        case CanvasItem::FlowDirection::Right: x = levelRect.right;    y = levelRect.top;     break;
-        case CanvasItem::FlowDirection::Up:    x = levelRect.left;     y = levelRect.top - h; break;
-        case CanvasItem::FlowDirection::Down:  x = levelRect.left;     y = levelRect.bottom;  break;
+        case CanvasItem::FlowDirection::Right:
+            x = levelRect.right;
+            y = CanvasItem::IsNegativeVerticalAlignment(alignment) ? levelRect.bottom - h : levelRect.top;
+            break;
+        case CanvasItem::FlowDirection::Left:
+            x = levelRect.left - w;
+            y = CanvasItem::IsNegativeVerticalAlignment(alignment) ? levelRect.bottom - h : levelRect.top;
+            break;
+        case CanvasItem::FlowDirection::Down:
+            x = CanvasItem::IsNegativeHorizontalAlignment(alignment) ? levelRect.right - w : levelRect.left;
+            y = levelRect.bottom;
+            break;
+        case CanvasItem::FlowDirection::Up:
+            x = CanvasItem::IsNegativeHorizontalAlignment(alignment) ? levelRect.right - w : levelRect.left;
+            y = levelRect.top - h;
+            break;
         }
 
-        x -= subrect.left + CanvasItem::IsNegativeHorizontalAlignment(alignment) ? w : 0;
-        y -= subrect.top  + CanvasItem::IsNegativeVerticalAlignment(alignment)   ? h : 0;
+        // Reorigin the subrect to <0,0>.
+        x -= subrect.left;
+        y -= subrect.top;
 
         RECT newLevelRect;
         OffsetRect(/*inout*/ &subrect, x, y);
@@ -2122,7 +2137,11 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
         layoutRect.bottom /= g_bitmapPixelZoom;
 
         uint32_t layoutLevels = uint32_t(g_canvasFlowDirections.size() - 1);
-        auto [boundingRect, items] = LayoutCanvasItems(layoutLevels, layoutRect, /*inout*/ g_canvasItems, g_canvasFlowDirections, {});
+        auto [boundingRect, items] = LayoutCanvasItems(layoutLevels, layoutRect, /*inout*/ g_canvasItems, g_canvasFlowDirections, g_canvasAlignments);
+
+        // The returned rectangle be below <0,0> if the flow direction or alignment was negative.
+        AdjustCanvasItems(g_canvasItems, -boundingRect.left, -boundingRect.top);
+        OffsetRect(/*inout*/ &boundingRect, -boundingRect.left, -boundingRect.top);
 
         // Limit bitmap size to avoid std::bad_alloc in case too many SVG files were loaded.
         boundingRect.right = std::min(boundingRect.right, 16384L);
