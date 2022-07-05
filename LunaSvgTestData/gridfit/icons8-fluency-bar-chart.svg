@@ -1,1 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 48 48" width="48px" height="48px"><path fill="#50e6ff" d="M44,8v33h-8V8c0-0.552,0.448-1,1-1h6C43.552,7,44,7.448,44,8z"/><path fill="#35c1f1" d="M36,15v26h-8V15H36z"/><path fill="#199be2" d="M28,13v28h-8V13c0-0.552,0.448-1,1-1h6C27.552,12,28,12.448,28,13z"/><path fill="#0078d4" d="M20,20v21h-8V20H20z"/><path fill="#0d62ab" d="M12,17v24H4V17c0-0.552,0.448-1,1-1h6C11.552,16,12,16.448,12,17z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg"  viewBox="0 0 48 48" width="48px" height="48px">
+
+<!-- verbose fully qualified approach -->
+<anchor id="lefttop" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
+<anchor id="righttop" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
+<anchor id="leftbottom" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
+<anchor id="rightbottom" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
+<adjustment id="four-corners-nearest" value="#leftTop; #rightTop; #leftBottom; #rightBottom"/>
+
+<!-- inline anchors with parameters -->
+<adjustment id="four-corners-nearest" value="anchor(x:left y:top adjust:nearest); anchor(x:right y:top adjust:nearest); anchor(x:left y:bottom adjust:nearest); anchor(x:right y:bottom adjust:nearest)"/>
+
+<!-- inline anchors with positional parameters -->
+<adjustment id="four-corners-nearest" value="anchor(left top nearest); anchor(right top nearest); anchor(left bottom nearest); anchor(right bottom nearest)"/>
+
+<!-- brief inline -->
+<adjustment id="four-corners-nearest" value="left top nearest; right top nearest; left bottom nearest; right bottom nearest"/>
+
+<!-- could either declare inline inside the namespaced path or as a separate list of adjustment indice -->
+<path
+  adjustment-list="#four-corners-nearest"
+  adjustment-index-runs="2 1; 1 3; 1 2; 2 0; 2 1"
+  adjustment-indices="1 1 3 2 0 0 1 1"
+  fill="#50e6ff"
+  d="M 44 8
+     v 33
+     h -8
+     V 8
+     c 0 -0.552,0.448 -1,1 -1
+     h 6
+     C 43.552 7,44 7.448,44 8
+     z"
+  g:d="
+     f 1
+     M 44 8
+     v 33
+     f 3
+     h -8
+     f 2
+     V 8
+     f 0
+     c 0 -0.552,0.448 -1,1 -1
+     h 6
+     f 1
+     C 43.552 7,44 7.448,44 8
+     z"
+/>
+<path
+  fill="#35c1f1"
+  d="M 36 15
+     v 26
+     h -8
+     V 15
+     H 36
+     z"
+/>
+<path
+  fill="#199be2"
+  d="M 28 13
+     v 28
+     h -8
+     V 13
+     c 0 -0.552,0.448 -1,1 -1
+     h 6
+     C 27.552 12,28 12.448,28 13
+     z"
+/>
+<path
+  fill="#0078d4"
+  d="M 20 20
+     v 21
+     h -8
+     V 20
+     H 20
+     z"
+/>
+<path
+  fill="#0d62ab"
+  d="M 12 17
+     v 24
+     H 4
+     V 17
+     c 0 -0.552,0.448 -1,1 -1
+     h 6
+     C11.552 16,12 16.448,12 17
+     z"
+/>
+</svg>
