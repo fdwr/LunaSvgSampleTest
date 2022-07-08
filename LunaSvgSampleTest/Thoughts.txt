@@ -15,8 +15,10 @@ TODO:
         - Eventually grid fitting
     - Add roadmap
         - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
+        - Implement grid fitting spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer with Direct2D and GDI+
+        - Implement grid fitting spec in nanosvg https://github.com/memononen/nanosvg used by WxWidgets
+        - Add test collateral to verify each implementation
         - Publish spec rough draft
-        - Implement spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
         - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
     - Documentation screenshot candidates
