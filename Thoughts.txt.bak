@@ -225,14 +225,11 @@ Attributes:
         How about rounding mode too, which would be very concise? e.g. grid-adjust="top nearest-edge-upward"
         Or should rounding be a separate attribute? grid-adjust="top" grid-adjust-rounding="nearest-edge-upward"
         [naming] "adjustment" would be more consistent with the general nounness of attributes, but there's already precedent for "adjust" in "font-size-adjust" and "lengthAdjust".
-            font-size-adjust is problematic because if you want to round the font size, it may conflict with the existing property unless both the old and the new operators are supported in the same property.
         [naming] Should it just be "grid-transform" since anchors and anchor-frames yield transforms?
     *.gridOrigin - relative origin in user coordinates. e.g. <anchor id="foo" x="13" y="42" origin="bar"/>. When anchor names are given, it's relative to the snapped position, not the original user coordinates.
     *.gridOffset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead?
     *.gridScale - multiplier for the device grid, such as rounding to every half pixel instead.
     *.gridTransform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
-        [naming] transformAdjust.
-        This is an auto-reset property applicable to only the current object and not inherited (like transform).
     *.gridRounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
     *.anchorRounding - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
     *.strokeRounding - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
@@ -245,9 +242,7 @@ Attributes:
     grid-framePoints - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     grid-frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosingRegion - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
-    anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like "gradientUnits" https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits), at least inherited within the context of a <defs>. Perhaps in the main body, it defaults to the SVG canvas.
-        Objects with display=none are ignored. Objects with visibility=hidden or opacity/fill-opacity=0 are still counted (as they take up space in layout calculations https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility).
-        For objectBoundingBox, the union of the bounds of all contained objects are considered (as using the individual objects would be useless). This differs from fill painting where each object inherits the fill property and independently .
+    anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like "gradientUnits" https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
     *.anchor? - Instead of "adjust" e.g. <rect anchor="top" transform-adjust="upward"/> or just stick with <rect transform-adjust="top floor"/>? or <rect transform-adjust="anchor(top floor)"/>?
     *.transform - include origin(). e.g. <rect ... transform="origin(13 42) scale(...) rotate(...)" />. Is an existing transform-origin is replaced or accumulated? If multiple origin statements exist inside the transform, do they accumulate or reset? Should that choice be consistent between the two?
 
@@ -724,32 +719,6 @@ Example:
     Pixel aligned stroke width (e.g. rounded to nearest whole pixel):
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" grid-stroke-width-rounding="ceil" grid-stroke-width-bias="0.5"/>
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" stroke-width-rounding="round(mode=ceil bias=0.5 minimum=1)"/>
-
-    Maybe declare different kinds of alignments/anchors, like linearGradient vs radialGradient:
-
-        <pointAlignment id="foo" x="1" y="1" rounding="floor" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment1="floor" adjustment2="ceil" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="floor; ceil" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="out" />
-        <twoCornerAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="floor; ceil" />
-        <threePointAlignment id="foo" points="1 1 2 2 3 3" adjustment="floor; ceil; floor" />
-
-        <alignment mode="point" id="foo" points="1 1" rounding="floor" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment1="floor" adjustment2="ceil" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment="floor; ceil" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment="out" />
-        <alignment mode="twoCorner" id="foo" points="1 1; 2 2" adjustment="floor; ceil" />
-        <alignment mode="threePoint" id="foo" points="1 1; 2 2; 3 3" adjustment="floor; ceil; floor" />
-        <alignment mode="quad" id="foo" points="0 0; 0 1; 1 1; 1 0" adjustment="leftward upward; rightward upward; rightward downward; leftward downward" />
-        <alignment mode="quad" id="foo" points="0 0; 0 1; 1 1; 1 0" adjustment="outward" />
-
-        boundsAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        cornerAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        pointAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-
-        adjustBounds="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        adjustCorners="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        adjustPoints="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
 
     Using the art picture frame:
 
