@@ -11,9 +11,10 @@ TODO:
         - (defer until SVG2 published?) Unknown elements treated as g
         - (fixed locally) Clear faster
         - (added locally) enumerate contours
-        - fix gradient stop offset https://github.com/fdwr/LunaSvgSampleTest/commit/8df84b5b75954ef6b439ac35427c4dd6766777fe
+        - Fix gradient stop offset https://github.com/fdwr/LunaSvgSampleTest/commit/8df84b5b75954ef6b439ac35427c4dd6766777fe
         - Eventually grid fitting
         - Fix "transparent" color keyword missing. Works in Chrome for SVG's exported via GraphViz. https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#transparent_keyword
+        - Verify bounding box in LunaSvg https://svgwg.org/svg2-draft/single-page.html#coords-BoundingBoxes
     - Roadmap
         - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
         - Implement grid fitting spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer with Direct2D and GDI+
@@ -24,7 +25,7 @@ TODO:
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
         - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
     - Documentation screenshot candidates
-        - icons8-fluency-fill-color.svg lavender horizontal paint level needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left 
+        - icons8-fluency-fill-color.svg lavender horizontal paint level needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
         - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
@@ -68,6 +69,7 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Anchor sets/frames contain multiple anchors, each potentially with different rounding modes
             1 point yields translation
             2 points yield uniform scaling along both axes - for asymmetric scaling, use 3 (e.g. x=10,y=20 to x=30,y=20)
+            2 corner points yield nonuniform scaling along both axes
             3 points yield arbitrary transformation (asymmetric scaling, shear, rotation)
             4+ points are ignored (only the first 3 matter), but a future version could treat them like a mesh warp.
         Can the points be expressed inline, and if so, via
@@ -186,6 +188,7 @@ Bikeshed terms:
     protrude - Extend beyond or above a surface.
     rig - Particular way in which a sailboat's masts, sails, and rigging are arranged.
     rigging - Network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
+    shift - move or cause to move from one place to another, especially over a small distance. a slight change in position, direction, or tendency.
     shrink - become or make smaller in size or amount.
     support - Thing that bears the weight of something or keeps it upright.
     tweak - improve (a mechanism or system) by making fine adjustments to it.
@@ -338,9 +341,12 @@ Attribute details:
             mode - none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
             vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
                 Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
+                This can probably just be part of uberround using a matrix or vector attribute.
             vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
             vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = = -scale * floor(x / -scale) = -floor(-x)).
             toInfinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
+                Maybe "outward" suffices? We definitely need something for horizontally symmetric objects so both sides round the same direction toward or away from the center.
+                How does bias interact with outward? Does the signs of prebias and postbias negate if the direction changes?
             toZero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
             bias - combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5). bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
             prebias - amount to add (subtract?) to coordinate before applying scale
@@ -354,7 +360,7 @@ Attribute details:
                 ? Should modulo apply to the unscaled bias or the sum of unscaled bias and scaled bias?
             min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor).
                 Should it only apply to anchors?
-                Should it be a separate attribute and not part of grid rounding? mindist(x,y,dist) = iif(dist > 0, max(x + dist, y), iif(dist < 0, min(x + dist, y), y);
+                Should it be a separate attribute and not part of grid rounding? minimumDistance(x,y,dist) = iif(dist > 0, max(x + dist, y), iif(dist < 0, min(x + dist, y), y);
             transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
             requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
             directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
@@ -382,6 +388,7 @@ Attribute details:
             adjustUsing - adjust the current position by some pixel delta or an anchor.
                 adjustUsing(#anchorname xscale yscale xshear=0 yshear=0) or standard matrix form [sx hy hx sy dx dy]?
                 adjustUsing(#existingAdjustment sx=1 hx=0 sy=1 hy=0 dx=0 dy=0)
+                adjustUsing(#existingAdjustment matrix=[sx hx sy hy dx dy])
                 Useful for gear sprockets to keep the same angle for the diagonals as the top and bottom sprockets (icons8-color-settings.svg).
         aliases:
             leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? roundLeft? "left" is already used in SVG transform-origin to mean the left *side* rather than leftward as a direction. So use leftward to distinguish.
@@ -728,10 +735,10 @@ Example:
     Maybe declare different kinds of alignments/anchors, like linearGradient vs radialGradient:
 
         <pointAlignment id="foo" x="1" y="1" rounding="floor" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment1="floor" adjustment2="ceil" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="floor; ceil" />
-        <linearAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="out" />
-        <twoCornerAlignment id="foo" x1="1" x2="1" y2="1" y3="1" adjustment="floor; ceil" />
+        <linearAlignment id="foo" x1="1" x2="2" y1="3" y2="4" adjustment1="floor" adjustment2="ceil" />
+        <linearAlignment id="foo" x1="1" x2="2" y1="3" y2="4" adjustment="floor; ceil" />
+        <linearAlignment id="foo" x1="1" x2="2" y1="3" y2="4" adjustment="out" />
+        <twoCornerAlignment id="foo" x1="1" x2="2" y3="3" y2="4" adjustment="floor; ceil" />
         <threePointAlignment id="foo" points="1 1 2 2 3 3" adjustment="floor; ceil; floor" />
 
         <alignment mode="point" id="foo" points="1 1" rounding="floor" />
@@ -750,6 +757,32 @@ Example:
         adjustBounds="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         adjustCorners="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         adjustPoints="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+
+    Can anchors be parameterized when using use?
+
+        <svg>
+          <defs>
+            <circle id="myCircle" cx="0" cy="0" r="5" adjust="#circleAnchor"/>
+          </defs>
+          <adjustment id="firstAnchor" .../>
+          <adjustment id="secondAnchor" .../>
+          <use href="#myCircle" x="10" y="10" fill="blue" params="circleAnchor=firstAnchor"/>
+          ...
+          <use href="#myCircle" x="10" y="10" fill="blue" params="circleAnchor=secondAnchor"/>
+        </svg>
+
+    There's already a CSS proposal:
+
+        https://www.w3.org/TR/SVGParamPrimer/
+        https://dev.w3.org/SVG/modules/ref/master/SVGRefPrimer.html
+
+        <use href="...">
+            <param name="base" value="brown" />
+            <param name="background" value="red" />
+        </use>
+
+        CSS variables ridiculously goofy. So, avoid them. https://drafts.csswg.org/css-variables-1/#funcdef-var
+        var(--foobar)
 
     Using the art picture frame:
 
