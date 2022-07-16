@@ -195,27 +195,56 @@ Bikeshed terms:
     warp - Twist or distortion in the shape or form of something.
 
 Elements:
-    <grid-anchor/> - invisible point for other shapes to align/fit to (translation). Can be used as a point in an adjustment attribute, adjustment-list, or grid-frame.
+    <anchor/> - invisible point for other shapes to align/fit to. Can be used directly in an adjustment attribute (simple translation) or as part of an <anchorTransform/>.
         id = name of element, which can be referred by other object's grid adjust attribute.
         x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
         y = vertical coordinate. Like x.
         grid-rounding = Reference to a grid-rounding element #id or a series of formulas inline.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
-    <grid-frame/> or <anchor-frame/> - invisible frame (1 point to 4 points) used for other shapes to align/fit to (translation, scaling, arbitrary). A 4th point can be used to use "in" and "out" grid rounding mode.
-        id = name of element, which can be referred by other object's grid-adjust attribute.
-        points/anchors/anchor-list = semicolon delimited? list of anchors by id. possibly inline points.
+    <anchorTransform/> - a microtransform constructed from anchor points (1 point to 4 points) used for other shapes to align/fit to. It can technically be any affine transform (translation, scaling, rotation, shear, squeeze), but it's really intended for orthogonal and angle-preserving transformations (translation, uniform scaling, non-uniform scaling, and squeeze transforms. A 4th point can be used to use "in" and "out" grid rounding mode.
+        anchorTransform's can be used in adjustment attributes by id name.
+        id = name of element, which can be referred by other object's adjustment attributes.
+        points = list of points, semicolon delimited
+        points/anchors/anchor-list = semicolon delimited. list of anchors by id. possibly inline points.
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
         [naming?] grid-anchor-frame, anchor-set
-    <grid-rounding/> or <adjustment value=""/> - element in defs to avoid repeating the same rounding so often? Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
+    <rounding/> - rounding adjustment via floor/ceiling, bias, scale multiplier, and optional transform to round along a specific vector rather than purely axis aligned. Rounding definitions in the <defs> section can be used by named id. Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
         id = name of element, which can be referred by other object's grid-round attribute.
-        value/formulas = A series of operations (e.g. floor, ceil...) that modify the points. See below.
+        axes = xy, x, y, stroke-width.
+        mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
+            none - no grid rounding along x or y. e.g "x none; y floor"
+            floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: floor(x 0.5 2 -0.5) ceil(y) What about a freedom vector to round along, like 45 degrees? Named parameters? floor(axis:x prebias:0.5 scale:2 postbias:-0.5)
+            ceil -  round to nearest integer toward positive infinity
+            toInfinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
+                Maybe "outward" suffices? We definitely need something for horizontally symmetric objects so both sides round the same direction toward or away from the center.
+                How does bias interact with outward? Does the signs of prebias and postbias negate if the direction changes?
+            toZero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
+        bias = combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5). bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+        prebias = amount to add (subtract?) to coordinate before applying scale
+        postbias = amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
+        unscaledBias = ...
+        multiple = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
+        transform = a transform to multiply the point by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
+            TODO: How to align 2:1 slopes to other edges, like the bottom? Is a transform-origin needed?
+        fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
+        transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+        requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+        directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
+        windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
+            [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+        proportionalShear - true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
         [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
-            And not all adjustments actually round. e.g. none is a possible value which does no rounding. adjust-by can translate by anchors, but the coordinates may not be rounded.
-    <transform/> - element in defs to define a named series of transformations.
+    <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <transform id="foo" value="scale(2) translate(13 42) rotate(45)"/>
+    <adjustments/> - define a reusable series of adjustments, which can be include rounding, anchors, and transforms (maybe?).
+        id = name of element, which can be referred by other object's transform attribute.
+        value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
+        e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
+    ?<displacement/> - very similar to round. Can it be joined? Should it be joined?
+    ?<roundParity/> - very similar to round. Can it be joined? Should it be joined?
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -236,19 +265,20 @@ Attributes:
     *.gridTransform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
         [naming] transformAdjust.
         This is an auto-reset property applicable to only the current object and not inherited (like transform).
-    *.gridRounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
-    *.anchorRounding - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
-    *.strokeRounding - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
+    -*.gridRounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
+    *.anchorAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
+    *.shapeAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
+    *.strokeAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
     *.anchorPoints - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
     path.anchorList - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
         [naming?] anchors? adjustment-list? adjustments?
     path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor". "r" for rounding?
-    grid-framePoints - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
-    grid-frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
+    framePoints - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
+    frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
     anchor.enclosingRegion - a path statement that encloses applicable points affected by that anchor. Only used by editors and tooling, not renderers, to quickly assign nodes in paths to all respective overlapping points. *naming: applicable-region?
-    anchor.gridAnchorUnits - objectBoundingBox or userSpaceOnUse, like "gradientUnits" https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits), at least inherited within the context of a <defs>. Perhaps in the main body, it defaults to the SVG canvas.
+    anchor.adjustmentUnits - objectBoundingBox or userSpaceOnUse, like "gradientUnits" https://www.w3.org/TR/SVG11/pservers.html#LinearGradientElementGradientUnitsAttribute. objectBoundingBox is the default (see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits), at least inherited within the context of a <defs>. Perhaps in the main body, it defaults to the SVG canvas.
         Objects with display=none are ignored. Objects with visibility=hidden or opacity/fill-opacity=0 are still counted (as they take up space in layout calculations https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility).
         For objectBoundingBox, the union of the bounds of all contained objects are considered (as using the individual objects would be useless). This differs from fill painting where each object inherits the fill property and independently .
     *.anchor? - Instead of "adjust" e.g. <rect anchor="top" transform-adjust="upward"/> or just stick with <rect transform-adjust="top floor"/>? or <rect transform-adjust="anchor(top floor)"/>?
@@ -335,23 +365,6 @@ Attribute details:
             12. minimum distance             [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
             ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
         primitives:
-            none - no grid rounding along x or y. e.g "x none; y floor"
-            floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: floor(x 0.5 2 -0.5) ceil(y) What about a freedom vector to round along, like 45 degrees? Named parameters? floor(axis:x prebias:0.5 scale:2 postbias:-0.5)
-            ceil -  round to nearest integer toward positive infinity
-            mode - none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
-            vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
-                Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
-                This can probably just be part of uberround using a matrix or vector attribute.
-            vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-            vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = = -scale * floor(x / -scale) = -floor(-x)).
-            toInfinity - round away from zero (toward positive or negative infinity) to nearest integer. Equals iif(x > 0, ceil(x), floor(x)).
-                Maybe "outward" suffices? We definitely need something for horizontally symmetric objects so both sides round the same direction toward or away from the center.
-                How does bias interact with outward? Does the signs of prebias and postbias negate if the direction changes?
-            toZero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
-            bias - combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5). bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
-            prebias - amount to add (subtract?) to coordinate before applying scale
-            postbias - amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
-            scale - a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense.
             even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
                 compute an additional bias to add to prebias and postbias based on the PPU-scaled value of some other length metric (e.g. stroke width or shape height).
@@ -366,7 +379,7 @@ Attribute details:
             directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
             windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
                 [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
-            proportional - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+            proportionalShear - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
                 proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias. naming: delta-shear? displacement-scale? delta-multiplier?
                 ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
                  it's useful for a pair of open scissors (icons8-fluency-cut.svg) or the tab of a manilla folder or cube (icons8-fluency-cube.svg) where pure rounding would distort the 45-degree line shape.
@@ -459,6 +472,11 @@ Attribute details:
             adjustWidth(nearest) - valid in shapeAdjust for any object that has width (e.g. rect, image, pattern).
             adjustHeight(nearest) - valid in shapeAdjust for any object that has height (e.g. rect, image, pattern).
             adjustLinear(0 50 100 50 nearest) - adjust(type:linear points=[# # # #] rounding:$)
+            vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
+                Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
+                This can probably just be part of uberround using a matrix or vector attribute.
+            vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+            vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = -scale * floor(x / -scale) = -floor(-x)).
         interactions
             calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
             axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
