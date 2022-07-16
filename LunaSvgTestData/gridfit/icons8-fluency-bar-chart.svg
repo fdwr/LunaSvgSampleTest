@@ -6,6 +6,7 @@
 <anchor id="leftbottom" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
 <anchor id="rightbottom" x="left" y="top" adjust="nearest" anchorUnits="objectBoundingBox"/>
 <adjustment id="four-corners-nearest" value="#leftTop; #rightTop; #leftBottom; #rightBottom"/>
+<anchor id="boundsNearest" type="twoPointCorners" value="left top; right bottom" pointAdjust="nearest"/>
 
 <!-- inline anchors with parameters -->
 <adjustment id="four-corners-nearest" value="anchor(x:left y:top adjust:nearest); anchor(x:right y:top adjust:nearest); anchor(x:left y:bottom adjust:nearest); anchor(x:right y:bottom adjust:nearest)"/>
