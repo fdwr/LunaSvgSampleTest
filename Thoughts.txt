@@ -289,8 +289,15 @@ Attributes:
         "Most SVG elements use camel case naming, but some use hyphenation instead ... [which] makes these SVG elements totally inconsistent with other SVG elements" https://wiki.mozilla.org/SVG:Language:Regrets#Using_hyphens_in_some_element_names
         "Best Naming Practices ... Avoid '-'" https://www.w3schools.com/xml/xml_elements.asp
 
-Attribute details:
-    grid-rounding: e.g.
+Adjustments:
+    grammar
+        parameterValue = number | true | false | list
+        list = "[" number* "]"
+        positionalParameterValue = parameterValue
+        namedParameter = identifier
+        functionName = identifier
+        functionCall = functionName "(" positionalParameterValue* [namedParameter "=" parameterValue]* ")"
+    rounding: e.g.
         `floor(x 0.5 2 -0.5) ceil(y)`
         `up left`
         `x floor prebias(0.5) multiple(2) postbias(-0.5); y ceil`
@@ -298,13 +305,6 @@ Attribute details:
         `floor(xy 0.5 0.5 2)`
         `transform(1 1 -1 1 0.5 0.5)` or restrict to attribute inside round to ensure symmetry round(axis=xy mode=ceil transform=[1 1 -1 1 0.5 0.5])
         `uberround()`
-        grammar
-            parameterValue = number | true | false | list
-            list = "[" number* "]"
-            positionalParameterValue = parameterValue
-            namedParameter = identifier
-            functionName = identifier
-            functionCall = functionName "(" positionalParameterValue* [namedParameter "=" parameterValue]* ")"
         main equation of uberround:
             if rounding requires axis alignment (axis orthogonality)
                 if neither edge adjacent to point is axis aligned (0, 90, 180, 270), return
@@ -336,6 +336,7 @@ Attribute details:
             newCoordinateValue = lerp(roundedCoordinateValue, newCoordinateValue, fraction) // where default fraction = 1
             readd grid origin (if present)
             todo: consider a means to round shapes to nearest left or right edge depending on which is nearer (e.g. a 1.5 pixel wide vertical line left or right)
+    displacement
         main equation of displacement:
             create two temporary points at the current vertex
             compute the normal vectors for both edges
@@ -345,150 +346,150 @@ Attribute details:
             todo: prevent shape inversions by clamping if the edge would become negative?
             todo: should be a similar equation to uberround, maybe even the same but with one additional boolean parameter to follow the path perpendicular automatically rather than an explicit vector
             todo: for minimum displacement (e.g. keep path at least 1px thick), how should it interact with bias and unscaled bias? With vector? Before or after the vector scaling?
-        transform order:
-            1.  world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
-                (now in screen space)
-            2.  anchor(s) grid fit/align/adjustment
-                a. nop                       [[1,  0  ], [0,  1  ], [0,  0  ] nop
-                b. translate                 [[1,  0  ], [0,  1  ], [dx, dy ]
-                c. scale & translate         [[s,  0  ], [0,  s  ], [dx, dy ]
-                d. arbitrary                 [[sx, hy ], [hx, sy ], [dx, dy ]
-            3.  ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
-            4.  anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
-            5.  ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
-            6.  prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-            7.  inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
-            8.  floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
-            9.  size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
-            10. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
-            11. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
-            12. minimum distance             [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
-            ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
-        primitives:
-            even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
-            odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
-                compute an additional bias to add to prebias and postbias based on the PPU-scaled value of some other length metric (e.g. stroke width or shape height).
-                By default, ppu-shift-scale = 0, ppu-shift-bias = 0, ppu-shift-modulo = 2, scale = 0.5. For even multiples, the shift is 0. For odd multiples, the shift is 0.5, which aligns 1px strokes well.
-                [naming?] bias-modulo? "size" instead of ppu-shift-scale? Is it even necessary to have a ppu-shift-bias and ppu-shift-scale? Can there just be a ppu-scaled-bias? Or even bias-unscaled, since it's in raw user coordinates before being scaled by PPU to pixels.
-                ? Should modulo apply to the unscaled bias or the sum of unscaled bias and scaled bias?
-            min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor).
-                Should it only apply to anchors?
-                Should it be a separate attribute and not part of grid rounding? minimumDistance(x,y,dist) = iif(dist > 0, max(x + dist, y), iif(dist < 0, min(x + dist, y), y);
-            transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
-            requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
-            directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
-            windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
-                [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
-            proportionalShear - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
-                proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias. naming: delta-shear? displacement-scale? delta-multiplier?
-                ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
-                 it's useful for a pair of open scissors (icons8-fluency-cut.svg) or the tab of a manilla folder or cube (icons8-fluency-cube.svg) where pure rounding would distort the 45-degree line shape.
-                 Useful for gears so the angled sprockets are extended as much as the top and bottom sprockets (icons8-color-settings.svg).
-                 scale-displacement?
-                 useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
-                ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
-            additive? - add the delta to the coordinate rather rounding the coordinate and delta together. So x = x + round(delta) rather than x = round(delta + x). todo: Is there a better name? Both cases are additive, but one is outside the rounding. roundDeltaOnly? unroundedCoordinate?
-            position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
-            scaleDelta/deltaScale - subset of proportional scale that applies only to the current delta. e.g. scaleDelta(2 3) scales x by 2 and y by 3.
-                How to scale x coordinate by an anchor? The typewriter keys in icons8-blog.svg could use this to space all the keys equidistantly.
-            shearDelta/deltaShear -  subset of proportional shear that applies only to the current delta. e.g. shearDelta(0.25 0) adjusts x by 1/4 of y delta, and leaves y alone.
-            displace/projectPpu/ceilPpu - (axis=xy round=ceil size=1 bias=0 fraction=0.5 minimum=0 scale/multiple=1); x += (max(ceil(ppu*size + bias, multiple), minimum) - ppu*size) * fraction. 0.5 fraction can be used to apply half expansion on either side of a path line.
-                nudge perpendicular to strokes based on ppu (grid size agnostic) to widen or narrow a path to whole pixels. Can apply 0.5 fraction to adjust half on either side of a path.
-                A scale/multiple can round stems to even widths. e.g. icons8-fluency-right.svg Otherwise they will remain blurry, unless combined with a vertical adjustment.
-            Should anchor-rounding be a separate attribute in that case to avoid points also being rounded?
-            ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
-             - adjust using another adjustment with optional scale, shear, and displacement factors. Useful for symmetric adjustments, such as radial symmetry of a gear or mirror symmetry.
-            adjustUsing - adjust the current position by some pixel delta or an anchor.
-                adjustUsing(#anchorname xscale yscale xshear=0 yshear=0) or standard matrix form [sx hy hx sy dx dy]?
-                adjustUsing(#existingAdjustment sx=1 hx=0 sy=1 hy=0 dx=0 dy=0)
-                adjustUsing(#existingAdjustment matrix=[sx hx sy hy dx dy])
-                Useful for gear sprockets to keep the same angle for the diagonals as the top and bottom sprockets (icons8-color-settings.svg).
-        aliases:
-            leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? roundLeft? "left" is already used in SVG transform-origin to mean the left *side* rather than leftward as a direction. So use leftward to distinguish.
-            rightward - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x). naming: rightward? east? roundRight?
-            upward - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
-            downward - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
-            nearestTiesLow - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
-            nearestTiesHigh - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
-            nearestLeftward - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
-            nearestRightward - Equals `floor(x+.5)`.
-            nearestUpward - ...
-            nearestDownward - ...
-            nearestDiagonalHalf - snap to pixel corners or pixel centers on both axes. Equivalent to: prebias(1 1 -1 1 0.5 0.5) floor postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
-            rotateCcw45SqrtTwo - Equivalent to: prebias(1 1 -1 1 0.5 0.5)
-            rotateCw45InverseSqrtTwo - Equivalent to: postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
-            todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halvesUp? fractionUp? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down". Then, certain bonkers programming languages refer to UP meaning away from zero and DOWN meaning toward zero regardless of sign (https://docs.oracle.com/javase/8/docs/api/java/math/RoundingMode.html, https://docs.python.org/3/library/decimal.html#rounding-modes).
-            center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`. [naming] Could this be confused with the center of the shape, especially given adjustCenter()?
-            centerLeftward - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
-            centerRightward
-            centerUpward
-            centerDownward
-            edgeLeftward - round to pixel edge (not center)
-            edgeRightward
-            edgeUpward
-            edgeDownward
-            expand - displace the point outward. alias for "displace(xy mode=ceil directionInverts=true windingInverts=true)".
-                TODO: Would the expansion only work for orthogonal rounding? How about displacing along 45 angles?
-                Maybe instead use "displace(xy mode=ceil multiple=1 directionInverts=false windingInverts=false vector=normal)"
-            contract - displace the point inward. alias for "displace(xy mode=floor directionInverts=true windingInverts=true)".
-            expandHalf = expand with fraction=0.5
-            contractHalf = contract with fraction=0.5
-            centerTieLow - round toward lower coordinates (up/left).
-            centerTieHigh - round toward higher coordinates (down/right).
-            nearestCenterLeftward - or centerTieLeftward
-            nearestCenterRightward - or centerTieRightward
-            nearestCenterUpward - or centerTieUpward
-            nearestCenterDownward - or centerTieDownward
-            nearestUpward - preferring this one
-            inward - snap pixel inward (equivalent to outward on counterClockwise shape). e.g. alias for "floor(directionInverts=true windingInverts=true)"
-            inwardCw - snap pixel inward if clockwise winding (outward on counterClockwise shape). "floor(directionInverts=true windingInverts=false)"
-            outward - ... alias for "directionInverts(true) windingInverts(true) ceil(x) floor(y)" or "round(axes=xy mode=[ceil floor] directionInverts=true windingInverts=true)"
-            outwardCw - ... snap pixel outward if clockwise winding or inward on counterClockwise shape. Alias for "round(axes=xy mode=[ceil floor] directionInverts=true windingInverts=false)"
-            inwardCwCenter - ...
-            inwardCcwCenter - ...
-            outwardCwCenter - ...
-            outwardCcwCenter - ...
-            inwardCwNearestCenter - ...
-            inwardCcwNearestCenter - ...
-            outwardCwNearestCenter - ...
-            outwardCcwNearestCenter - ...
-            evenHigh/Low - round to nearest even number
-            oddHigh/Low - round to nearest odd number
-            evenNearestLow - round to nearest even number
-            oddNearestLow - round to nearest odd number
-            evenOddLow - Round to pixel edge if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
-            evenOddHigh
-            evenOddLeftward
-            evenOddRightward
-            evenOddUpward
-            evenOddDownward
-            oddShift?
-            parityShift?
-            nearest edge shift? When stems could be closer to the left edge or right edge, choose whichever edge is closer. Maybe a subclass of parity-shift, customizable by accepting numeric parameters?
-            adjustPoint - adjustPoint(x:# y:# rounding:$). e.g. adjustPoint(left top nearest)  OR  adjustPoint(x:0% y:0% rounding:nearest)
-            adjustCorners(nearest) - ...
-            adjustLeftTop(nearest) - ...
-            adjustCenter(nearest) - ...
-            adjustWidth(nearest) - valid in shapeAdjust for any object that has width (e.g. rect, image, pattern).
-            adjustHeight(nearest) - valid in shapeAdjust for any object that has height (e.g. rect, image, pattern).
-            adjustLinear(0 50 100 50 nearest) - adjust(type:linear points=[# # # #] rounding:$)
-            vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
-                Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
-                This can probably just be part of uberround using a matrix or vector attribute.
-            vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
-            vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = -scale * floor(x / -scale) = -floor(-x)).
-        interactions
-            calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
-            axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
-            shape-rendering crispEdges is not affected https://www.w3.org/TR/SVG11/painting.html#ShapeRenderingProperty
-            stroke-alignment (https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment) and outline projection are independent. Imo Gavin Kistner's stroke-alignment is currently insufficiently defined, as inner and outer are ambiguous in too many cases, but it's a step forward. There should also be a 'left' and 'right' side enum, depending on the stroke direction. Clipping and masks are another way to achieve them: https://alexwlchan.net/2021/03/inner-outer-strokes-svg/.
-            vector effects (https://dev.w3.org/SVG/modules/vectoreffects/master/SVGVectorEffectsPrimer.html) apply to the individual shapes, not the result.
-            filter effects should support rounding adjustment. e.g. feDropShadow has deltaAdjust to round dx and dy to whole pixels. feImage supports transformAdjust to snap images to tile whole pixels, which avoids Moire patterns.
-        questions:
-            How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
-            ?How does vector-effect="non-scaling-stroke" interact?
-            When fitting to two anchors, where one of the other anchors was also displaced by an anchor, is the displacement just the final grid rounding delta or the whole delta from the original ideal coordinate in world space?
-            should text elements (https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text) have bounds that encompass the whole text (from ascenders to descenders) or just the baseline (single horizontal line). Aligning the baseline is more important than the top and bottom.
+    transform order:
+        1.  world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+            (now in screen space)
+        2.  anchor(s) grid fit/align/adjustment
+            a. nop                       [[1,  0  ], [0,  1  ], [0,  0  ] nop
+            b. translate                 [[1,  0  ], [0,  1  ], [dx, dy ]
+            c. scale & translate         [[s,  0  ], [0,  s  ], [dx, dy ]
+            d. arbitrary                 [[sx, hy ], [hx, sy ], [dx, dy ]
+        3.  ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
+        4.  anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
+        5.  ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
+        6.  prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
+        7.  inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
+        8.  floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
+        9.  size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+        10. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
+        11. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
+        12. minimum distance             [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
+        ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
+    operators:
+        even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
+        odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
+            compute an additional bias to add to prebias and postbias based on the PPU-scaled value of some other length metric (e.g. stroke width or shape height).
+            By default, ppu-shift-scale = 0, ppu-shift-bias = 0, ppu-shift-modulo = 2, scale = 0.5. For even multiples, the shift is 0. For odd multiples, the shift is 0.5, which aligns 1px strokes well.
+            [naming?] bias-modulo? "size" instead of ppu-shift-scale? Is it even necessary to have a ppu-shift-bias and ppu-shift-scale? Can there just be a ppu-scaled-bias? Or even bias-unscaled, since it's in raw user coordinates before being scaled by PPU to pixels.
+            ? Should modulo apply to the unscaled bias or the sum of unscaled bias and scaled bias?
+        min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor).
+            Should it only apply to anchors?
+            Should it be a separate attribute and not part of grid rounding? minimumDistance(x,y,dist) = iif(dist > 0, max(x + dist, y), iif(dist < 0, min(x + dist, y), y);
+        transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+        requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+        directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
+        windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
+            [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+        proportionalShear - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+            proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias. naming: delta-shear? displacement-scale? delta-multiplier?
+            ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
+                it's useful for a pair of open scissors (icons8-fluency-cut.svg) or the tab of a manilla folder or cube (icons8-fluency-cube.svg) where pure rounding would distort the 45-degree line shape.
+                Useful for gears so the angled sprockets are extended as much as the top and bottom sprockets (icons8-color-settings.svg).
+                scale-displacement?
+                useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
+            ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
+        additive? - add the delta to the coordinate rather rounding the coordinate and delta together. So x = x + round(delta) rather than x = round(delta + x). todo: Is there a better name? Both cases are additive, but one is outside the rounding. roundDeltaOnly? unroundedCoordinate?
+        position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
+        scaleDelta/deltaScale - subset of proportional scale that applies only to the current delta. e.g. scaleDelta(2 3) scales x by 2 and y by 3.
+            How to scale x coordinate by an anchor? The typewriter keys in icons8-blog.svg could use this to space all the keys equidistantly.
+        shearDelta/deltaShear -  subset of proportional shear that applies only to the current delta. e.g. shearDelta(0.25 0) adjusts x by 1/4 of y delta, and leaves y alone.
+        displace/projectPpu/ceilPpu - (axis=xy round=ceil size=1 bias=0 fraction=0.5 minimum=0 scale/multiple=1); x += (max(ceil(ppu*size + bias, multiple), minimum) - ppu*size) * fraction. 0.5 fraction can be used to apply half expansion on either side of a path line.
+            nudge perpendicular to strokes based on ppu (grid size agnostic) to widen or narrow a path to whole pixels. Can apply 0.5 fraction to adjust half on either side of a path.
+            A scale/multiple can round stems to even widths. e.g. icons8-fluency-right.svg Otherwise they will remain blurry, unless combined with a vertical adjustment.
+        Should anchor-rounding be a separate attribute in that case to avoid points also being rounded?
+        ?round only if at least a given ppu? can this be achieve via anchors with ppu-range?
+            - adjust using another adjustment with optional scale, shear, and displacement factors. Useful for symmetric adjustments, such as radial symmetry of a gear or mirror symmetry.
+        adjustUsing - adjust the current position by some pixel delta or an anchor.
+            adjustUsing(#anchorname xscale yscale xshear=0 yshear=0) or standard matrix form [sx hy hx sy dx dy]?
+            adjustUsing(#existingAdjustment sx=1 hx=0 sy=1 hy=0 dx=0 dy=0)
+            adjustUsing(#existingAdjustment matrix=[sx hx sy hy dx dy])
+            Useful for gear sprockets to keep the same angle for the diagonals as the top and bottom sprockets (icons8-color-settings.svg).
+    aliases:
+        leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? roundLeft? "left" is already used in SVG transform-origin to mean the left *side* rather than leftward as a direction. So use leftward to distinguish.
+        rightward - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x). naming: rightward? east? roundRight?
+        upward - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
+        downward - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
+        nearestTiesLow - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
+        nearestTiesHigh - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
+        nearestLeftward - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
+        nearestRightward - Equals `floor(x+.5)`.
+        nearestUpward - ...
+        nearestDownward - ...
+        nearestDiagonalHalf - snap to pixel corners or pixel centers on both axes. Equivalent to: prebias(1 1 -1 1 0.5 0.5) floor postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
+        rotateCcw45SqrtTwo - Equivalent to: prebias(1 1 -1 1 0.5 0.5)
+        rotateCw45InverseSqrtTwo - Equivalent to: postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
+        todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halvesUp? fractionUp? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down". Then, certain bonkers programming languages refer to UP meaning away from zero and DOWN meaning toward zero regardless of sign (https://docs.oracle.com/javase/8/docs/api/java/math/RoundingMode.html, https://docs.python.org/3/library/decimal.html#rounding-modes).
+        center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`. [naming] Could this be confused with the center of the shape, especially given adjustCenter()?
+        centerLeftward - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
+        centerRightward
+        centerUpward
+        centerDownward
+        edgeLeftward - round to pixel edge (not center)
+        edgeRightward
+        edgeUpward
+        edgeDownward
+        expand - displace the point outward. alias for "displace(xy mode=ceil directionInverts=true windingInverts=true)".
+            TODO: Would the expansion only work for orthogonal rounding? How about displacing along 45 angles?
+            Maybe instead use "displace(xy mode=ceil multiple=1 directionInverts=false windingInverts=false vector=normal)"
+        contract - displace the point inward. alias for "displace(xy mode=floor directionInverts=true windingInverts=true)".
+        expandHalf = expand with fraction=0.5
+        contractHalf = contract with fraction=0.5
+        centerTieLow - round toward lower coordinates (up/left).
+        centerTieHigh - round toward higher coordinates (down/right).
+        nearestCenterLeftward - or centerTieLeftward
+        nearestCenterRightward - or centerTieRightward
+        nearestCenterUpward - or centerTieUpward
+        nearestCenterDownward - or centerTieDownward
+        nearestUpward - preferring this one
+        inward - snap pixel inward (equivalent to outward on counterClockwise shape). e.g. alias for "floor(directionInverts=true windingInverts=true)"
+        inwardCw - snap pixel inward if clockwise winding (outward on counterClockwise shape). "floor(directionInverts=true windingInverts=false)"
+        outward - ... alias for "directionInverts(true) windingInverts(true) ceil(x) floor(y)" or "round(axes=xy mode=[ceil floor] directionInverts=true windingInverts=true)"
+        outwardCw - ... snap pixel outward if clockwise winding or inward on counterClockwise shape. Alias for "round(axes=xy mode=[ceil floor] directionInverts=true windingInverts=false)"
+        inwardCwCenter - ...
+        inwardCcwCenter - ...
+        outwardCwCenter - ...
+        outwardCcwCenter - ...
+        inwardCwNearestCenter - ...
+        inwardCcwNearestCenter - ...
+        outwardCwNearestCenter - ...
+        outwardCcwNearestCenter - ...
+        evenHigh/Low - round to nearest even number
+        oddHigh/Low - round to nearest odd number
+        evenNearestLow - round to nearest even number
+        oddNearestLow - round to nearest odd number
+        evenOddLow - Round to pixel edge if even or pixel center if odd ppu. e.g. `evenodd(2)` (ppu-scale bias minimum)
+        evenOddHigh
+        evenOddLeftward
+        evenOddRightward
+        evenOddUpward
+        evenOddDownward
+        oddShift?
+        parityShift?
+        nearest edge shift? When stems could be closer to the left edge or right edge, choose whichever edge is closer. Maybe a subclass of parity-shift, customizable by accepting numeric parameters?
+        adjustPoint - adjustPoint(x:# y:# rounding:$). e.g. adjustPoint(left top nearest)  OR  adjustPoint(x:0% y:0% rounding:nearest)
+        adjustCorners(nearest) - ...
+        adjustLeftTop(nearest) - ...
+        adjustCenter(nearest) - ...
+        adjustWidth(nearest) - valid in shapeAdjust for any object that has width (e.g. rect, image, pattern).
+        adjustHeight(nearest) - valid in shapeAdjust for any object that has height (e.g. rect, image, pattern).
+        adjustLinear(0 50 100 50 nearest) - adjust(type:linear points=[# # # #] rounding:$)
+        vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
+            Consider an octagon where the top left line might need to move orthogonal to the 45-degree line rather than along x and y axes.
+            This can probably just be part of uberround using a matrix or vector attribute.
+        vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
+        vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = -scale * floor(x / -scale) = -floor(-x)).
+    interactions
+        calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
+        axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
+        shape-rendering crispEdges is not affected https://www.w3.org/TR/SVG11/painting.html#ShapeRenderingProperty
+        stroke-alignment (https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment) and outline projection are independent. Imo Gavin Kistner's stroke-alignment is currently insufficiently defined, as inner and outer are ambiguous in too many cases, but it's a step forward. There should also be a 'left' and 'right' side enum, depending on the stroke direction. Clipping and masks are another way to achieve them: https://alexwlchan.net/2021/03/inner-outer-strokes-svg/.
+        vector effects (https://dev.w3.org/SVG/modules/vectoreffects/master/SVGVectorEffectsPrimer.html) apply to the individual shapes, not the result.
+        filter effects should support rounding adjustment. e.g. feDropShadow has deltaAdjust to round dx and dy to whole pixels. feImage supports transformAdjust to snap images to tile whole pixels, which avoids Moire patterns.
+    questions:
+        How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
+        ?How does vector-effect="non-scaling-stroke" interact?
+        When fitting to two anchors, where one of the other anchors was also displaced by an anchor, is the displacement just the final grid rounding delta or the whole delta from the original ideal coordinate in world space?
+        should text elements (https://developer.mozilla.org/en-US/docs/Web/SVG/Element/text) have bounds that encompass the whole text (from ascenders to descenders) or just the baseline (single horizontal line). Aligning the baseline is more important than the top and bottom.
     Rounding outward diagram:
         out clockwise:
 
