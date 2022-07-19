@@ -848,6 +848,32 @@ Example:
             <circle cx="38" cy="38" r="10" anchor-list="#circleCenter #circleTopLeft #circleTopRight #circleBottomLeft #circleBottomRight"/>
         </svg>
 
+    Separate anchors by a minimum distance:
+
+        minimumDistance(#leftTop distance=[1 0])
+        minimumDistance(#rightTop distance=[-1 0])
+        minimumDistance(#leftTop [1 0])
+        minimumDistance(#rightTop [-1 0])
+        minimumDistance(#leftTop 1 right)
+        minimumDistance(#rightTop 1 left)
+
+        minimumDistance(origin=[50 50] distance=1 vector=[1 0])
+        minimumDistance(origin=[50 50] distance=1 transform=rotate(0))
+        minimumDistance(origin=[50 50] distance=[1,1] transform=rotate(90))
+
+        <anchor x="2" y="10" id="clipboardTLO" adjust="upward leftward">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="#clipboardTLO nearest minimumDistance(#clipboardTLO [1 1])">
+
+        TODO: How to avoid repeating the origin anchor twice? Should there be adjustMinimum that both applies the adjustment and clamps?
+
+        <anchor x="8" y="16" id="clipboardTLI" adjust="adjustMinimumDistance(#clipboardTLO [1 1]) nearest">
+
+        Should be able to clamp stroke widths too, as a single scalar:
+
+        <line strokeWidthAdjust="clamp(2 3)"/>
+        <line strokeWidthAdjust="clamp(1)"/>
+        <line strokeWidthAdjust="clamp(1.5 indefinite #origin)"/>
+
     How many different kinds of adjustments are there, and what order do they evaluate? Transform before shape, shape before point?
     Point applies to the final points, including the points on the rounded corners.
     Shape applies to the x, y, w, h corners.
@@ -857,13 +883,13 @@ Example:
         <rect x="1" y="1" w="4" h="4" rx="1" ry="1" transformAdjust="..." shapeAdjust="..." pointAdjust="..." />
 
     Aliases for adjustments:
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjust(type:point points=[0% 0%] rounding=[nearest])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjust(type:twoPointCorner points=[0% 0%; 100% 100%] rounding=[nearest])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjust(type:twoPointCorner points=[0% 0%; 100% 100%] rounding=[floor; ceil])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjust(type:linear points=[0% 50%; 100% 50%] rounding=outward)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=point points=[0% 0%] rounding=[nearest])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[nearest])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[floor; ceil])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=linear points=[0% 50%; 100% 50%] rounding=outward)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustPoint(50% 50% nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustTwoCorners(nearest)" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustCorners(outward)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustFourCorners(outward)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustLeftTop(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustRightBottom(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustCenter(nearest)" />
