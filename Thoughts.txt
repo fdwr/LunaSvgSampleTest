@@ -165,10 +165,13 @@ Bikeshed terms:
     binding - Material or device used to bind such as the cover and materials that hold a book together.
     buttress - Architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
     contract - decrease in size, number, or range.
+    constraint - geometric constraints specify a direction or a distance relative to existing geometry.
     delta - Difference between two things or values.
+    difference - difference in mathis the result of subtracting one number from another.
     dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
     displace - Cause (something) to move from its proper or usual place.
-    displacement - The moving of something from its place or position.
+    displacement - The moving of something from its place or position. A vector whose length is the shortest distance from the initial to the final position of a point P. https://en.wikipedia.org/wiki/Displacement_(geometry)
+    distance - numerical measurement of how far apart objects or points are.
     erode - gradually destroy or be gradually destroyed. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
     expand - become or make larger or more extensive.
     fastener - Device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
@@ -228,12 +231,12 @@ Elements:
         transform = a transform to multiply the point by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
             TODO: How to align 2:1 slopes to other edges, like the bottom? Is a transform-origin needed?
         fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
-        transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
-        requireAxisAlignmentment - true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
-        directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
-        windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
+        transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+        requireAxisAlignmentment = true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
+        directionInverts = true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
+        windingInverts = true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
-        proportionalShear - true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
+        proportionalShear = true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
         [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
@@ -245,6 +248,18 @@ Elements:
         e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
     ?<displacement/> - very similar to round. Can it be joined? Should it be joined?
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined?
+    ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
+        id = name of element, which can be referred within other object's adjust attributes.
+        min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
+        max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3]
+        transform = transformation of the origin and min/max. This enables constraints that aren't axis aligned, like 45 degree distances.
+        origin = the origin point to subtract from the current point before clamping.
+        transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+        signRelative = whether to treat distances as signed, such that min=[-1 0] means the current point is at least 1 pixel to the left of the origin, and min=[1 0] means at least 1 pixel to the right. difference = point - origin.
+            If false, just mimic std::clamp, returning low if value < low, else high if value > high, else value. https://en.cppreference.com/w/cpp/algorithm/clamp
+            If true:
+                difference = (high >= 0) ? min(high, difference) : max(high, difference)
+                difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -346,6 +361,14 @@ Adjustments:
             todo: prevent shape inversions by clamping if the edge would become negative?
             todo: should be a similar equation to uberround, maybe even the same but with one additional boolean parameter to follow the path perpendicular automatically rather than an explicit vector
             todo: for minimum displacement (e.g. keep path at least 1px thick), how should it interact with bias and unscaled bias? With vector? Before or after the vector scaling?
+    constraint/clamp
+        clamp(origin=#anchor min=[x y] max=[x y])
+        main equation:
+            transform distance (what about a global transform if transform reinterpretation matters?)
+            subtract origin
+            clamp to minimum and maximum
+            add origin
+            untransform distance
     transform order:
         1.  world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
             (now in screen space)
@@ -478,6 +501,7 @@ Adjustments:
             This can probably just be part of uberround using a matrix or vector attribute.
         vectorFloor - round along given vector? vector-floor(1 1 -1 1 0.5 0.5 0.5 0.5) scale factors x 4, prebias x y, postbias x y. Can this be simplified by using a vector in floor? Seems redundant, but maybe it is the most complete form while not allowing full matrix transforms. Inverse is computed as det = a*d - b*c. 2D inverse = [d -b; -c a] / det.
         vectorCeil - inverse of vector-floor. Tis technically redundant since can flip the scale sign (e.g. ceil = -scale * floor(x / -scale) = -floor(-x)).
+        minimumDifference - minimum distance between two points, useful for ensuring anchors aren't too close. e.g. minimumDifference(#otherAnchor [2 1])  minimumDifference(#otherAnchor 1 transform=rotate(90))  minimumDifference(#otherAnchor 1 transform=matrix(1 1 -1 1 0 0))
     interactions
         calc() https://drafts.csswg.org/css-values-4/#funcdef-calc and var() https://www.w3.org/TR/css-variables-1/#variables-in-shorthands are not supported inside grid rounding. This should be compatible with SVG Native which doesn't support them anyway, but all parsers must skip unknown identifers and the following content within parentheses to allow for future calls.
         axis alignment and direction inversion uses the resolved effective transform rather than the raw world transform, thus considering any active vector-effect: non-scaling-size, non-rotation, fixed-position (2022-04-19 https://svgwg.org/svg2-draft/coords.html#VectorEffectProperty)
@@ -800,7 +824,7 @@ Example:
             <param name="background" value="red" />
         </use>
 
-        CSS variables ridiculously goofy. So, avoid them. https://drafts.csswg.org/css-variables-1/#funcdef-var
+        CSS variables are ridiculously goofy. So, avoid them. https://drafts.csswg.org/css-variables-1/#funcdef-var
         var(--foobar)
 
     Using the art picture frame:
@@ -867,12 +891,16 @@ Example:
         TODO: How to avoid repeating the origin anchor twice? Should there be adjustMinimum that both applies the adjustment and clamps?
 
         <anchor x="8" y="16" id="clipboardTLI" adjust="adjustMinimumDistance(#clipboardTLO [1 1]) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainDifference(#clipboardTLO min=[1 1]) nearest">
 
         Should be able to clamp stroke widths too, as a single scalar:
 
         <line strokeWidthAdjust="clamp(2 3)"/>
         <line strokeWidthAdjust="clamp(1)"/>
         <line strokeWidthAdjust="clamp(1.5 indefinite #origin)"/>
+
+        Should min and max (or rather low and high) be interpreted as absolute values to apply a min(max()) against, or should they be sign relative?
+        So constrainDistance(#firstAnchor min=[-1 0]) means the 2nd anchor is at least -1 away from firstAnchor.
 
     How many different kinds of adjustments are there, and what order do they evaluate? Transform before shape, shape before point?
     Point applies to the final points, including the points on the rounded corners.
