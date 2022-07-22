@@ -166,6 +166,7 @@ Bikeshed terms:
     buttress - Architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
     contract - decrease in size, number, or range.
     constraint - geometric constraints specify a direction or a distance relative to existing geometry.
+    contour - an outline, especially one representing or bounding the shape or form of something.
     delta - Difference between two things or values.
     difference - difference in mathis the result of subtracting one number from another.
     dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
@@ -182,6 +183,7 @@ Bikeshed terms:
     grapnel - Device consisting essentially of one or more hooks or clamps, for grasping or holding something.
     grow - become larger or greater over a period of time; increase.
     hook - Piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
+    interval - a space between two things; a gap.
     keypoint - Characteristic point of interest.
     node - Point at which lines or pathways intersect or branch; a central or connecting point.
     nudge - a light touch or push.
@@ -246,7 +248,11 @@ Elements:
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
-    ?<displacement/> - very similar to round. Can it be joined? Should it be joined?
+    ?<displacement/> - very similar to round. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path). [naming?] Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion.
+        https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons
+        https://stackoverflow.com/questions/54033808/how-to-offset-polygon-edges
+        https://stackoverflow.com/questions/55374305/how-to-get-an-expanded-or-contracted-contour-in-opencv
+        Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined?
     ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
@@ -312,6 +318,16 @@ Adjustments:
         namedParameter = identifier
         functionName = identifier
         functionCall = functionName "(" positionalParameterValue* [namedParameter "=" parameterValue]* ")"
+    grammar parameter parsing
+        consume each parameter in order, left to right
+        if named (foo=42), then consume the corresponding named parameter, set the parameter value, and set the parameter index bit (each parameter 0 to N-1 has a bit)
+        if that named parameter is already set, then ignore it (or override it? which is better? hard error? what does CSS do?)
+        unknown parameters are ignored. No hard error, but maybe a warning to a debugger/logger.
+        if positional, then consume the next unconsumed parameter, set the value, and set the parameter index bit
+        if exhausted all positional parameters, ignore parameter and log warning to debugger/logger. This gracefully allows future positional parameters to be added that further refine behavior.
+        if any parameter remains unset, just retain the default value.
+        note positional and named parameters can come in any order and still work fine. This is possible because there are no function overloads (otherwise it would be ambiguous).
+        todo: are there any required parameters, or do all parameters have default values?
     rounding: e.g.
         `floor(x 0.5 2 -0.5) ceil(y)`
         `up left`
@@ -441,6 +457,7 @@ Adjustments:
         nearestDiagonalHalf - snap to pixel corners or pixel centers on both axes. Equivalent to: prebias(1 1 -1 1 0.5 0.5) floor postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
         rotateCcw45SqrtTwo - Equivalent to: prebias(1 1 -1 1 0.5 0.5)
         rotateCw45InverseSqrtTwo - Equivalent to: postbias(0.5 -0.5 0.5 0.5 -0.5 -0.5).
+        diagonal45clockwise - transform that rotates 45 degrees clockwise and scales by the square root of 2 (matrix = 1 1 -1 1 0 0)
         todo: should "nearest" name be avoided because Nearest may also mean rounded away from zero? halvesUp? fractionUp? "Halves up would be confusing with existing rounding nomenclature because geometric "up" is actually numerically "down". Then, certain bonkers programming languages refer to UP meaning away from zero and DOWN meaning toward zero regardless of sign (https://docs.oracle.com/javase/8/docs/api/java/math/RoundingMode.html, https://docs.python.org/3/library/decimal.html#rounding-modes).
         center - snap to pixel center. Ties default to left and up. Equals `ceil(x-.5)+.5`. Equivalent to `ceil(xy -0.5 1 0.5)`. [naming] Could this be confused with the center of the shape, especially given adjustCenter()?
         centerLeftward - snap to nearest pixel center to the left from the x coordinate (if not already perfectly aligned)
@@ -851,6 +868,16 @@ Example:
             <anchor x="38" id="clipboardRightOuter"  grid-round="left">
             <anchor x="32" id="clipboardRightInner"  grid-align="clipboardRightOuter" grid-round="right">
 
+            <!-- alternate adjust statement -->
+            <anchor y="10" id="clipboardTopOuter"    adjust="up">
+            <anchor y="16" id="clipboardTopInner"    adjust="#clipboardTopOuter roundDown">
+            <anchor y="38" id="clipboardBottomOuter" adjust="down">
+            <anchor y="32" id="clipboardBottomInner" adjust="#clipboardBottomOuter roundUp">
+            <anchor x="2"  id="clipboardLeftOuter"   adjust="left">
+            <anchor x="8"  id="clipboardLeftInner"   adjust="#clipboardLeftOuter roundRight">
+            <anchor x="38" id="clipboardRightOuter"  adjust="left">
+            <anchor x="32" id="clipboardRightInner"  adjust="#clipboardRightOuter roundRight">
+
             <!-- starting from top right corner of picture frame, use top outer and right outer, then preceeding counter-clockwise use just top outer, then top and right... -->
             <path
                 anchor-list="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
@@ -892,6 +919,11 @@ Example:
 
         <anchor x="8" y="16" id="clipboardTLI" adjust="adjustMinimumDistance(#clipboardTLO [1 1]) nearest">
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainDifference(#clipboardTLO min=[1 1]) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO 1 rotateCcw45SqrtTwo) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO 1 mirrorHorizontal) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO 1 rotateCw90) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y 1) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y -1) nearest">
 
         Should be able to clamp stroke widths too, as a single scalar:
 
