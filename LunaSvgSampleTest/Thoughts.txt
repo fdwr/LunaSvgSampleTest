@@ -248,10 +248,13 @@ Elements:
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
-    ?<displacement/> - very similar to round. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path). [naming?] Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion.
+    ?<displacement/> - very similar to round. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path).
+        [naming?] Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion. Offset curve. Parallel curve. Outline extension.
         https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons
         https://stackoverflow.com/questions/54033808/how-to-offset-polygon-edges
         https://stackoverflow.com/questions/55374305/how-to-get-an-expanded-or-contracted-contour-in-opencv
+        https://en.wikipedia.org/wiki/Parallel_curve
+        https://developer.mozilla.org/en-US/docs/Web/CSS/outline-offset
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined?
     ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
