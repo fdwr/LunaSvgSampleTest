@@ -213,7 +213,7 @@ Elements:
         points/anchors/anchor-list = semicolon delimited. list of anchors by id. possibly inline points.
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
-        [naming?] grid-anchor-frame, anchor-set
+        [naming?] grid-anchor-frame, anchor-set, alignmentGroup
     <rounding/> - rounding adjustment via floor/ceiling, bias, scale multiplier, and optional transform to round along a specific vector rather than purely axis aligned. Rounding definitions in the <defs> section can be used by named id. Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
         id = name of element, which can be referred by other object's grid-round attribute.
         axes = xy, x, y, stroke-width.
@@ -637,8 +637,8 @@ Example:
 
         <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
-        <path id="topComponent" anchor-list="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor #0 -->
-        <path id="bottomComponent" anchor-list="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
+        <path id="topComponent" adjustments="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor #0 -->
+        <path id="bottomComponent" adjustments="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
 
     You can supply a scale and bias directly in the rounding mode. floor((x-bias)/multiple)*multiple+bias
 
@@ -712,33 +712,33 @@ Example:
         <anchor id="anchorC" x="60" y="60" grid-rounding="down left"/>
         <anchor id="anchorD" x="40" y="60" grid-rounding="up left"/>
         ...
-        <anchor-set id="anchorSetA" anchor-list="anchorA anchorB anchorC"/>
-        <anchor-set id="anchorSetB" anchor-list="anchorA anchorD anchorC"/>
+        <anchorTransform id="anchorTransformA" anchorList="anchorA anchorB anchorC"/>
+        <anchorTransform id="anchorTransformB" anchorList="anchorA anchorD anchorC"/>
 
     Or via containment? (id's on internal anchors are then unnecessary):
     
-        <anchor-set id="anchorSetA">
+        <anchorTransform mode="threePoint" id="anchorSetA">
             <anchor x="40" y="40" grid-rounding="up left"/>
             <anchor x="60" y="40" grid-rounding="up right"/>
             <anchor x="40" y="60" grid-rounding="down left"/>
-        </anchor-set>
+        </anchorTransform>
 
     Or via points? (which would allow in/out rounding modes)
 
-        <anchor-set id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
-        <anchor-set id="anchorSetA" anchors="40,40 60,40 60,60 40,60" grid-rounding="out"/>
+        <anchorTransform id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
+        <anchorTransform id="anchorSetA" anchors="40,40 60,40 60,60 40,60" grid-rounding="out"/>
 
-    Or should there just be <anchor>, not anchor-set, except it accepts multiple existing ones?
+    Or should there just be <anchor>, not anchorTransform, except it accepts multiple existing ones?
 
-        <anchor id="anchorSetA" anchor-list="anchorA anchorB anchorC"/>
+        <anchor id="anchorSetA" adjustments="anchorA anchorB anchorC"/>
 
     Or mix of both?
 
-        <anchor-set id="anchorSetA" anchors="42,36 anchorB 0%,50% left,top"/>
+        <anchorTransform id="anchorSetA" anchors="42,36 anchorB 0%,50% left,top"/>
 
     Or points and rounding?
 
-        <anchor-set id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
+        <anchorTransform id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
 
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
     An anchors attribute is preferred over points, and points over child elements.
@@ -765,10 +765,10 @@ Example:
         <rect x1="23" y1="42" width="20" height="10" grid-align="RectAnchor"/>
 
     Just say:
-        <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(23 42 up left)"/>
-        <rect x1="23" y1="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
-        <rect x1="23" y1="42" width="20" height="10" grid-align="bounds round-out)"/>
-        <rect x1="23" y1="42" width="20" height="10" grid-align="points(0%,0% 100%,100%) rounding(up left))"/>
+        <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(x=23 y=42 rounding=lower)"/>
+        ❌ <rect x1="23" y1="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
+        <rect x1="23" y1="42" width="20" height="10" adjust="bounds round-out)"/>
+        <rect x1="23" y1="42" width="20" height="10" adjust="points(0%,0% 100%,100%) rounding(up left))"/>
 
     Note aligning a single anchor point is different from aligning all the points individually, which would change the height/width:
         <rect x1="23" y1="42" width="20" height="10" grid-point-rounding="up left"/>
@@ -801,22 +801,35 @@ Example:
         <twoCornerAlignment id="foo" x1="1" x2="2" y3="3" y2="4" adjustment="floor; ceil" />
         <threePointAlignment id="foo" points="1 1 2 2 3 3" adjustment="floor; ceil; floor" />
 
-        <alignment mode="point" id="foo" points="1 1" rounding="floor" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment1="floor" adjustment2="ceil" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment="floor; ceil" />
-        <alignment mode="linear" id="foo" points="1 1; 2 2" adjustment="out" />
-        <alignment mode="twoCorner" id="foo" points="1 1; 2 2" adjustment="floor; ceil" />
-        <alignment mode="threePoint" id="foo" points="1 1; 2 2; 3 3" adjustment="floor; ceil; floor" />
-        <alignment mode="quad" id="foo" points="0 0; 0 1; 1 1; 1 0" adjustment="leftward upward; rightward upward; rightward downward; leftward downward" />
-        <alignment mode="quad" id="foo" points="0 0; 0 1; 1 1; 1 0" adjustment="outward" />
+        <alignment id="foo" mode="point" points="1 1" rounding="floor" />
+        <alignment id="foo" mode="linear" points="1 1; 2 2" adjustment1="floor" adjustment2="ceil" />
+        <alignment id="foo" mode="linear" points="1 1; 2 2" adjustment="floor; ceil" />
+        <alignment id="foo" mode="linear" points="1 1; 2 2" adjustment="out" />
+        <alignment id="foo" mode="twoCorner" points="1 1; 2 2" adjustment="floor; ceil" />
+        <alignment id="foo" mode="threePoint" points="1 1; 2 2; 3 3" adjustment="floor; ceil; floor" />
+        <alignment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjustment="leftward upward; rightward upward; rightward downward; leftward downward" />
+        <alignment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjustment="outward" />
+
+        <anchorTransform id="foo" mode="point" points="1 1" rounding="floor" />
+        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="floor" />
+        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="floor; ceil" />
+        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="out" />
+        <anchorTransform id="foo" mode="twoCorner" points="1 1; 2 2" adjust="floor; ceil" />
+        <anchorTransform id="foo" mode="threePoint" points="1 1; 2 2; 3 3" adjust="floor; ceil; floor" />
+        <anchorTransform id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="leftward upward; rightward upward; rightward downward; leftward downward" />
+        <anchorTransform id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="outward" />
 
         boundsAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         cornerAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        pointAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        pointAdjust ="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
 
-        adjustBounds="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        adjustBounds ="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         adjustCorners="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        adjustPoints="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        adjustPoints ="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+
+        boundsAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        cornerAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        pointAdjust ="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
 
     Can anchors be parameterized when using use?
 
@@ -836,10 +849,15 @@ Example:
         https://www.w3.org/TR/SVGParamPrimer/
         https://dev.w3.org/SVG/modules/ref/master/SVGRefPrimer.html
 
+        <defs>
+          <rect id="button_rect" x="5" y="5" width="100" height="30" rx="15" ry="15" fill="param(color) blue" stroke="param(outline) navy" />
+        </defs>
         <use href="...">
             <param name="base" value="brown" />
             <param name="background" value="red" />
         </use>
+
+        The latter one's syntax looks clumsy and verbose with url(#paramName) instead of a more intuitive param(paramName). Let's avoid it.
 
         CSS variables are ridiculously goofy. So, avoid them. https://drafts.csswg.org/css-variables-1/#funcdef-var
         var(--foobar)
@@ -880,7 +898,7 @@ Example:
 
             <!-- starting from top right corner of picture frame, use top outer and right outer, then preceeding counter-clockwise use just top outer, then top and right... -->
             <path
-                anchor-list="clipboardTopOuter clipboardTopInner clipboardBottomOuter clipboardBottomInner clipboardLeftOuter clipboardLeftInner clipboardRightOuter clipboardRightInner"
+                adjustments="clipboardTopOuter; clipboardTopInner; clipboardBottomOuter; clipboardBottomInner; clipboardLeftOuter; clipboardLeftInner; clipboardRightOuter; clipboardRightInner"
                 d="ga 0 6 M 38,11 C 38 10.9 38 10.7 37.9 10.6 .. ga 0 H 33.3 L 22.8 2.8 C 21.1 1.6 18.8 1.6 17.1 2.8 ... g 0 2"
             />
 
@@ -895,8 +913,8 @@ Example:
             <anchor x="20" y="20" id="boxTopLeft" grid-round="nearest-edge-low">
             <anchor x="38" y="38" id="circleCenter" grid-round="round-even-odd-low(xy 20)">
 
-            <rect x="20" y="20" width="10" height="10" anchor-list="#boxTopLeft #boxTopRight #boxBottomLeft #boxBottomRight"/>
-            <circle cx="38" cy="38" r="10" anchor-list="#circleCenter #circleTopLeft #circleTopRight #circleBottomLeft #circleBottomRight"/>
+            <rect x="20" y="20" width="10" height="10" adjustments="#boxTopLeft #boxTopRight #boxBottomLeft #boxBottomRight"/>
+            <circle cx="38" cy="38" r="10" adjustments="#circleCenter #circleTopLeft #circleTopRight #circleBottomLeft #circleBottomRight"/>
         </svg>
 
     Separate anchors by a minimum distance:
