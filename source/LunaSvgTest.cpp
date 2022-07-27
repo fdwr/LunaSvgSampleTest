@@ -88,24 +88,37 @@ struct CanvasItem
             && pointY <  int32_t(y + h);
     }
 
-    constexpr bool static IsVerticalFlowDirection(FlowDirection flowDirection)
+    constexpr bool static IsVerticalFlowDirection(FlowDirection flowDirection) noexcept
     {
         return uint32_t(flowDirection) & uint32_t(FlowDirection::Vertical);
     }
 
-    constexpr bool static IsHorizontalFlowDirection(FlowDirection flowDirection)
+    constexpr bool static IsHorizontalFlowDirection(FlowDirection flowDirection) noexcept
     {
         return !IsVerticalFlowDirection(flowDirection);
     }
 
-    constexpr bool static IsNegativeHorizontalAlignment(Alignment alignment)
+    constexpr bool static IsNegativeHorizontalAlignment(Alignment alignment) noexcept
     {
         return uint32_t(alignment) & uint32_t(Alignment::NegativeHorizontal);
     }
 
-    constexpr bool static IsNegativeVerticalAlignment(Alignment alignment)
+    constexpr bool static IsNegativeVerticalAlignment(Alignment alignment) noexcept
     {
         return uint32_t(alignment) & uint32_t(Alignment::NegativeVertical);
+    }
+
+    std::tuple<uint32_t, bool> GetImageIndex() const noexcept
+    {
+        switch (itemType)
+        {
+        case ItemType::RasterImage:
+        case ItemType::SvgDocument:
+            return {value.imageIndex, true};
+        case ItemType::SizeLabel:
+        default:
+            return {0, false};
+        }
     }
 };
 
@@ -1870,7 +1883,7 @@ RECT DetermineCanvasItemsBoundingRect(std::span<CanvasItem const> canvasItems)
 
 // Returns the bounding rectangle of all canvas items that intersect the given rectangle.
 // This is useful for highlighting based on a mouse selection/click.
-RECT DetermineCanvasItemsRowBoundingRect(std::span<CanvasItem const> canvasItems, RECT const& intersectionRect)
+RECT DetermineCanvasItemsBoundingRectWithin(std::span<CanvasItem const> canvasItems, RECT const& intersectionRect)
 {
     RECT boundingRect = {};
     RECT dummyRect = {};
@@ -1883,6 +1896,25 @@ RECT DetermineCanvasItemsRowBoundingRect(std::span<CanvasItem const> canvasItems
         }
     }
     return boundingRect;
+}
+
+
+// Returns the indices of all canvas items within the bounding rectangle.
+std::vector<uint32_t> GetCanvasItemIndicesWithin(std::span<CanvasItem const> canvasItems, RECT const& intersectionRect)
+{
+    std::vector<uint32_t> indices;
+    RECT dummyRect = {};
+
+    for (size_t canvasItemIndex = 0, itemCount = canvasItems.size(); canvasItemIndex < itemCount; ++canvasItemIndex)
+    {
+        auto& canvasItem = canvasItems[canvasItemIndex];
+        RECT currentRect = ToRect(canvasItem);
+        if (IntersectRect(/*out*/ &dummyRect, &currentRect, &intersectionRect))
+        {
+            indices.push_back(uint32_t(canvasItemIndex));
+        }
+    }
+    return indices;
 }
 
 
@@ -2432,11 +2464,112 @@ void CopyBitmapToClipboard(
                 }
                 GlobalUnlock(memory);
 
-                SetClipboardData(CF_DIBV5, memory);
+                if (SetClipboardData(CF_DIBV5, memory) == nullptr)
+                {
+                    GlobalFree(memory);
+                };
             }
             CloseClipboard();
         }
     }
+}
+
+
+void CopyTextToClipboard(std::wstring_view text, HWND hwnd)
+{
+    if (OpenClipboard(hwnd))
+    {
+        EmptyClipboard();
+
+        uint32_t const textLength = text.size();
+        uint32_t const textByteCount = textLength * sizeof(wchar_t);
+        uint32_t const totalByteCount = textByteCount + 2 /*add terminating null*/;
+
+        HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalByteCount);
+        if (memory != nullptr)
+        {
+            void* lockedMemory = GlobalLock(memory);
+            if (lockedMemory != nullptr)
+            {
+                wchar_t* clipboardText = reinterpret_cast<wchar_t*>(lockedMemory);
+                memcpy(clipboardText, text.data(), textByteCount);
+                clipboardText[textLength] = '\0';
+            }
+            GlobalUnlock(memory);
+
+            if (SetClipboardData(CF_UNICODETEXT, memory) == nullptr)
+            {
+                GlobalFree(memory);
+            };
+        }
+        CloseClipboard();
+    }
+}
+
+
+void CopyFilenamesToClipboard(
+    std::span<std::wstring const> filenameList,
+    HWND hwnd
+    )
+{
+    std::wstring concatenatedFilenames;
+    for (size_t i = 0, count = filenameList.size(); i < count; ++i)
+    {
+        concatenatedFilenames.append(filenameList[i]);
+        if (count > 1)
+        {
+            concatenatedFilenames.append(L"\r\n", 2);
+        }
+    }
+    CopyTextToClipboard(concatenatedFilenames, hwnd);
+}
+
+
+void CopyFilenamesToClipboard(
+    std::span<std::wstring const> filenameList,
+    std::span<uint32_t const> filenameListIndices,
+    HWND hwnd
+    )
+{
+    std::wstring concatenatedFilenames;
+    for (size_t i = 0, count = filenameListIndices.size(); i < count; ++i)
+    {
+        assert(filenameListIndices[i] < filenameList.size());
+        concatenatedFilenames.append(filenameList[filenameListIndices[i]]);
+        if (count > 1)
+        {
+            concatenatedFilenames.append(L"\r\n", 2);
+        }
+    }
+    CopyTextToClipboard(concatenatedFilenames, hwnd);
+}
+
+
+void CopyFilenamesToClipboard(
+    std::span<CanvasItem const> canvasItems,
+    std::span<std::wstring const> filenameList,
+    RECT const& selectionRect,
+    HWND hwnd
+    )
+{
+    // Find all the filenames of the canvas items within the selection rect.
+    std::vector<uint32_t> canvasItemIndices = GetCanvasItemIndicesWithin(canvasItems, selectionRect);
+    std::vector<uint32_t> filenameIndices; // 1:1 with image indices.
+    std::vector<bool> filenamesUsed(filenameList.size());
+
+    // Collect all the filename indices from the canvas items.
+    for (auto canvasItemIndex : canvasItemIndices)
+    {
+        auto [imageIndex, isImageIndex] = canvasItems[canvasItemIndex].GetImageIndex();
+        if (isImageIndex && !filenamesUsed[imageIndex])
+        {
+            assert(imageIndex < filenameList.size());
+            filenamesUsed[imageIndex] = true;
+            filenameIndices.push_back(imageIndex);
+        }
+    }
+
+    CopyFilenamesToClipboard(filenameList, filenameIndices, hwnd);
 }
 
 
@@ -3601,6 +3734,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 CopyBitmapToClipboard(g_bitmap, {0, 0, INT_MAX, INT_MAX}, hwnd);
                 break;
 
+            case IDM_COPY_FILE_PATHS:
+                CopyFilenamesToClipboard(g_filenameList, hwnd);
+                break;
+
             case IDM_BACKGROUND_GRAY_CHECKERBOARD:
             case IDM_BACKGROUND_TRANSPARENT_BLACK:
             case IDM_BACKGROUND_OPAQUE_WHITE:
@@ -3854,18 +3991,23 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             );
             DestroyMenu(menu);
 
+            // Get the rectangle between the right button press and right button release.
+            POINT startPoint = ClientSpaceMouseCoordinateToImageCoordinate(mousePoint.x, mousePoint.y);
+            POINT endPoint = ClientSpaceMouseCoordinateToImageCoordinate(g_selectionStartMouseX, g_selectionStartMouseY);
+            RECT mouseRect = GetMouseSelectionRect(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+
             switch (command)
             {
-            // Can't handle this command in the standard WM_COMMAND because the clicked mouse coordinate is lost by then.
+            // Can't handle some command in the standard WM_COMMAND because the clicked mouse coordinate is lost by then.
             case IDM_COPY_BITMAP_SELECTION:
                 {
-                    // Get the rectangle between the right button press and right button release.
-                    POINT startPoint = ClientSpaceMouseCoordinateToImageCoordinate(mousePoint.x, mousePoint.y);
-                    POINT endPoint = ClientSpaceMouseCoordinateToImageCoordinate(g_selectionStartMouseX, g_selectionStartMouseY);
-                    RECT mouseRect = GetMouseSelectionRect(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-                    RECT clipRect = DetermineCanvasItemsRowBoundingRect(g_canvasItems, mouseRect);
+                    RECT clipRect = DetermineCanvasItemsBoundingRectWithin(g_canvasItems, mouseRect);
                     CopyBitmapToClipboard(g_bitmap, clipRect, hwnd);
                 }
+                break;
+
+            case IDM_COPY_FILE_PATHS:
+                CopyFilenamesToClipboard(g_canvasItems, g_filenameList, mouseRect, hwnd);
                 break;
 
             case 0: // User canceled.
