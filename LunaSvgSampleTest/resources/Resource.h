@@ -127,10 +127,11 @@
 #define IDM_PRESET_WATERFALL_UP_TO_64       245
 #define IDM_SNAP_TO_PIXELS                  250
 #define IDM_COPY_BITMAP                     251
-#define IDM_NUDGE_LEFT                      252
-#define IDM_NUDGE_RIGHT                     253
-#define IDM_NUDGE_UP                        254
-#define IDM_NUDGE_DOWN                      255
+#define IDM_COPY_FILE_PATHS                 252
+#define IDM_NUDGE_LEFT                      253
+#define IDM_NUDGE_RIGHT                     254
+#define IDM_NUDGE_UP                        255
+#define IDM_NUDGE_DOWN                      256
 #define IDM_BACKGROUND_FIRST                260
 #define IDM_BACKGROUND_TRANSPARENT_BLACK    260
 #define IDM_BACKGROUND_GRAY_CHECKERBOARD    261
