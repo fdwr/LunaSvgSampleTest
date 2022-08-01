@@ -2,10 +2,7 @@ Random thoughts for the future:
 
 TODO:
     - Add option to display size label or not
-    - Wrap labels correctly if too narrow, paired with image
-    - Add 'switch' element too.
-    - Support non-square SVG's
-    - Upload LunaSvg changes:
+    - LunaSvg changes:
         - (fixed locally) Blank canvas treated as blank
         - (fixed locally) Missing em and ex from switch statement property.cpp Length::value
         - (defer until SVG2 published?) Unknown elements treated as g
@@ -15,6 +12,13 @@ TODO:
         - Eventually grid fitting
         - Fix "transparent" color keyword missing. Works in Chrome for SVG's exported via GraphViz. https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#transparent_keyword
         - Verify bounding box in LunaSvg https://svgwg.org/svg2-draft/single-page.html#coords-BoundingBoxes
+        - Add 'switch' element too.
+        - Fix void Canvas::rgba() to use macros. canvas.cpp line 195
+            plutovg-private.h
+            #define plutovg_alpha_shift 24
+            #define plutovg_red_shift 0
+            #define plutovg_green_shift 8
+            #define plutovg_blue_shift 16
     - Roadmap
         - Implement grid fitting spec in lunasvg https://github.com/sammycage/lunasvg
         - Implement grid fitting spec in SVG Native Viewer https://github.com/adobe/svg-native-viewer with Direct2D and GDI+
@@ -52,13 +56,7 @@ TODO:
         - icons8-cheese.svg 20px left circle would be slightly distorted (an oval) if transforming entire shape.
         - icons8-violin.svg 36px the handle would be better stretched via transform along the diagonals outward.
         - transform-heart.svg has little nub on left for 24px and blurry right edge 28px.
-
-Fix void Canvas::rgba() to use macros. canvas.cpp line 195
-    plutovg-private.h
-    #define plutovg_alpha_shift 24
-    #define plutovg_red_shift 0
-    #define plutovg_green_shift 8
-    #define plutovg_blue_shift 16
+        - icons8-fluency-document.svg 28px top right corner, round to nearest would cause corner to be slanted (not 45 degrees anymore).
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
@@ -113,7 +111,9 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
             Perspective orientation when the icon is large, but flat when tiny (e.g. Windows 7 Notepad in Alt+Tab vs top left system icon)
             Fewer objects, such as a pad with pencil at large sizes but just the pad for smaller sizes.
     Minimum constraints
-        Set minimum path width minimum-stroke-width="1px" (e.g. no thinner than 1 pixel) (or stroke-width-rounding="ceil(bias=0.5 minimum=1)")
+        Set minimum path width minimum-stroke-width="1px" (e.g. no thinner than 1 pixel)
+            or stroke-width-rounding="ceil(bias=0.5 minimum=1)"
+            or strokeWidthAdjust="minimumValue(1)"
         Ensure minimum 1-pixel gap between lines (e.g. Outlook office calendar icon)
     Not turing complete
         No loops, intermediate variables, or functions, just math statements
@@ -256,7 +256,7 @@ Elements:
         https://en.wikipedia.org/wiki/Parallel_curve
         https://developer.mozilla.org/en-US/docs/Web/CSS/outline-offset
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
-    ?<roundParity/> - very similar to round. Can it be joined? Should it be joined?
+    ?<roundParity/> - very similar to round. Can it be joined? Should it be joined? [naming] doubleRounding? multipleRounding?
     ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
@@ -269,6 +269,7 @@ Elements:
             If true:
                 difference = (high >= 0) ? min(high, difference) : max(high, difference)
                 difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
+    <transformDelta/> - transforms the current displacement of the active point by shear or scale (translation too, but it's less useful), which is useful for keeping angles (top right corner of document icon) or other sprockets of the gear icon.
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -370,7 +371,7 @@ Adjustments:
             newCoordinateValue = lerp(roundedCoordinateValue, newCoordinateValue, fraction) // where default fraction = 1
             readd grid origin (if present)
             todo: consider a means to round shapes to nearest left or right edge depending on which is nearer (e.g. a 1.5 pixel wide vertical line left or right)
-    displacement
+    contour offset displacement
         main equation of displacement:
             create two temporary points at the current vertex
             compute the normal vectors for both edges
@@ -431,6 +432,8 @@ Adjustments:
                 useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
         additive? - add the delta to the coordinate rather rounding the coordinate and delta together. So x = x + round(delta) rather than x = round(delta + x). todo: Is there a better name? Both cases are additive, but one is outside the rounding. roundDeltaOnly? unroundedCoordinate?
+            todo: What the use case for this?
+            Was it to implement relative contour offset displacement, which would unify `round` instead of needing a separate element which is mostly the same.
         position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
         scaleDelta/deltaScale - subset of proportional scale that applies only to the current delta. e.g. scaleDelta(2 3) scales x by 2 and y by 3.
             How to scale x coordinate by an anchor? The typewriter keys in icons8-blog.svg could use this to space all the keys equidistantly.
@@ -445,6 +448,7 @@ Adjustments:
             adjustUsing(#anchorname xscale yscale xshear=0 yshear=0) or standard matrix form [sx hy hx sy dx dy]?
             adjustUsing(#existingAdjustment sx=1 hx=0 sy=1 hy=0 dx=0 dy=0)
             adjustUsing(#existingAdjustment matrix=[sx hx sy hy dx dy])
+            displaceUsing(#existingAdjustment matrix=[sx hx sy hy dx dy])
             Useful for gear sprockets to keep the same angle for the diagonals as the top and bottom sprockets (icons8-color-settings.svg).
     aliases:
         leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? roundLeft? "left" is already used in SVG transform-origin to mean the left *side* rather than leftward as a direction. So use leftward to distinguish.
@@ -626,9 +630,9 @@ Example:
     One anchor can be defined relative to another one.
     Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
         <anchor x="20" y="30" grid-minimum-distance="otherAnchor 1 0; secondAnchor 0 -1"/>
+        <anchor x="20" y="30" adjust="adjustMinimumDistance(#otherAnchor 1 0)"/>
     todo: second anchor is relative to the first anchor's rounded screen location rather than user coordinates.
     todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
-    todo: what about 45 degree angles, so that two octagons keep the same distance from each other? It's okay if the corners
     todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
           are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
           A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
@@ -638,8 +642,8 @@ Example:
           Percentages are similar in concept to primitiveUnits="objectBoundingBox" which make the lengths relative to the referencing object's bounding box https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/primitiveUnits
           Anchor frame percentages in <defs> could be treated as userSpaceOnUse or objectBoundingBox? Rather than gradientUnits or patternUnits, have anchorUnits.
 
-        <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest">
-        <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"><!-- ensure at least one pixel away -->
+        <anchor id="topComponentBottomAnchor" y="40" grid-rounding="nearest"/>
+        <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"/><!-- ensure at least one pixel away -->
         <path id="topComponent" adjustments="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor #0 -->
         <path id="bottomComponent" adjustments="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
 
