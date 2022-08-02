@@ -257,6 +257,7 @@ Elements:
         https://developer.mozilla.org/en-US/docs/Web/CSS/outline-offset
         https://helpx.adobe.com/after-effects/using/use-offset-paths.html
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
+        Hard corners remain hard (like stroke-linejoin = miter), and round corners remain round (like stroke-linejoin = round), just pushing the *existing* points out along the path normal vector, not generating any new points. So a miter does not become bevel or butt or rounded.
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined? [naming] doubleRounding? multipleRounding?
     ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
