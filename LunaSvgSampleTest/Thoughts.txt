@@ -248,13 +248,14 @@ Elements:
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
-    ?<displacement/> - very similar to round. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path).
+    ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path).
         [naming?] Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion. Offset curve. Parallel curve. Outline extension.
         https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons
         https://stackoverflow.com/questions/54033808/how-to-offset-polygon-edges
         https://stackoverflow.com/questions/55374305/how-to-get-an-expanded-or-contracted-contour-in-opencv
         https://en.wikipedia.org/wiki/Parallel_curve
         https://developer.mozilla.org/en-US/docs/Web/CSS/outline-offset
+        https://helpx.adobe.com/after-effects/using/use-offset-paths.html
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined? [naming] doubleRounding? multipleRounding?
     ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
@@ -270,6 +271,7 @@ Elements:
                 difference = (high >= 0) ? min(high, difference) : max(high, difference)
                 difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
     <transformDelta/> - transforms the current displacement of the active point by shear or scale (translation too, but it's less useful), which is useful for keeping angles (top right corner of document icon) or other sprockets of the gear icon.
+    ?<displaceByAnchor> - displaces a point by an anchor transform value potentially transformed first. So you could take an anchor transform pointing up and then rotate it by 30 degrees for gear sprockets. Can this be unified with <transformDelta/> via an attribute? Can `<transformDelta/>` be unified with this?
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
