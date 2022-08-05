@@ -41,7 +41,7 @@ TODO:
         - icons8-libre-office-writer blue lines disappear
         - Microsoft Teams View 16x16 needs midline to be crisp, so round a multiple of 2 pixels
         - Google news.svg 18x18 show individual points snapped vs 4-part, 19x19 will have uneven stem widths horizontally vs vertically
-        - YouTube apps icon 28 through 40 in waterfall
+        - YouTube apps icon 28px through 40px in waterfall
         - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent
         - icons8-blog.svg is very blurry for 24px (all one gray streak) with dramatically looking thickness for the keys per row.
         - MicrosoftSharePointFiles.svg top right corner because aligning the edges does not align the folder corner, and there's shear
@@ -168,7 +168,7 @@ Bikeshed terms:
     constraint - geometric constraints specify a direction or a distance relative to existing geometry.
     contour - an outline, especially one representing or bounding the shape or form of something.
     delta - Difference between two things or values.
-    difference - difference in mathis the result of subtracting one number from another.
+    difference - difference in math is the result of subtracting one number from another.
     dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
     displace - Cause (something) to move from its proper or usual place.
     displacement - The moving of something from its place or position. A vector whose length is the shortest distance from the initial to the final position of a point P. https://en.wikipedia.org/wiki/Displacement_(geometry)
@@ -204,17 +204,30 @@ Elements:
         id = name of element, which can be referred by other object's grid adjust attribute.
         x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
         y = vertical coordinate. Like x.
-        grid-rounding = Reference to a grid-rounding element #id or a series of formulas inline.
+        pointAdjust = series of adjustments, including pixel rounding, anchor transforms, and contour offsets.
+            [naming?] grid-rounding
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
     <anchorTransform/> - a microtransform constructed from anchor points (1 point to 4 points) used for other shapes to align/fit to. It can technically be any affine transform (translation, scaling, rotation, shear, squeeze), but it's really intended for orthogonal and angle-preserving transformations (translation, uniform scaling, non-uniform scaling, and squeeze transforms. A 4th point can be used to use "in" and "out" grid rounding mode.
+        [naming?] grid-anchor-frame, anchor-set, alignmentGroup, anchorAlignment, anchorAdjustment, pointAdjustment, anchorRemapping, anchorDeformation
         anchorTransform's can be used in adjustment attributes by id name.
         id = name of element, which can be referred by other object's adjustment attributes.
         points = list of points, semicolon delimited
-        points/anchors/anchor-list = semicolon delimited. list of anchors by id. possibly inline points.
+        points/anchors/anchor-list = list of anchors by id. possibly inline points. If inline points are allowed, then they should be semicolon delimited to be clear.
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
-        [naming?] grid-anchor-frame, anchor-set, alignmentGroup
+        pointAdjust = optional adjustments per point, such as rounding
+        transform = transforms the adjustment, combining the adjustment transform and these additional transforms.
+            TODO: Should transform respect the parent's transform for external anchors? It should probably only apply to internal <anchor/> children and points. Does lazy/eager evaluation make a difference?
+            TODO: Should there be distinct pretransform and posttransform attributes, one in user space and one to reorient the anchor transform (e.g. turn a gear sprocket displacement 60 degrees).
+        href = refers to another existing anchorTransform as a template, like linearGradient's href.
+        ?evaluation = lazy/eager - determines whether to evaluate anchor points immediately within the context of where they are defined or within the using shape that has an adjust attribute.
+            [naming?] transformUsesBounds? parent / usingElement. boundsFrom? boundsUse?
+            It's not so much a when (lazy/eager), but more of a where to take the transform from, the parent of the element or the using element.
+            Inside a <defs> section, anchor transforms default to lazy, so that relative positions use the calling shape's bounds.
+            Any anywhere else in the <svg>, it defaults to immediate to use the using scope's transform.
+        appliesTo = point / delta, whether the anchor transform applies to the point being adjusted or the delta
     <rounding/> - rounding adjustment via floor/ceiling, bias, scale multiplier, and optional transform to round along a specific vector rather than purely axis aligned. Rounding definitions in the <defs> section can be used by named id. Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
+        [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
         id = name of element, which can be referred by other object's grid-round attribute.
         axes = xy, x, y, stroke-width.
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
@@ -230,8 +243,11 @@ Elements:
         postbias = amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
         unscaledBias = ...
         multiple = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
+            TODO: Can "multiple" accept separate x and y parameters, or just one for both? If separate (e.g. x=2 and y=1), then how does a 90 degree affect it? I think it should swap axes.
         transform = a transform to multiply the point by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
+            [naming?] gridTransform? screenTransform? It does not apply in user coordinate space like the normal "transform" attribute.
             TODO: How to align 2:1 slopes to other edges, like the bottom? Is a transform-origin needed?
+            The transform is affected by the parent element transform if transformReinterprets is true.
         fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
         transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
         requireAxisAlignmentment = true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
@@ -239,7 +255,6 @@ Elements:
         windingInverts = true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
         proportionalShear = true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
-        [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
@@ -264,6 +279,7 @@ Elements:
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
         max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3]
         transform = transformation of the origin and min/max. This enables constraints that aren't axis aligned, like 45 degree distances.
+            [naming?] screenTransform? gridTransform?
         origin = the origin point to subtract from the current point before clamping.
         transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
         signRelative = whether to treat distances as signed, such that min=[-1 0] means the current point is at least 1 pixel to the left of the origin, and min=[1 0] means at least 1 pixel to the right. difference = point - origin.
@@ -273,6 +289,14 @@ Elements:
                 difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
     <transformDelta/> - transforms the current displacement of the active point by shear or scale (translation too, but it's less useful), which is useful for keeping angles (top right corner of document icon) or other sprockets of the gear icon.
     ?<displaceByAnchor> - displaces a point by an anchor transform value potentially transformed first. So you could take an anchor transform pointing up and then rotate it by 30 degrees for gear sprockets. Can this be unified with <transformDelta/> via an attribute? Can `<transformDelta/>` be unified with this?
+        [naming?] <displacement/> <transformedAdjustment/>
+        id = name of element
+        anchor = the anchor (or anchorAdjustment) to modify
+        transform = rotations, scaling, mirroring [naming?] screenTransform, gridTransform
+        includeExistingDelta = whether to include the existing delta of an adjustment or just the current anchor's adjustment. The anchor is also optional, meaning to only use the current delta.
+        e.g. <displacement id="modifiedAnchor" anchor="#someAnchor" screenTransform="rotate(30)"/>
+        Alternately maybe <anchorAdjustment/> with single point and transform?
+        Alternately <adjustments/> or <transform id="newAdjustment" value="rotate(90) #originalAnchorAdjustment"/>
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -296,7 +320,7 @@ Attributes:
     -*.gridRounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
     *.anchorAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
     *.shapeAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
-    *.strokeAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
+    *.strokeWidthAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
     *.anchorPoints - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
