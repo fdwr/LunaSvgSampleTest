@@ -1,3 +1,4 @@
+// 2004-01-18
 // EFOF.cpp : Defines the entry point for the application.
 //
 
@@ -520,43 +521,3 @@ BOOL CALLBACK DialogProc(HWND hwnd, UINT message, long wParam, long lParam)
 	}
 	return false;
 }
-
-
-
-
-
-
-
-/*char szWindowClass[] = "EFOF";
-WNDCLASSEX wcex = {
-	sizeof(WNDCLASSEX),
-	0, //CS_HREDRAW | CS_VREDRAW,
-	(WNDPROC)WndProc,
-	0,
-	0,
-	0x400000,
-	NULL, //LoadIcon(hInstance, (LPCTSTR)IDI_AAA),
-	NULL, //LoadCursor(NULL, IDC_ARROW),
-	(HBRUSH)(COLOR_WINDOW+1),
-	(LPCSTR)NULL,
-	szWindowClass,
-	NULL //LoadIcon(wcex.hInstance, (LPCTSTR)IDI_SMALL),
-};
-*/
-
-/*	if (!RegisterClassEx(&wcex)) return FALSE;
-	if (!hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-	  CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL) )
-		return FALSE;
-
-    ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
-
-
-	// Main message loop:
-	while (GetMessage(&msg, NULL, 0, 0)) 
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-*/

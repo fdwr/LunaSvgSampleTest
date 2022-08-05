@@ -1,3 +1,5 @@
+// 2009-11-14
+
 #define WINVER 0x0501
 #define _WIN32_WINNT 0x0501
 
@@ -73,7 +75,7 @@ int WINAPI WinMain (
     ShowWindow(hwnd, nCmdShow);
     
     // Run the message loop. It will run until GetMessage() returns 0
-    while (GetMessage(&messages, NULL, 0, 0))
+    while (GetMessage(&messages, NULL, 0, 0) > 0)
     {
         // Translate virtual-key messages into character messages
         TranslateMessage(&messages);

@@ -156,7 +156,7 @@ int APIENTRY _tWinMain(
 	dwThreadId = GetCurrentThreadId(); // need thread id for mousewheel
 
 	// Main message loop:
-	while (GetMessage(&msg, nullptr, 0, 0)) 
+	while (GetMessage(&msg, nullptr, 0, 0) > 0)
 	{
 		//dbgmsgwin(msg.hwnd, msg.message, msg.wParam, msg.lParam);
 		/*

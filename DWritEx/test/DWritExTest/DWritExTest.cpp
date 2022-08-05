@@ -3,6 +3,7 @@
 
 #include "precomp.h"
 #include "DWritExTest.h"
+#include <vector>
 
 #include "..\..\source\DWritExInternal.h"
 #include "..\..\source\SmartArray.h"
@@ -23,75 +24,6 @@ WCHAR szWindowClass[MAX_LOADSTRING];			// the main window class name
 
 
 //#pragma comment(linker, "/ENTRY:wWinMain")
-
-
-__interface GlyphRun
-{
-    virtual void AddRef() = 0;
-    virtual void Query() = 0;
-};
-
-__interface GlyphRun2 : public GlyphRun
-{
-    virtual void AddRef() = 0;
-    virtual void Query() = 0;
-};
-
-
-__interface GlyphRunPrivate : public GlyphRun
-{
-    virtual void AddRef() = 0;
-    virtual void Query() = 0;
-};
-
-
-class DWriteGlyphRun : public GlyphRun,
-                       public GlyphRun2,
-                       public GlyphRunPrivate
-{
-    void foo()
-    {
-        GlyphRun* gr = static_cast<GlyphRun*>(this);
-    }
-};
-
-
-template<typename Type>
-class ComObject : public Type
-{
-    void AddRef()
-    {
-        x++;
-    }
-
-    int x;
-};
-
-
-#include <vector>
-
-
-void foo()
-{
-    std::vector<int> v;
-    for(std::vector<int>::iterator i = v.begin(); i != v.end(); ++i)
-    {
-       // do whatever with *i
-    }
-
-    for each(int i in v)
-    {
-
-    }
-
-    int a[3] = {4,5,6};
-    for each(int j in a)
-    {
-
-    }
-
-}
-
 
 
 // Forward declarations of functions included in this code module:
@@ -138,7 +70,7 @@ int APIENTRY wWinMain(
 	hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MIDIAMONDTEST));
 
 	// Main message loop:
-	while (GetMessage(&msg, NULL, 0, 0))
+	while (GetMessage(&msg, NULL, 0, 0) > 0)
 	{
 		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
 		{

@@ -1,3 +1,5 @@
+// 2008-11-23
+
 #include <windows.h>
 
 //  Declare Windows procedure
@@ -62,7 +64,7 @@ int WINAPI WinMain (HINSTANCE hThisInstance,
     SetTimer(hwnd, 0,30, NULL);
 
     // Run the message loop. It will run until GetMessage() returns 0
-    while (GetMessage(&messages, NULL, 0, 0))
+    while (GetMessage(&messages, NULL, 0, 0) > 0)
     {
         // Translate virtual-key messages into character messages
         TranslateMessage(&messages);
