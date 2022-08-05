@@ -23,12 +23,12 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 5. Shape visibility based on pixel density (e.g. selectively hiding complex geometry at low pixel resolutions)
 
 - `<rounding/>` - controls how to round points, defined in `<defs>` and used later in adjustment attributes via `id`.
-- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`. 
-- `<anchorTransform/>` - microtransform to nudge shapes or entire groups of shapes to the pixel grid, used in adjustment attributes via `id`. They can be built from 1 to 3 anchor points, depending on the type, and unlike ordinary transform attributes, they cannot accept arbitrary translation, scale, or rotation operations, as they are implicitly constructed by the small rounding adjustments to anchors.
+- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`.
+- `<anchorAdjustment/>` - microtransform to nudge shapes or entire groups of shapes to the pixel grid, used in adjustment attributes via `id`. They can be built from 1 to 3 anchor points, depending on the type, and unlike ordinary transform attributes, they cannot accept arbitrary translation, scale, or rotation operations, as they are implicitly constructed by the small rounding adjustments to anchors.
 - `<contourOffset/>` - displaces individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments).
 - `<constraint/>` - a minimum/maximum geometric relative distance from another point. Each axis can range independently, and the vector can be reoriented to other angles such as 45 degrees.
 - `<transform/>` - defines a named transform for reuse by `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints.
-- `<adjustments/>` - a reusable series of adjustments, including rounding, anchor transforms, contour offsets, and contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. 
+- `<adjustmentList/>` - a reusable series of adjustments, including rounding, anchor transforms, contour offsets, and contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. 
 
 # Terms for bikeshed naming
 
@@ -44,7 +44,7 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - constraint - geometric constraints specify a direction or a distance relative to existing geometry.
 - contour - an outline, especially one representing or bounding the shape or form of something.
 - delta - Difference between two things or values.
-- difference - difference in mathis the result of subtracting one number from another.
+- difference - difference in math is the result of subtracting one number from another.
 - dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
 - displace - Cause (something) to move from its proper or usual place.
 - displacement - The moving of something from its place or position. A vector whose length is the shortest distance from the initial to the final position of a point P. https://en.wikipedia.org/wiki/Displacement_(geometry)
