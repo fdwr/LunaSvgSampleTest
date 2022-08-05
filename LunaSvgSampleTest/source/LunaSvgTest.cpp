@@ -412,7 +412,7 @@ int APIENTRY wWinMain(
     MSG msg;
 
     // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (GetMessage(&msg, nullptr, 0, 0) > 0)
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
