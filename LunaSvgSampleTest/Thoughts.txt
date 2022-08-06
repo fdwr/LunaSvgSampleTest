@@ -1176,6 +1176,8 @@ Related:
         CodePen - https://codepen.io/mattdesl/pen/QjMrXV
         Inkscape Plugin PixelSnap - https://code.google.com/archive/p/pixelsnap/
         Sketch Plugin Pixel Perfecter - https://github.com/swiadek/pixel-perfecter-sketch-plugin
+        Matrix Calculator https://matrixcalc.org/en/#%7B%7B10,20,1%7D%7D*%7B%7B1,0,0%7D,%7B0,1,0%7D,%7B1,2,1%7D%7D
+        André Staltz Matrix Multiplication http://matrixmultiplication.xyz/ (https://github.com/staltz/matrixmultiplication.xyz)
         The magnificent 2d matrix - https://ncase.me/matrix/
         Yuri Sulyma's Matrix Visualizer - https://web.ma.utexas.edu/users/ysulyma/matrix/
     Libraries
