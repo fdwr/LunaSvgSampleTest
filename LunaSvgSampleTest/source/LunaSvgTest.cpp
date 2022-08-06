@@ -311,6 +311,7 @@ const std::wstring_view g_defaultMessage =
     L"\r\n"
     L"g = show/hide grid\r\n"
     L"shift g = show/hide pixel grid\r\n"
+    L"b = show/hide border\r\n"
     L"o = show/hide outlines\r\n"
     L"r = show/hide raster fills and strokes\r\n"
     L"a = show/hide alpha channel\r\n"
@@ -3950,6 +3951,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
     case WM_MOUSEWHEEL:
         OnMouseWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), GET_WHEEL_DELTA_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam));
+        break;
+
+    case WM_MOUSEHWHEEL:
+        OnMouseWheel(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), -GET_WHEEL_DELTA_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam) ^ MK_SHIFT);
         break;
 
     case WM_LBUTTONDOWN:
