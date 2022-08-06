@@ -204,6 +204,9 @@ Elements:
         id = name of element, which can be referred by other object's grid adjust attribute.
         x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
         y = vertical coordinate. Like x.
+        transform = standard transform, affecting anchor point.
+        ?postTransform = transform after screen space
+            [naming?] screenTransform? deltaTransform?
         pointAdjust = series of adjustments, including pixel rounding, anchor transforms, and contour offsets.
             [naming?] grid-rounding
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
@@ -211,17 +214,18 @@ Elements:
         [naming?] grid-anchor-frame, anchor-set, alignmentGroup, anchorAlignment, anchorAdjustment, pointAdjustment, anchorRemapping, anchorDeformation
         anchorTransform's can be used in adjustment attributes by id name.
         id = name of element, which can be referred by other object's adjustment attributes.
-        points = list of points, semicolon delimited
+        points = list of points, semicolon delimited TODO: Delete? Having 3 different ways to express anchors complicates things, and it makes delimiting more fuzzy (when passing lists of x,y coordinates)
         points/anchors/anchor-list = list of anchors by id. possibly inline points. If inline points are allowed, then they should be semicolon delimited to be clear.
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
+            only viable when passing raw points? <anchors/> and anchor references already have their own grid-anchor-units.
         pointAdjust = optional adjustments per point, such as rounding
         transform = transforms the adjustment, combining the adjustment transform and these additional transforms.
             TODO: Should transform respect the parent's transform for external anchors? It should probably only apply to internal <anchor/> children and points. Does lazy/eager evaluation make a difference?
             TODO: Should there be distinct pretransform and posttransform attributes, one in user space and one to reorient the anchor transform (e.g. turn a gear sprocket displacement 60 degrees).
         href = refers to another existing anchorTransform as a template, like linearGradient's href.
-        ?evaluation = lazy/eager - determines whether to evaluate anchor points immediately within the context of where they are defined or within the using shape that has an adjust attribute.
-            [naming?] transformUsesBounds? parent / usingElement. boundsFrom? boundsUse?
+        ?boundsFrom - determines whether to evaluate anchor points bounds within the context of where they are defined or within the using shape that has an adjust attribute.
+            [naming?] transformUsesBounds? parent / usingElement. boundsFrom? boundsUse? boundsSource?
             It's not so much a when (lazy/eager), but more of a where to take the transform from, the parent of the element or the using element.
             Inside a <defs> section, anchor transforms default to lazy, so that relative positions use the calling shape's bounds.
             Any anywhere else in the <svg>, it defaults to immediate to use the using scope's transform.
@@ -250,10 +254,11 @@ Elements:
             The transform is affected by the parent element transform if transformReinterprets is true.
         fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
         transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+            [naming?] transformEffect? applies, axisAligned, none
         requireAxisAlignmentment = true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
         directionInverts = true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
         windingInverts = true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
-            [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+            [naming?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
         proportionalShear = true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
@@ -864,6 +869,18 @@ Example:
         boundsAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         cornerAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         pointAdjust ="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+
+    How to transform one anchor by another anchor's existing delta, but at an angle?
+
+        <anchor id="topSprocket" x="30" y="30" adjust="roundNearest(y)"/>
+        <anchor href="#topSprocket" transform="rotate(30)" adjust="transformAnchor(#topSprocket rotate(30))"/>
+        <anchor href="#topSprocket" transform="rotate(60)" adjust="#topSprocket transformDelta(rotate(30)))"/>
+        <anchor href="#topSprocket" transform="rotate(-30)" adjust="combineTransform(#topSprocket rotate(-30))"/>
+        <anchor href="#topSprocket" transform="rotate(-60)" adjust="anchorTransform(#topSprocket rotate(-60))"/>
+        <anchor href="#topSprocket" transform="rotate(-60)" adjust="applyTransform(#topSprocket transformReinterprets=true)"/>
+        <anchorTransform id="#topRightSprocket" anchors="#topSprocket" matrixAdjust="rotate(30)"/>
+        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" screenTransform="rotate(30)"/>
+        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" transform="rotate(30)" transformReinterprets="true"/>
 
     Can anchors be parameterized when using use?
 
