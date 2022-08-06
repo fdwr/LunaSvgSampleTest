@@ -738,7 +738,7 @@ LRESULT CALLBACK MainWindow::WindowProc(HWND hwnd, UINT message, WPARAM wParam, 
         }
         break;
 
-	case WM_DESTROY:
+    case WM_DESTROY:
         PostQuitMessage(-1);
         Destroy();
         break;

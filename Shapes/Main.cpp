@@ -1,3 +1,4 @@
+// 2017-02-19
 // Shapes.cpp : Defines the entry point for the application.
 //
 
@@ -50,7 +51,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance,
     MSG msg;
 
     // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (GetMessage(&msg, nullptr, 0, 0) > 0)
     {
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
