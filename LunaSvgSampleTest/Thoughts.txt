@@ -294,9 +294,10 @@ Elements:
                 difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
     <transformDelta/> - transforms the current displacement of the active point by shear or scale (translation too, but it's less useful), which is useful for keeping angles (top right corner of document icon) or other sprockets of the gear icon.
     ?<displaceByAnchor> - displaces a point by an anchor transform value potentially transformed first. So you could take an anchor transform pointing up and then rotate it by 30 degrees for gear sprockets. Can this be unified with <transformDelta/> via an attribute? Can `<transformDelta/>` be unified with this?
-        [naming?] <displacement/> <transformedAdjustment/>
+        [naming?] <displacement/> <transformedAdjustment/> <transformAdjustment/>
         id = name of element
         anchor = the anchor (or anchorAdjustment) to modify
+            [naming?] using? (default=none or current delta)
         transform = rotations, scaling, mirroring [naming?] screenTransform, gridTransform
         includeExistingDelta = whether to include the existing delta of an adjustment or just the current anchor's adjustment. The anchor is also optional, meaning to only use the current delta.
         e.g. <displacement id="modifiedAnchor" anchor="#someAnchor" screenTransform="rotate(30)"/>
@@ -873,14 +874,32 @@ Example:
     How to transform one anchor by another anchor's existing delta, but at an angle?
 
         <anchor id="topSprocket" x="30" y="30" adjust="roundNearest(y)"/>
-        <anchor href="#topSprocket" transform="rotate(30)" adjust="transformAnchor(#topSprocket rotate(30))"/>
-        <anchor href="#topSprocket" transform="rotate(60)" adjust="#topSprocket transformDelta(rotate(30)))"/>
-        <anchor href="#topSprocket" transform="rotate(-30)" adjust="combineTransform(#topSprocket rotate(-30))"/>
-        <anchor href="#topSprocket" transform="rotate(-60)" adjust="anchorTransform(#topSprocket rotate(-60))"/>
-        <anchor href="#topSprocket" transform="rotate(-60)" adjust="applyTransform(#topSprocket transformReinterprets=true)"/>
+        <anchor href="#topSprocket" transform="rotate(60 30 30)" adjust="transformAnchor(#topSprocket rotate(30))"/>
+        <anchor href="#topSprocket" transform="rotate(120 30 30)" adjust="#topSprocket transformDelta(rotate(30)))"/>
+        <anchor href="#topSprocket" transform="rotate(-60 30 30)" adjust="combineTransform(#topSprocket rotate(-30))"/>
+        <anchor href="#topSprocket" transform="rotate(-120 30 30)" adjust="anchorTransform(#topSprocket rotate(-60))"/>
+        <anchor href="#topSprocket" transform="rotate(-180 30 30)" adjust="applyTransform(#topSprocket transformReinterprets=true)"/>
         <anchorTransform id="#topRightSprocket" anchors="#topSprocket" matrixAdjust="rotate(30)"/>
         <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" screenTransform="rotate(30)"/>
+        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" displacementTransform="rotate(30)"/>
         <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" transform="rotate(30)" transformReinterprets="true"/>
+
+        Different approaches:
+        (1) transform the upright anchor to other angles using "transform"
+        (2) pretransform the anchor position to its rotated position and transform the displacement
+        (3) transform in screen space via the adjust statement after rounding which rotates the position and displacement
+        <anchor x="32" y="4" id="topSprocket" />
+        <anchor x="32" y="4" transform="rotate(60 32 32)" />
+        <anchor x="32" y="4" transform="rotate(120 32 32)" />
+        <anchorAdjustment anchors="#topSprocket" vectorTransform="rotate(60 32 32)"/>
+        <transformAdjustment id="#topRightSprocket" using="#topSprocket" vectorTransform="rotate(60 32 32)"/>
+        <anchor x="56" y="18" adjust="transformAdjustment(using=#topSprocket rotate(60 32 32))" />
+        <anchor x="56" y="18" adjust="#topRightSprocket" />
+        <anchor x="32" y="0" adjust="nearestDownward transform(rotate(60 32 32))" />
+            -- Probably not, as adjustment just affects the final screen position, not the original screen point.
+               Unless you think of an adjustment as at least 2 points, the original point and the displacement vector.
+        <anchor x="32" y="0" adjust="nearestDownward rotate(60 32 32)" />
+        <anchor x="32" y="0" adjust="nearestDownward rotateDisplacement(60)" />
 
     Can anchors be parameterized when using use?
 
@@ -1154,6 +1173,110 @@ Code snippets
                    (bBitValue - aBitValue); // abs() only accepts signed values
         }
 
+    Displacement transformation:
+
+        Given a 1D transformation matrix [sx,dx] which displaces any point p by some amount,
+        you can double the displacement via:
+
+            sx = sx * 2 - 1
+            dx = dx * 2 - 0
+            [sx,dx] * [2,2] + [-1,0]
+
+        For any scale:
+            sx = sx * scale - (scale - 1)
+            dx = dx * scale
+
+        Generically for scale transforms:
+
+            Scale x ((Adjustment x vector) - vector) + vector
+
+            x = x + n*s+j*s*x + l*s*y - s*x
+            x = y + o*t+k*t*x + m*t*y - t*y
+
+            Where:
+                vector = [x y 1]
+                A = [[j l n], [k m o], [0 0 1]]
+                S = [[s 0 0], [0 t 0], [0 0 1]]
+
+        Generically for any transform:
+
+            [x + n*p + o*r - x*p - y*r + j*p*x + k*r*x + l*p*y + m*r*y]
+            [y + n*q + o*s - x*q - y*s + j*q*x + k*s*x + l*q*y + m*s*y]
+            [1                                                        ]
+
+            or:
+            [x + n*p + o*r + x*(j*p + k*r - p) + y*(l*p + m*r - r)]
+            [y + n*q + o*s + x*(j*q + k*s - q) + y*(l*q + m*s - s)]
+            [1                                                    ]
+
+            Where:
+                vector = [x y 1]
+                A = [[j l n], [k m o], [0 0 1]]
+                S = [[p r t], [q s u], [0 0 1]]
+
+        [x,1] x [2]
+        [0,1]   [2]
+
+        [2,1] x [0,10] = [1,21]    1-0=1
+        [0,1]   [1, 1]   [1, 1]    21-10=11
+
+        [3,2] x [0,10] = [2,32]    2-0=2
+        [0,1]   [1, 1]   [1, 1]    32-10=22
+
+
+        [3,0] x [0,10] = [0,30]    0-0=0
+        [0,1]   [1, 1]   [1, 1]    30-10=20
+
+        [5,0] x [0,10] = [0,50]    0-0=0
+        [0,1]   [1, 1]   [1, 1]    50-10=40
+
+
+        [4,0] x [0,5,10] = [0,20,40]    0-0=0	20-10=10	40-10=30
+        [0,1]   [1,1, 1]   [1, 1, 1]
+
+        [7,0] x [0,5,10] = [0,35,70]    0-0=0	35-5-30		70-10=60
+        [0,1]   [1,1, 1]   [1, 1, 1]
+
+
+        [1,1] x [0,10] = [1,11]    1-0=1
+        [0,1]   [1, 1]   [1, 1]    11-10=1
+
+        [1,2] x [0,10] = [0,12]    2-0=2
+        [0,1]   [1, 1]   [1, 1]    12-10=2
+
+
+        [ 0, 1] x [ 0,10] = [1, 1]    1 -  0 =  1
+        [ 0, 1]   [ 1, 1]   [1, 1]    1 - 10 = -9
+
+        [-1, 2] x [0,10] = [2,-8]    2 -  0 =   2
+        [ 0, 1]   [1, 1]   [1, 1]   -8 - 10 = -18
+
+
+        [10,10] x [0,5,10] = 10,60,100; scale = 1x; displacement = 10,55,100
+        [ 0, 1]   [1,1, 1]
+
+        [19,20] x [0,5,10] = 20,115,210; scale = 2x; displacement = 20,110,200
+        [ 0, 1]   [1,1, 1]
+
+        [28,30] x [0,5,10] = 30,170,310; scale = 3x; displacement = 30,165,300
+        [ 0, 1]   [1,1, 1]
+
+        [37,40] x [0,5,10] = 40,225,410; scale = 4x; displacement = 40,220,400
+        [ 0, 1]   [1,1, 1]
+
+        [46,50] x [0,5,10] = 50,280,510; scale = 5x; displacement = 50,275,300
+        [ 0, 1]   [1,1, 1]
+
+        [-8,-10] x [0,5,10] = -10,-50,-90; scale = -1x; displacement = -10,-55,-100
+        [ 0,  1]   [1,1, 1]
+
+
+        [10, 0] x [0,5,10] = displacement = 0,45,90
+        [ 0, 1]   [1,1, 1]
+
+        [19, 0] x [0,5,10] = 30,115,210; displacement = 20,110,200
+        [ 0, 1]   [1,1, 1]
+
 Reference:
     TrueType
         https://docs.microsoft.com/en-us/typography/opentype/spec/tt_instructions#round-to-half-grid
@@ -1170,6 +1293,9 @@ Reference:
     Direct3D 11
         https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm#3.4.2.1%20Top-Left%20Rule
         In graphics triangle rasterization, ties round down (e.g. 1.5->1.0, 2.5->2.0)
+
+
+
 
 Related:
     SVG
