@@ -78,9 +78,11 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         Semicolons are also oddly used to separate attributes inside attributes svgView(viewBox(0,0,200,200);preserveAspectRatio(none))) https://svgwg.org/svg-next/linking.html#SVGFragmentIdentifiersDefinitions
         They need not be on-contour. Indeed, for rounded rectangles, off-contour corners are desired.
         Anchor adjustments can apply to multiple objects, including ones that are far away. For example a keyboard full of keys might have only one anchor to snap a keycap to whole pixels, but every other keycap can reuse that same anchor.
-    Grid fitting / object alignment / pixel snapping / fine adjustment
+        Transformation of anchors and adjustments could apply to the directed line segment (finite ray) as a whole, or just the vector part. e.g. rotate the displacement vector around it's origin point.
+    Anchor adjustment / grid fitting / object alignment / pixel snapping / fine adjustment
         Align group of objects to adjusted/aligned point
         Translate anchor and entire grouped object and then stretch by other anchor frame
+        Such adjustments are a mapping from the original screen space coordinates (post-transform but pre-adjustment) to the final screen space coordinate (post-adjustment) which reduce to affine transformations.
         grid-transform(translate(...) scale(...))
         grid-align(...)
         grid-adjust(...)
