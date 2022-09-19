@@ -1,0 +1,64 @@
+<html>
+<head>
+<title>Modular Arithmetic Connectivities</title>
+<style>
+body {
+    font-family: sans-serif;
+}
+</style>
+</head>
+
+<body>
+<h1>Modular Arithmetic Connectivities:</h1>
+<canvas id="canvas" width="300" height="300" style="border:2px solid black;">
+Circlular network connectivity
+</canvas>
+<script>
+var canvas = document.getElementById("canvas");
+var context = canvas.getContext('2d');
+
+// Interesting values:
+// 99 1 8
+// 99 4 4
+// 9 1 2
+
+var modulus = 99;
+var currentValue = 1;
+var valueMultiple = 8;
+var previousX = Math.infinity;
+var previousY = Math.infinity;
+var nextX = 150;
+var nextY = 0;
+
+for (var i = 0; i < modulus; ++i)
+{
+	var radians = Math.PI * 2 * i / modulus;
+	nextX = 150 + Math.sin(radians) * 145;
+	nextY = 150 + Math.cos(radians) * -145;
+	context.fillText(i, nextX - 3, nextY + 3);
+}
+
+context.strokeStyle = 'rgba(255, 165, 0, 0.5)';
+
+for (var i = 0; i < 500; ++i)
+{
+	var remainder = currentValue % modulus;
+	var radians = Math.PI * 2 * remainder / modulus;
+	nextX = 150 + Math.sin(radians) * 135;
+	nextY = 150 + Math.cos(radians) * -135;
+	console.log("Value", remainder);
+
+	if (previousX != Math.infinity)
+	{
+		context.moveTo(previousX, previousY);
+		context.lineTo(nextX, nextY);
+		context.stroke();
+		currentValue *= valueMultiple;
+	}
+
+	previousX = nextX;
+	previousY = nextY;
+}
+</script>
+</body>
+</html>
