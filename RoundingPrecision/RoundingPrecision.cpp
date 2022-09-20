@@ -1,4 +1,59 @@
-﻿// BiNums, see binary numbers
+﻿// RoundingPrecision.cpp
+
+// Op	Propose ULP Tolerance	FP32	FP16
+// batchNormalization	5	?	?
+// clamp	0	0	0
+// concat	0	0	0
+// conv2d	2	?	?
+// add	1	1	1
+// sub	1	1	1
+// mul	1	1	1
+// div	2	2	2
+// max	0	0	0
+// min	0	0	0
+// pow	3	?	?
+// abs	0	0	0
+// ceil	0	0	0
+// cos	2	?	?
+// exp	2	1	16
+// floor	0	0	0
+// log	3	?	?
+// neg	0	0	0
+// sin	2	?	?
+// tan	4	?	?
+// gemm	1	?	?
+// leakyRelu	1	2	2
+// matmul	1	?	?
+// averagepool2d	2	?	?
+// maxpool2d	0	0	0
+// relu	0	0	0
+// reduceMax	0	0	0
+// reduceMean	0	2	2
+// reduceMin	0	0	0
+// reduceProduct	0	1	1
+// reduceSum	0	0	0
+// reshape	0	0	0
+// sigmoid	2	3	18
+// slice	0	0	0
+// softmax	1	?	?
+// split	0	0	0
+// squeeze	0	0	0
+// tanh	2	?	?
+// transpose	0	0	0
+
+// Remaining:
+// pow	3	?	?
+// sin	2	?	?
+// cos	2	?	?
+// tan	4	?	?
+// batchNormalization	5	?	?
+// conv2d	2	?	?
+// log	3	?	?
+// gemm	1	?	?
+// matmul	1	?	?
+// averagepool2d	2	?	?
+// softmax	1	?	?
+// tanh	2	?	?
 
 #include "precomp.h"
 
@@ -7,7 +62,7 @@ enum class NumberType : uint32_t
 {
     Undefined = 0,
     Float32m23e8s1 = 1,
-    Float32 = Float32m23e8s1 , // starting from bit 0 - mantissa:23 exponent:8 sign:1
+    Float32 = Float32m23e8s1 , // starting from bit 0 - fraction:23 exponent:8 sign:1
     Uint8 = 2,
     Int8 = 3,
     Uint16 = 4,
@@ -16,15 +71,15 @@ enum class NumberType : uint32_t
     Int64 = 7,
     StringChar8 = 8,
     Bool8 = 9,
-    Float16m10e5s1 = 10, // mantissa:10 exponent:5 sign:1
+    Float16m10e5s1 = 10, // fraction:10 exponent:5 sign:1
     Float16 = Float16m10e5s1,
     Float64m52e11s1 = 11,
-    Float64 = Float64m52e11s1, // mantissa:52 exponent:11 sign:1
+    Float64 = Float64m52e11s1, // fraction:52 exponent:11 sign:1
     Uint32 = 12,
     Uint64 = 13,
     Complex64 = 14,
     Complex128 = 15,
-    Float16m7e8s1 = 16, // mantissa:7 exponent:8 sign:1 (the 16-bit "brain" float with reduced precision but increased range)
+    Float16m7e8s1 = 16, // fraction:7 exponent:8 sign:1 (the 16-bit "brain" float with reduced precision but increased range)
     Bfloat16 = Float16m7e8s1,
     Fixed24f12i12 = 17, // TODO: Make naming more consistent. Fixed24f12i12 vs Fixed12_12
     Fixed32f16i16 = 18,
@@ -64,8 +119,10 @@ union NumberUnion
 
 struct NumberFormatBitmask
 {
+    uint64_t fractionMask;
+    uint64_t integerMask;
     uint64_t exponentMask;
-    uint64_t mantissaMask;
+    uint64_t signMask;
 };
 
 NumberUnion RoundTowardZero(NumberUnion numberUnion, NumberFormatBitmask const& bitmask);
@@ -73,9 +130,11 @@ NumberUnion RoundTowardInfinity(NumberUnion numberUnion, NumberFormatBitmask con
 NumberUnion RoundTowardToNearestEven(NumberUnion numberUnion, NumberFormatBitmask const& bitmask);
 void WriteFromDouble(NumberType dataType, double value, /*out*/ void* data);
 void WriteToDouble(NumberType dataType, void const* inputData, /*out*/ NumberUnion& number);
+NumberFormatBitmask const& GetNumberFormatBitmask(NumberType numberType);
 
 struct NumberRounded
 {
+    NumberType numberType;
     NumberUnion precise;
     NumberUnion roundedLow;
     NumberUnion roundedHigh;
@@ -83,14 +142,25 @@ struct NumberRounded
 
     void SetValue(float64_t value)
     {
+        numberType = NumberType::Float64;
         precise.f64 = value;
         roundedLow.f64 = value;
         roundedHigh.f64 = value;
         roundedEven.f64 = value;
     }
 
-    void SetValue(NumberUnion value)
+    void SetValue(int64_t value)
     {
+        numberType = NumberType::Int64;
+        precise.i64 = value;
+        roundedLow.i64 = value;
+        roundedHigh.i64 = value;
+        roundedEven.i64 = value;
+    }
+
+    void SetValue(NumberType newNumberType, NumberUnion value)
+    {
+        numberType = newNumberType;
         precise = value;
         roundedLow = value;
         roundedHigh = value;
@@ -134,31 +204,60 @@ struct NumberRounded
         WriteFromDouble(numberType, source.roundedHigh.f64, /*out*/ &roundedHigh);
         WriteFromDouble(numberType, source.roundedEven.f64, /*out*/ &roundedEven);
     }
+
+    template<typename Functor>
+    static void ApplyOperationUnnary(NumberRounded const& a, NumberRounded& output, Functor f)
+    {
+        f(a.precise,     output.precise);
+        f(a.roundedLow,  output.roundedLow);
+        f(a.roundedHigh, output.roundedHigh);
+        f(a.roundedEven, output.roundedEven);
+    }
+
+    template<typename Functor>
+    static void ApplyOperationBinary(NumberRounded const& a, NumberRounded const& b, NumberRounded& output, Functor f)
+    {
+        f(a.precise,     b.precise,     output.precise);
+        f(a.roundedLow,  b.roundedLow,  output.roundedLow);
+        f(a.roundedHigh, b.roundedHigh, output.roundedHigh);
+        f(a.roundedEven, b.roundedEven, output.roundedEven);
+    }
 };
 
 // Common formats, including some low precision formats expressed in the bit layout of higher precision,
 // like float32 in float64 layout.
-constexpr NumberFormatBitmask float32NumberMask = {.exponentMask = 0b11111111ULL << 23, .mantissaMask = (1ULL<<23)-1};
-constexpr NumberFormatBitmask float16NumberMask = {.exponentMask = 0b11111ULL << 10, .mantissaMask = (1ULL<<10)-1};
-constexpr NumberFormatBitmask float64NumberMask = {.exponentMask = 0b11111111111ULL << 52, .mantissaMask = (1ULL<<52)-1};
-constexpr NumberFormatBitmask float32as64NumberMask = {.exponentMask = 0b11111111111ULL << 52, .mantissaMask = (1ULL<<(52-23))-1};
-constexpr NumberFormatBitmask float16as64NumberMask = {.exponentMask = 0b11111111111ULL << 52, .mantissaMask = (1ULL<<(52-10))-1};
-constexpr NumberFormatBitmask bfloat16as64NumberMask = {.exponentMask = 0b11111111111ULL << 52, .mantissaMask = (1ULL<<(52-7))-1};
+constexpr NumberFormatBitmask bfloat16NumberMask     = {.fractionMask = (1ULL<<7)-1,       .exponentMask = 0b11111111ULL << 7,     .signMask = 1ULL<<15};
+constexpr NumberFormatBitmask float16NumberMask      = {.fractionMask = (1ULL<<10)-1,      .exponentMask = 0b11111ULL << 10,       .signMask = 1ULL<<15};
+constexpr NumberFormatBitmask float32NumberMask      = {.fractionMask = (1ULL<<23)-1,      .exponentMask = 0b11111111ULL << 23,    .signMask = 1ULL<<31};
+constexpr NumberFormatBitmask float64NumberMask      = {.fractionMask = (1ULL<<52)-1,      .exponentMask = 0b11111111111ULL << 52, .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask bfloat16as64NumberMask = {.fractionMask = (1ULL<<(52-7))-1,  .exponentMask = 0b11111111111ULL << 52, .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask float16as64NumberMask  = {.fractionMask = (1ULL<<(52-10))-1, .exponentMask = 0b11111111111ULL << 52, .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask float32as64NumberMask  = {.fractionMask = (1ULL<<(52-23))-1, .exponentMask = 0b11111111111ULL << 52, .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask uint8NumberMask        = {.integerMask  = (1ULL<<8)-1,       .signMask = 0ULL    };
+constexpr NumberFormatBitmask uint16NumberMask       = {.integerMask  = (1ULL<<16)-1,      .signMask = 0ULL    };
+constexpr NumberFormatBitmask uint32NumberMask       = {.integerMask  = (1ULL<<32)-1,      .signMask = 0ULL    };
+constexpr NumberFormatBitmask uint64NumberMask       = {.integerMask  = uint64_t(~0),      .signMask = 0ULL    };
+constexpr NumberFormatBitmask int8NumberMask         = {.integerMask  = (1ULL<<7)-1,       .signMask = 1ULL<<7};
+constexpr NumberFormatBitmask int16NumberMask        = {.integerMask  = (1ULL<<15)-1,      .signMask = 1ULL<<15};
+constexpr NumberFormatBitmask int32NumberMask        = {.integerMask  = (1ULL<<31)-1,      .signMask = 1ULL<<31};
+constexpr NumberFormatBitmask int64NumberMask        = {.integerMask  = (1ULL<<63)-1,      .signMask = 1ULL<<63};
 
 // Round toward zero (or truncate).
 NumberUnion RoundTowardZero(NumberUnion numberUnion, NumberFormatBitmask const& bitmask)
 {
-    numberUnion.ui64 &= ~bitmask.mantissaMask;
+    numberUnion.ui64 &= ~bitmask.fractionMask;
     return numberUnion;
 }
 
 // Round toward positive or negative infinity.
 NumberUnion RoundTowardInfinity(NumberUnion numberUnion, NumberFormatBitmask const& bitmask)
 {
-    if ((numberUnion.ui64 & bitmask.exponentMask) < bitmask.exponentMask)
+    uint64_t combinedIntegerExponentMask = bitmask.integerMask | bitmask.exponentMask;
+    if ((numberUnion.ui64 & combinedIntegerExponentMask) < combinedIntegerExponentMask)
     {
-        numberUnion.ui64 |= bitmask.mantissaMask;
-        assert(bitmask.exponentMask > bitmask.mantissaMask);
+        numberUnion.ui64 |= bitmask.fractionMask;
+        assert((bitmask.exponentMask == 0) || (bitmask.exponentMask > bitmask.integerMask)); // If an integer/exponent mask exists, then it should be in the more significant bits relative to the fraction.
+        assert((bitmask.integerMask == 0) || (bitmask.integerMask > bitmask.fractionMask)); // If an integer/exponent mask exists, then it should be in the more significant bits relative to the fraction.
         ++numberUnion.ui64;
     }
     return numberUnion;
@@ -168,9 +267,9 @@ NumberUnion RoundTowardInfinity(NumberUnion numberUnion, NumberFormatBitmask con
 NumberUnion RoundTowardToNearestEven(NumberUnion numberUnion, NumberFormatBitmask const& bitmask)
 {
     uint64_t value = numberUnion.ui64;
-    uint64_t lsbValueMask = (bitmask.mantissaMask + 1); // To determine nearest even
+    uint64_t lsbValueMask = (bitmask.fractionMask + 1); // To determine nearest even
     uint64_t halfValue = lsbValueMask >> 1;
-    uint64_t roundingBits = value & bitmask.mantissaMask;
+    uint64_t roundingBits = value & bitmask.fractionMask;
 
     if (roundingBits < halfValue)
     {
@@ -185,7 +284,7 @@ NumberUnion RoundTowardToNearestEven(NumberUnion numberUnion, NumberFormatBitmas
     // else roundingBits == halfValue
     else if (value & lsbValueMask)
     {
-        // If least significant mantissa bit is odd, then round toward infinity.
+        // If least significant fraction bit is odd, then round toward infinity.
         numberUnion = RoundTowardInfinity(numberUnion, bitmask);
     }
     // else !(value & lsbValueMask)
@@ -195,6 +294,36 @@ NumberUnion RoundTowardToNearestEven(NumberUnion numberUnion, NumberFormatBitmas
     }
 
     return numberUnion;
+}
+
+NumberRounded operator +(NumberRounded const& a, NumberRounded const& b)
+{
+    NumberRounded result;
+    assert(b.numberType == a.numberType);
+    result.numberType = a.numberType;
+
+    switch (a.numberType)
+    {
+    case NumberType::Int64:   NumberRounded::ApplyOperationBinary(a, b, result, [](auto const& a, auto const& b, auto& c){c.i64 = a.i64 + b.i64;});
+    case NumberType::Float64: NumberRounded::ApplyOperationBinary(a, b, result, [](auto const& a, auto const& b, auto& c){c.f64 = a.f64 + b.f64;});
+    }
+    result.Round(GetNumberFormatBitmask(result.numberType));
+    return result;
+}
+
+NumberRounded operator *(NumberRounded const& a, NumberRounded const& b)
+{
+    NumberRounded result;
+    assert(b.numberType == a.numberType);
+    result.numberType = a.numberType;
+
+    switch (a.numberType)
+    {
+    case NumberType::Int64:   NumberRounded::ApplyOperationBinary(a, b, result, [](auto const& a, auto const& b, auto& c){c.i64 = a.i64 * b.i64;});
+    case NumberType::Float64: NumberRounded::ApplyOperationBinary(a, b, result, [](auto const& a, auto const& b, auto& c){c.f64 = a.f64 * b.f64;});
+    }
+    result.Round(GetNumberFormatBitmask(result.numberType));
+    return result;
 }
 
 void PrintNumberValues(NumberRounded const& value, NumberType numberType)
@@ -341,7 +470,7 @@ void ApplyRoundedNumericOperation(
         NumberRounded valueFull = {};
         NumberRounded valueCasted = {};
         NumberRounded valueFullRecasted = {};
-        valueFull.SetValue(initialValue);
+        valueFull.SetValue(initialValue.f64);
 
         if (printForCsv)
         {
@@ -462,26 +591,26 @@ int main(int argc, char* argv[])
     // ULP diff for low 414.157867 (43CF1435 -> 46 ULP), high 414.160095 (43CF147E -> 27 ULP), even 414.159454 (43CF1469 -> 6 ULP)
     // ULP diff for low 1314.148438 (44A444C0 -> 89 ULP), high 1314.160156 (44A44520 -> 7 ULP), even 1314.160156 (44A44520 -> 7 ULP)
 
-#if 0
-    ApplyRoundedNumericOperation(100, true, NumberType::Float32, std::span(initialValueZero), [](float64_t& value) {return value += M_PI;});
-#endif
-#if 0
-    ApplyRoundedNumericOperation(50, true, NumberType::Float32, wrap_span(initialValueOne),  [](float64_t& value) {return value *= M_PI;});
-#endif
-#if 0
-    ApplyRoundedNumericOperation(100, true, NumberType::Float32, wrap_span(initialValueOne),  [](float64_t& value) {return value = (value * 1.001) + 1.0;});
-#endif
-#if 0
-    ApplyRoundedNumericOperation(100, true, NumberType::Float32, wrap_span(initialValuePi),  [](float64_t& value) {return value = sqrt(value);});
-#endif
-#if 0
-    ApplyRoundedNumericOperation(100, true, NumberType::Float32, wrap_span(initialValuePi),  [](float64_t& value) {return value = exp(value);});
-#endif
 #if 1
+    ApplyRoundedNumericOperation(100, /*CSV*/ false, NumberType::Float32, wrap_span(initialValueZero), [](float64_t& value) {return value += M_PI;});
+#endif
+#if 0
+    ApplyRoundedNumericOperation(50, /*CSV*/ true, NumberType::Float32, wrap_span(initialValueOne),  [](float64_t& value) {return value *= M_PI;});
+#endif
+#if 0
+    ApplyRoundedNumericOperation(100, /*CSV*/ true, NumberType::Float32, wrap_span(initialValueOne),  [](float64_t& value) {return value = (value * 1.001) + 1.0;});
+#endif
+#if 0
+    ApplyRoundedNumericOperation(100, /*CSV*/ false, NumberType::Float32, wrap_span(initialValuePi),  [](float64_t& value) {return value = sqrt(value);});
+#endif
+#if 0
+    ApplyRoundedNumericOperation(100, /*CSV*/ false, NumberType::Float32, wrap_span(initialValuePi), [](float64_t& value) {return value = exp(value); });
+#endif
+#if 0
     std::vector<float64_t> v = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0};
     std::span<float64_t const> f = make_span(v);
     auto& nu = CastReferenceAs<std::span<NumberUnion const>>(f);
-    ApplyRoundedNumericOperation(1, true, NumberType::Float32, nu, [](float64_t& value) {return value = exp(value) * M_PI;});
+    ApplyRoundedNumericOperation(1, false, NumberType::Float32, nu, [](float64_t& value) {return value = exp(value) * M_PI;});
 #endif
 
     return EXIT_SUCCESS;
