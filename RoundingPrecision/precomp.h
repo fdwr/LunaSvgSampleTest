@@ -10,6 +10,8 @@
 #include <string_view>
 #include <assert.h>
 #include <span>
+#include <vector>
+#include <array>
 #include "Half.h"
 #include "Int24.h"
 #include "FixedNumber.h"
