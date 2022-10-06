@@ -736,6 +736,7 @@ const T& CastReferenceAs(O const& o)
 
 int main(int argc, char* argv[])
 {
+#if 0
     for (int i = 0; i < 64; ++i)
     {
         printf("%u\t", i);
@@ -777,8 +778,9 @@ int main(int argc, char* argv[])
 
         printf("\n");
     }
+#endif
 
-#if 0
+#if 1
 
     NumberUnion initialValueZero = {.f64 = 0.0};
     NumberUnion initialValueOne = {.f64 = 1.0};
@@ -791,6 +793,22 @@ int main(int argc, char* argv[])
     // ULP diff for low 314.158447 (439D1448 -> 27 ULP), high 314.159851 (439D1476 -> 19 ULP), even 314.159210 (439D1461 -> 2 ULP)
     // ULP diff for low 414.157867 (43CF1435 -> 46 ULP), high 414.160095 (43CF147E -> 27 ULP), even 414.159454 (43CF1469 -> 6 ULP)
     // ULP diff for low 1314.148438 (44A444C0 -> 89 ULP), high 1314.160156 (44A44520 -> 7 ULP), even 1314.160156 (44A44520 -> 7 ULP)
+
+#if 1 // Random numbers
+    std::vector<float64_t> randomValues(100);
+    for (auto& r : randomValues)
+    {
+        r = float64_t(10 * float(rand()) / RAND_MAX);
+    }
+    size_t randomValueIndex = 0;
+    auto f = [&](NumberRounded const& value) -> NumberRounded
+    {
+        NumberRounded randomValue = {NumberType::Float32As64, NumberUnion{.f64 = randomValues[randomValueIndex]}};
+        randomValueIndex = (randomValueIndex + 1) % randomValues.size();
+        return value + randomValue;
+    };
+    ApplyRoundedNumericOperation(100, /*CSV*/ false, NumberType::Float32As64, WrapElementInSpan(initialValueZero), f);
+#endif
 
 #if 0
     auto f = [](NumberRounded const& value) -> NumberRounded
@@ -831,7 +849,7 @@ int main(int argc, char* argv[])
     ApplyRoundedNumericOperation(100, /*CSV*/ true, NumberType::Float32As64, WrapElementInSpan(initialValue1000), f);
 #endif
 
-#if 1
+#if 0
     float64_t expValuesData[] = {22.620644348144452, 24.878306448588418, 1.84147599931147, 24.46251196998665, 6.695826149584278};
     auto expValues = ReinterpretSpan<NumberUnion>(expValuesData);
 
