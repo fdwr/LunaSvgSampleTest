@@ -27,9 +27,9 @@ enum class NumberType : uint32_t
     Complex128 = 15,
     Float16m7e8s1 = 16, // fraction:7 exponent:8 sign:1 (the 16-bit "brain" float with reduced precision but increased range)
     Bfloat16 = Float16m7e8s1,
-    Fixed24f12i12 = 17, // TODO: Make naming more consistent. Fixed24f12i12 vs Fixed12_12
-    Fixed32f16i16 = 18,
-    Fixed32f24i8 = 19,
+    Fixed24f12i11s1 = 17,
+    Fixed32f16i15s1 = 18,
+    Fixed32f24i7s1 = 19,
     Float32As64 = 20,
     Float16As64 = 21,
     Bfloat16As64 = 22,
@@ -40,9 +40,9 @@ enum class NumberType : uint32_t
 static_assert(std::numeric_limits<float>::is_iec559);
 static_assert(std::numeric_limits<float>::digits == 24);
 
-using Fixed24f12i12 = FixedNumber<int24_t, 12, 12>;
-using Fixed32f16i16 = FixedNumber<int32_t, 16, 16>;
-using Fixed32f24i8  = FixedNumber<int32_t, 8, 24>;
+using Fixed24f12i11s1 = FixedNumber<int24_t, 12, 12>;
+using Fixed32f16i15s1 = FixedNumber<int32_t, 16, 16>;
+using Fixed32f24i7s1  = FixedNumber<int32_t, 8, 24>;
 
 union NumberUnion
 {
@@ -59,9 +59,9 @@ union NumberUnion
     float16m7e8s1_t f16m7e8s1;
     float32_t       f32;
     float64_t       f64;
-    Fixed24f12i12   x24f12i12;
-    Fixed32f16i16   x32f16i16;
-    Fixed32f24i8    x32f24i8;
+    Fixed24f12i11s1 x24f12i11s1;
+    Fixed32f16i15s1 x32f16i15s1;
+    Fixed32f24i7s1  x32f24i7s1;
 
     // Leave as aggregate POD.
     // NumberUnion() : ui64{0} {}
@@ -258,24 +258,24 @@ struct NumberRounded
         switch (numberType)
         {
         case NumberType::Bool8:
-        case NumberType::Uint8:         output.ui8       = f(input.ui8 );       break;
-        case NumberType::Int8:          output.i8        = f(input.i8  );       break;
-        case NumberType::Uint16:        output.ui16      = f(input.ui16);       break;
-        case NumberType::Int16:         output.i16       = f(input.i16 );       break;
-        case NumberType::Uint32:        output.ui32      = f(input.ui32);       break;
-        case NumberType::Int32:         output.i32       = f(input.i32 );       break;
-        case NumberType::Uint64:        output.ui64      = f(input.ui64);       break;
-        case NumberType::Int64:         output.i64       = f(input.i64 );       break;
-        case NumberType::Float16:       output.f16       = f(input.f16);        break;
-        case NumberType::Bfloat16:      output.f16m7e8s1 = f(input.f16m7e8s1);  break;
-        case NumberType::Float32:       output.f32       = f(input.f32);        break;
+        case NumberType::Uint8:           output.ui8         = f(input.ui8 );         break;
+        case NumberType::Int8:            output.i8          = f(input.i8  );         break;
+        case NumberType::Uint16:          output.ui16        = f(input.ui16);         break;
+        case NumberType::Int16:           output.i16         = f(input.i16 );         break;
+        case NumberType::Uint32:          output.ui32        = f(input.ui32);         break;
+        case NumberType::Int32:           output.i32         = f(input.i32 );         break;
+        case NumberType::Uint64:          output.ui64        = f(input.ui64);         break;
+        case NumberType::Int64:           output.i64         = f(input.i64 );         break;
+        case NumberType::Float16:         output.f16         = f(input.f16);          break;
+        case NumberType::Bfloat16:        output.f16m7e8s1   = f(input.f16m7e8s1);    break;
+        case NumberType::Float32:         output.f32         = f(input.f32);          break;
         case NumberType::Float16As64:
         case NumberType::Bfloat16As64:
         case NumberType::Float32As64:
-        case NumberType::Float64:       output.f64       = f(input.f64);        break;
-        case NumberType::Fixed24f12i12: output.x24f12i12 = f(input.x24f12i12);  break;
-        case NumberType::Fixed32f16i16: output.x32f16i16 = f(input.x32f16i16);  break;
-        case NumberType::Fixed32f24i8:  output.x32f24i8  = f(input.x32f24i8);   break;
+        case NumberType::Float64:         output.f64         = f(input.f64);          break;
+        case NumberType::Fixed24f12i11s1: output.x24f12i11s1 = f(input.x24f12i11s1);  break;
+        case NumberType::Fixed32f16i15s1: output.x32f16i15s1 = f(input.x32f16i15s1);  break;
+        case NumberType::Fixed32f24i7s1:  output.x32f24i7s1  = f(input.x32f24i7s1);   break;
         }
     }
 
@@ -293,24 +293,24 @@ struct NumberRounded
         switch (numberType)
         {
         case NumberType::Bool8:
-        case NumberType::Uint8:         output.ui8       = f(a.ui8,  b.ui8);            break;
-        case NumberType::Int8:          output.i8        = f(a.i8,   b.i8 );            break;
-        case NumberType::Uint16:        output.ui16      = f(a.ui16, b.ui16);           break;
-        case NumberType::Int16:         output.i16       = f(a.i16,  b.i16 );           break;
-        case NumberType::Uint32:        output.ui32      = f(a.ui32, b.ui32);           break;
-        case NumberType::Int32:         output.i32       = f(a.i32,  b.i32 );           break;
-        case NumberType::Uint64:        output.ui64      = f(a.ui64, b.ui64);           break;
-        case NumberType::Int64:         output.i64       = f(a.i64,  b.i64);            break;
-        case NumberType::Float16:       output.f16       = f(a.f16,  b.f16);            break;
-        case NumberType::Bfloat16:      output.f16m7e8s1 = f(a.f16m7e8s1, b.f16m7e8s1); break;
-        case NumberType::Float32:       output.f32       = f(a.f32,  b.f32);            break;
+        case NumberType::Uint8:           output.ui8         = f(a.ui8,  b.ui8);                break;
+        case NumberType::Int8:            output.i8          = f(a.i8,   b.i8 );                break;
+        case NumberType::Uint16:          output.ui16        = f(a.ui16, b.ui16);               break;
+        case NumberType::Int16:           output.i16         = f(a.i16,  b.i16 );               break;
+        case NumberType::Uint32:          output.ui32        = f(a.ui32, b.ui32);               break;
+        case NumberType::Int32:           output.i32         = f(a.i32,  b.i32 );               break;
+        case NumberType::Uint64:          output.ui64        = f(a.ui64, b.ui64);               break;
+        case NumberType::Int64:           output.i64         = f(a.i64,  b.i64);                break;
+        case NumberType::Float16:         output.f16         = f(a.f16,  b.f16);                break;
+        case NumberType::Bfloat16:        output.f16m7e8s1   = f(a.f16m7e8s1, b.f16m7e8s1);     break;
+        case NumberType::Float32:         output.f32         = f(a.f32,  b.f32);                break;
         case NumberType::Float32As64:
         case NumberType::Float16As64:
         case NumberType::Bfloat16As64:
-        case NumberType::Float64:       output.f64       = f(a.f64,  b.f64);            break;
-        case NumberType::Fixed24f12i12: output.x24f12i12 = f(a.x24f12i12, a.x24f12i12); break;
-        case NumberType::Fixed32f16i16: output.x32f16i16 = f(a.x32f16i16, a.x32f16i16); break;
-        case NumberType::Fixed32f24i8:  output.x32f24i8  = f(a.x32f24i8 , a.x32f24i8);  break;
+        case NumberType::Float64:         output.f64         = f(a.f64,  b.f64);                break;
+        case NumberType::Fixed24f12i11s1: output.x24f12i11s1 = f(a.x24f12i11s1, a.x24f12i11s1); break;
+        case NumberType::Fixed32f16i15s1: output.x32f16i15s1 = f(a.x32f16i15s1, a.x32f16i15s1); break;
+        case NumberType::Fixed32f24i7s1:  output.x32f24i7s1  = f(a.x32f24i7s1 , a.x32f24i7s1);  break;
         }
     }
 
@@ -409,9 +409,9 @@ constexpr NumberFormatBitmask int8NumberMask            = {.fractionMask = 0,   
 constexpr NumberFormatBitmask int16NumberMask           = {.fractionMask = 0,               .subfractionMask = 0,                   .integerMask = (1ULL<<15)-1,            .exponentMask = 0,                      .signMask = 1ULL<<15};
 constexpr NumberFormatBitmask int32NumberMask           = {.fractionMask = 0,               .subfractionMask = 0,                   .integerMask = (1ULL<<31)-1,            .exponentMask = 0,                      .signMask = 1ULL<<31};
 constexpr NumberFormatBitmask int64NumberMask           = {.fractionMask = 0,               .subfractionMask = 0,                   .integerMask = (1ULL<<63)-1,            .exponentMask = 0,                      .signMask = 1ULL<<63};
-constexpr NumberFormatBitmask fixed24f12i12NumberMask   = {.fractionMask = (1ULL<<12)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<24)-(1ULL<<12),   .exponentMask = 0,                      .signMask = 1ULL<<63};
-constexpr NumberFormatBitmask fixed32f16i16NumberMask   = {.fractionMask = (1ULL<<16)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<32)-(1ULL<<16),   .exponentMask = 0,                      .signMask = 1ULL<<63};
-constexpr NumberFormatBitmask fixed32f24i8NumberMask    = {.fractionMask = (1ULL<<24)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<32)-(1ULL<<24),   .exponentMask = 0,                      .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask fixed24f12i11s1NumberMask = {.fractionMask = (1ULL<<12)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<24)-(1ULL<<12),   .exponentMask = 0,                      .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask fixed32f16i15s1NumberMask = {.fractionMask = (1ULL<<16)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<32)-(1ULL<<16),   .exponentMask = 0,                      .signMask = 1ULL<<63};
+constexpr NumberFormatBitmask fixed32f24i7s1NumberMask  = {.fractionMask = (1ULL<<24)-1,    .subfractionMask = 0,                   .integerMask = (1ULL<<32)-(1ULL<<24),   .exponentMask = 0,                      .signMask = 1ULL<<63};
 constexpr NumberFormatBitmask bool8NumberMask           = {.fractionMask = 0,               .subfractionMask = 0,                   .integerMask = (1ULL<< 8)-1,            .exponentMask = 0,                      .signMask = 0ULL    };
                                                     
 // The caller passes a data pointer of the given type.
@@ -438,9 +438,9 @@ void WriteFromDouble(NumberType dataType, double value, /*out*/ void* data)
     case NumberType::Uint64:            *reinterpret_cast<uint64_t*>(data) = uint64_t(value);               break;
     case NumberType::Complex64:         throw std::invalid_argument("Complex64 type is not supported.");
     case NumberType::Complex128:        throw std::invalid_argument("Complex128 type is not supported.");
-    case NumberType::Fixed24f12i12:     *reinterpret_cast<Fixed24f12i12*>(data) = float(value);             break;
-    case NumberType::Fixed32f16i16:     *reinterpret_cast<Fixed32f16i16*>(data) = float(value);             break;
-    case NumberType::Fixed32f24i8:;     *reinterpret_cast<Fixed32f24i8*>(data) = float(value);              break;
+    case NumberType::Fixed24f12i11s1:   *reinterpret_cast<Fixed24f12i11s1*>(data) = float(value);           break;
+    case NumberType::Fixed32f16i15s1:   *reinterpret_cast<Fixed32f16i15s1*>(data) = float(value);           break;
+    case NumberType::Fixed32f24i7s1:;   *reinterpret_cast<Fixed32f24i7s1*>(data) = float(value);            break;
     default:                            assert(false);                                                      break;
     }
 
@@ -457,29 +457,29 @@ void WriteToDouble(NumberType dataType, void const* inputData, /*out*/ double& n
 {
     switch (dataType)
     {
-    case NumberType::Float32:       number = float64_t(*reinterpret_cast<const float32_t*>(inputData));     break;
-    case NumberType::Uint8:         number = float64_t(*reinterpret_cast<const uint8_t*>(inputData));       break;
-    case NumberType::Int8:          number = float64_t(*reinterpret_cast<const int8_t*>(inputData));        break;
-    case NumberType::Uint16:        number = float64_t(*reinterpret_cast<const uint16_t*>(inputData));      break;
-    case NumberType::Int16:         number = float64_t(*reinterpret_cast<const int16_t*>(inputData));       break;
-    case NumberType::Int32:         number = float64_t(*reinterpret_cast<const int32_t*>(inputData));       break;
-    case NumberType::Int64:         number = float64_t(*reinterpret_cast<const int64_t*>(inputData));       break;
-    case NumberType::StringChar8:   /* no change value for strings */                                       break;
-    case NumberType::Bool8:         number = float64_t(*reinterpret_cast<const uint8_t*>(inputData));       break;
-    case NumberType::Float16:       number = float64_t(*reinterpret_cast<const float16_t*>(inputData));     break;
-    case NumberType::Bfloat16:      number = float64_t(*reinterpret_cast<const bfloat16_t*>(inputData));    break;
-    case NumberType::Float64:       number = float64_t(*reinterpret_cast<const float64_t*>(inputData));     break;
-    case NumberType::Float16As64:   number = float64_t(*reinterpret_cast<const float64_t*>(inputData));     break;
-    case NumberType::Bfloat16As64:  number = float64_t(*reinterpret_cast<const float64_t*>(inputData));     break;
-    case NumberType::Float32As64:   number = float64_t(*reinterpret_cast<const float64_t*>(inputData));     break;
-    case NumberType::Uint32:        number = float64_t(*reinterpret_cast<const uint32_t*>(inputData));      break;
-    case NumberType::Uint64:        number = float64_t(*reinterpret_cast<const uint64_t*>(inputData));      break;
-    case NumberType::Complex64:     throw std::invalid_argument("Complex64 type is not supported.");
-    case NumberType::Complex128:    throw std::invalid_argument("Complex128 type is not supported.");
-    case NumberType::Fixed24f12i12: number = float64_t(*reinterpret_cast<const Fixed24f12i12*>(inputData)); break;
-    case NumberType::Fixed32f16i16: number = float64_t(*reinterpret_cast<const Fixed32f16i16*>(inputData)); break;
-    case NumberType::Fixed32f24i8:  number = float64_t(*reinterpret_cast<const Fixed32f24i8*>(inputData));  break;
-    default:                        assert(false);                                                          break;
+    case NumberType::Float32:           number = float64_t(*reinterpret_cast<const float32_t*>(inputData));       break;
+    case NumberType::Uint8:             number = float64_t(*reinterpret_cast<const uint8_t*>(inputData));         break;
+    case NumberType::Int8:              number = float64_t(*reinterpret_cast<const int8_t*>(inputData));          break;
+    case NumberType::Uint16:            number = float64_t(*reinterpret_cast<const uint16_t*>(inputData));        break;
+    case NumberType::Int16:             number = float64_t(*reinterpret_cast<const int16_t*>(inputData));         break;
+    case NumberType::Int32:             number = float64_t(*reinterpret_cast<const int32_t*>(inputData));         break;
+    case NumberType::Int64:             number = float64_t(*reinterpret_cast<const int64_t*>(inputData));         break;
+    case NumberType::StringChar8:       /* no change value for strings */                                         break;
+    case NumberType::Bool8:             number = float64_t(*reinterpret_cast<const uint8_t*>(inputData));         break;
+    case NumberType::Float16:           number = float64_t(*reinterpret_cast<const float16_t*>(inputData));       break;
+    case NumberType::Bfloat16:          number = float64_t(*reinterpret_cast<const bfloat16_t*>(inputData));      break;
+    case NumberType::Float64:           number = float64_t(*reinterpret_cast<const float64_t*>(inputData));       break;
+    case NumberType::Float16As64:       number = float64_t(*reinterpret_cast<const float64_t*>(inputData));       break;
+    case NumberType::Bfloat16As64:      number = float64_t(*reinterpret_cast<const float64_t*>(inputData));       break;
+    case NumberType::Float32As64:       number = float64_t(*reinterpret_cast<const float64_t*>(inputData));       break;
+    case NumberType::Uint32:            number = float64_t(*reinterpret_cast<const uint32_t*>(inputData));        break;
+    case NumberType::Uint64:            number = float64_t(*reinterpret_cast<const uint64_t*>(inputData));        break;
+    case NumberType::Complex64:         throw std::invalid_argument("Complex64 type is not supported.");
+    case NumberType::Complex128:        throw std::invalid_argument("Complex128 type is not supported.");
+    case NumberType::Fixed24f12i11s1:   number = float64_t(*reinterpret_cast<const Fixed24f12i11s1*>(inputData)); break;
+    case NumberType::Fixed32f16i15s1:   number = float64_t(*reinterpret_cast<const Fixed32f16i15s1*>(inputData)); break;
+    case NumberType::Fixed32f24i7s1:    number = float64_t(*reinterpret_cast<const Fixed32f24i7s1*>(inputData));  break;
+    default:                            assert(false);                                                            break;
     }
 }
 
@@ -521,9 +521,9 @@ NumberFormatBitmask const& GetNumberFormatBitmask(NumberType numberType)
     case NumberType::Uint64:            return uint64NumberMask; break;
     case NumberType::Complex64:         throw std::invalid_argument("Complex64 type is not supported.");
     case NumberType::Complex128:        throw std::invalid_argument("Complex128 type is not supported.");
-    case NumberType::Fixed24f12i12:     return fixed24f12i12NumberMask; break;
-    case NumberType::Fixed32f16i16:     return fixed32f16i16NumberMask; break;
-    case NumberType::Fixed32f24i8:      return fixed32f24i8NumberMask; break;
+    case NumberType::Fixed24f12i11s1:   return fixed24f12i11s1NumberMask; break;
+    case NumberType::Fixed32f16i15s1:   return fixed32f16i15s1NumberMask; break;
+    case NumberType::Fixed32f24i7s1:    return fixed32f24i7s1NumberMask; break;
     default:                            return emptyFormatBitmask; assert(false); break;
     }
 }
@@ -541,9 +541,9 @@ void PrintNumberValues(NumberRounded const& value)
     case NumberType::Float32As64:
     case NumberType::Float16As64:
     case NumberType::Bfloat16As64:
-    case NumberType::Fixed24f12i12:
-    case NumberType::Fixed32f16i16:
-    case NumberType::Fixed32f24i8:
+    case NumberType::Fixed24f12i11s1:
+    case NumberType::Fixed32f16i15s1:
+    case NumberType::Fixed32f24i7s1:
         castedValue.Cast(NumberType::Float64);
         printf(
             "float64 precise/rz/ri/rne: %f (%08llX), %f (%08llX), %f (%08llX), %f (%08llX)\n",
