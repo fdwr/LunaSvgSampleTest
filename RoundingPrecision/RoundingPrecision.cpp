@@ -546,7 +546,7 @@ void PrintNumberValues(NumberRounded const& value)
     case NumberType::Fixed32f24i7s1:
         castedValue.Cast(NumberType::Float64);
         printf(
-            "float64 precise/rz/ri/rne: %f (%08llX), %f (%08llX), %f (%08llX), %f (%08llX)\n",
+            "precise/rz/ri/rne: %f (%08llX), %f (%08llX), %f (%08llX), %f (%08llX)\n",
             castedValue.precise.f64,
             castedValue.precise.ui64,
             castedValue.roundedLow.f64,
@@ -565,7 +565,7 @@ void PrintNumberValues(NumberRounded const& value)
     case NumberType::Int64:
         castedValue.Cast(NumberType::Int64);
         printf(
-            "int64 precise/rz/ri/rne: %lld (%08llX), %lld (%08llX), %lld (%08llX), %lld (%08llX)\n",
+            "precise/rz/ri/rne: %lld (%08llX), %lld (%08llX), %lld (%08llX), %lld (%08llX)\n",
             castedValue.precise.i64,
             castedValue.precise.ui64,
             castedValue.roundedLow.i64,
@@ -583,7 +583,7 @@ void PrintNumberValues(NumberRounded const& value)
     case NumberType::Uint64:
         castedValue.Cast(NumberType::Uint64);
         printf(
-            "uint64 precise/rz/ri/rne: %llu (%08llX), %llu (%08llX), %llu (%08llX), %llu (%08llX)\n",
+            "precise/rz/ri/rne: %llu (%08llX), %llu (%08llX), %llu (%08llX), %llu (%08llX)\n",
             castedValue.precise.ui64,
             castedValue.precise.ui64,
             castedValue.roundedLow.ui64,
@@ -601,12 +601,61 @@ void PrintNumberValues(NumberRounded const& value)
     }
 }
 
+void PrintUlpDifferences(
+    size_t valueIndex,
+    size_t loopIndex,
+    NumberRounded const& value,
+    NumberRounded const& valueCasted,
+    bool printForCsv = false
+    )
+{
+    uint64_t ulpDiffLow  = abs(valueCasted.precise.i64 - valueCasted.roundedLow.i64);
+    uint64_t ulpDiffHigh = abs(valueCasted.precise.i64 - valueCasted.roundedHigh.i64);
+    uint64_t ulpDiffEven = abs(valueCasted.precise.i64 - valueCasted.roundedEven.i64);
+    if (printForCsv)
+    {
+        printf(
+            "%u,%u,%f,0x%08llX,0,%f,0x%08llX,%llu,%f,0x%08llX,%llu,%f,0x%08llX,%llu\n",
+            uint32_t(valueIndex),
+            uint32_t(loopIndex),
+            value.precise.f64,
+            valueCasted.precise.ui64,
+            value.roundedLow.f64,
+            valueCasted.roundedLow.ui64,
+            ulpDiffLow,
+            value.roundedHigh.f64,
+            valueCasted.roundedHigh.ui64,
+            ulpDiffHigh,
+            value.roundedEven.f64,
+            valueCasted.roundedEven.ui64,
+            ulpDiffEven
+        );
+    }
+    else
+    {
+        printf(
+            "Precise: %f (0x%08llX, 0 ULP), RTZ: %f (0x%08llX, %llu ULP), RTI: %f (0x%08llX, %llu ULP), RTNE: %f (0x%08llX, %llu ULP)\n",
+            value.precise.f64,
+            valueCasted.precise.ui64,
+            value.roundedLow.f64,
+            valueCasted.roundedLow.ui64,
+            ulpDiffLow,
+            value.roundedHigh.f64,
+            valueCasted.roundedHigh.ui64,
+            ulpDiffHigh,
+            value.roundedEven.f64,
+            valueCasted.roundedEven.ui64,
+            ulpDiffEven
+        );
+    }
+}
+
 void ApplyRoundedNumericOperation(
     uint32_t loopCount,
-    bool printForCsv,
     NumberType numberType,
     std::span<NumberUnion const> initialValues,
-    std::function<NumberRounded(NumberRounded const&)> operation
+    std::function<NumberRounded(NumberRounded const&)> operation,
+    bool printForCsv = false
     )
 {
     for (size_t valueIndex = 0, valueIndices = initialValues.size(); valueIndex < valueIndices; ++valueIndex)
@@ -618,7 +667,7 @@ void ApplyRoundedNumericOperation(
 
         if (printForCsv)
         {
-            printf("Iteration,Precise Value,Precise Hex,Low Value,Low Hex,Low ULP,High Value,High Hex,High ULP,Even Value,Even Hex,Even ULP\n");
+            printf("Iteration,Precise Value,Precise Hex,RTZ Value,RTZ Hex,RTZ ULP,RTI Value,RTI Hex,RTI ULP,RTNE Value,RTNE Hex,RTNE ULP\n");
         }
         else
         {
@@ -627,7 +676,7 @@ void ApplyRoundedNumericOperation(
             PrintNumberValues(value);
         }
 
-        for (uint32_t loopIndex = 0; loopIndex < loopCount; ++loopIndex)
+        for (size_t loopIndex = 0; loopIndex < loopCount; ++loopIndex)
         {
             if (!printForCsv)
             {
@@ -649,46 +698,7 @@ void ApplyRoundedNumericOperation(
                 PrintNumberValues(valueCasted);
             }
 
-            uint64_t ulpDiffLow  = abs(valueCasted.precise.i64 - valueCasted.roundedLow.i64);
-            uint64_t ulpDiffHigh = abs(valueCasted.precise.i64 - valueCasted.roundedHigh.i64);
-            uint64_t ulpDiffEven = abs(valueCasted.precise.i64 - valueCasted.roundedEven.i64);
-            if (printForCsv)
-            {
-                printf(
-                    "%u,%u,%f,%08llX,0,%f,%08llX,%llu,%f,%08llX,%llu,%f,%08llX,%llu\n",
-                    uint32_t(valueIndex),
-                    uint32_t(loopIndex),
-                    value.precise.f64,
-                    valueCasted.precise.ui64,
-                    value.roundedLow.f64,
-                    valueCasted.roundedLow.ui64,
-                    ulpDiffLow,
-                    value.roundedHigh.f64,
-                    valueCasted.roundedHigh.ui64,
-                    ulpDiffHigh,
-                    value.roundedEven.f64,
-                    valueCasted.roundedEven.ui64,
-                    ulpDiffEven
-                );
-            }
-            else
-            {
-                printf(
-                    "ULP diff for precise %f (%08llX -> 0 ULP), low %f (%08llX -> %llu ULP), high %f (%08llX -> %llu ULP), even %f (%08llX -> %llu ULP)\n"
-                    "\n",
-                    value.precise.f64,
-                    valueCasted.precise.ui64,
-                    value.roundedLow.f64,
-                    valueCasted.roundedLow.ui64,
-                    ulpDiffLow,
-                    value.roundedHigh.f64,
-                    valueCasted.roundedHigh.ui64,
-                    ulpDiffHigh,
-                    value.roundedEven.f64,
-                    valueCasted.roundedEven.ui64,
-                    ulpDiffEven
-                );
-            }
+            PrintUlpDifferences(valueIndex, loopIndex, value, valueCasted, printForCsv);
         }
     }
 }
@@ -794,7 +804,7 @@ int main(int argc, char* argv[])
     // ULP diff for low 414.157867 (43CF1435 -> 46 ULP), high 414.160095 (43CF147E -> 27 ULP), even 414.159454 (43CF1469 -> 6 ULP)
     // ULP diff for low 1314.148438 (44A444C0 -> 89 ULP), high 1314.160156 (44A44520 -> 7 ULP), even 1314.160156 (44A44520 -> 7 ULP)
 
-#if 1 // Random numbers
+#if 0 // Random numbers, reduction via serial addition
     std::vector<float64_t> randomValues(100);
     for (auto& r : randomValues)
     {
@@ -808,6 +818,52 @@ int main(int argc, char* argv[])
         return value + randomValue;
     };
     ApplyRoundedNumericOperation(100, /*CSV*/ false, NumberType::Float32As64, WrapElementInSpan(initialValueZero), f);
+#endif
+
+#if 1 // Random numbers, reduction via pairwise iteration
+    std::vector<NumberRounded> randomValues(128);
+    for (auto& value : randomValues)
+    {
+        float64_t r = (float64_t(rand()) / RAND_MAX) * 10;
+        NumberUnion nu = {.f64 = float64_t(float32_t(r))};
+        value = NumberRounded{NumberType::Float32As64, nu};
+    }
+
+    auto f = [&](NumberRounded const& a, NumberRounded const& b) -> NumberRounded
+    {
+        return a + b;
+    };
+
+    //NumberRounded value = {NumberType::Float32As64, initialValueZero};
+    //for (auto const& v : randomValues)
+    //{
+    //    value = value + v;
+    //}
+    size_t loopIndex = 0;
+    while (randomValues.size() > 1)
+    {
+        printf("%u values\n", uint32_t(randomValues.size()));
+        for (size_t valueIndex = 0; valueIndex < randomValues.size(); ++valueIndex)
+        {
+            NumberRounded& value = randomValues[valueIndex];
+            NumberRounded valueCasted = value;
+            valueCasted.Cast(NumberType::Float32);
+            printf("    "); PrintUlpDifferences(valueIndex, loopIndex, value, valueCasted);
+        }
+
+        size_t halfSizeRoundedDown = randomValues.size() / 2u;
+        size_t halfSizeRoundedUp = (randomValues.size() + 1) / 2u;
+        for (size_t i = 0; i < halfSizeRoundedDown; ++i)
+        {
+            randomValues[i] = f(randomValues[i], randomValues[i + halfSizeRoundedUp]);
+        }
+        randomValues.resize(halfSizeRoundedUp);
+        ++loopIndex;
+    }
+    NumberRounded value = randomValues.front();
+    NumberRounded valueCasted = value;
+    valueCasted.Cast(NumberType::Float32);
+    PrintUlpDifferences(/*valueIndex*/ 0, /*loopIndex*/ 0, value, valueCasted);
 #endif
 
 #if 0
