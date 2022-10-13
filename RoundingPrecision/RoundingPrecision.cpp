@@ -834,11 +834,6 @@ int main(int argc, char* argv[])
         return a + b;
     };
 
-    //NumberRounded value = {NumberType::Float32As64, initialValueZero};
-    //for (auto const& v : randomValues)
-    //{
-    //    value = value + v;
-    //}
     size_t loopIndex = 0;
     while (randomValues.size() > 1)
     {
