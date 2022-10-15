@@ -746,51 +746,74 @@ const T& CastReferenceAs(O const& o)
 
 int main(int argc, char* argv[])
 {
-#if 0
-    for (int i = 0; i < 64; ++i)
+#if 1
+    printf(
+        "value"
+        "\tatol value"
+        "\tatol low"
+        "\tatol high"
+        "\tatol rand"
+        "\trtol value"
+        "\trtol low"
+        "\trtol high"
+        "\trtol rand"
+        "\tulp value"
+        "\tulp low"
+        "\tulp high"
+        "\tulp rand"
+        "\trtol from ulp"
+        "\n"
+    );
+    for (float i = 0; i < 64; i += 0.25)
     {
-        printf("%u\t", i);
+        printf("%f", i);
 
         float absoluteTolerance = 8;
         float relativeTolerance = 1.0 / 4;
-        uint32_t ulp = 1<<21;
+        //uint32_t ulp = 1<<21;
+        uint32_t ulp = 1<<19;
 
         float fi = float(i);
         float fiLow;
         float fiHigh;
 
-        printf("atol\t");
+        // ATOL
         fiLow = fi - absoluteTolerance;
         fiHigh = fi + absoluteTolerance;
-        printf("%f\t", fi);
-        printf("%f\t", fiLow);
-        printf("%f\t", fiHigh);
-        printf("%f\t", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
+        printf("\t%f", fi);
+        printf("\t%f", fiLow);
+        printf("\t%f", fiHigh);
+        printf("\t%f", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
 
-        printf("rtol\t");
+        // RTOL
         fiLow = fi - (fi * relativeTolerance);
         fiHigh = fi + (fi * relativeTolerance);
-        printf("%f\t", fi);
-        printf("%f\t", fiLow);
-        printf("%f\t", fiHigh);
-        printf("%f\t", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
+        printf("\t%f", fi);
+        printf("\t%f", fiLow);
+        printf("\t%f", fiHigh);
+        printf("\t%f", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
 
-        printf("ulp\t");
+        // ULP
         uint32_t& fbits = CastReferenceAs<uint32_t>(fi);
         uint32_t fbitsLow = (fbits - ulp);
         uint32_t fbitsHigh = (fbits + ulp);
+        fbitsLow  = (fbitsLow > fbits) ? 0 : fbitsLow;  // Check underflow.
+        fbitsHigh = ((fbitsHigh & 0x7FFFFFFF) > 0x7F800000) ? 0 : fbitsHigh; // Check overflow beyond positive infinity into NaN.
         fiLow = CastReferenceAs<float32_t>(fbitsLow);
         fiHigh = CastReferenceAs<float32_t>(fbitsHigh);
-        printf("%f\t", fi);
-        printf("%f\t", fiLow);
-        printf("%f\t", fiHigh);
-        printf("%f\t", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
+        printf("\t%f", fi);
+        printf("\t%f", fiLow);
+        printf("\t%f", fiHigh);
+        printf("\t%f", (float(rand()) / RAND_MAX) * (fiHigh - fiLow) + fiLow);
+
+        // Relative tolerance from ULP
+        printf("\t%f", fiHigh / fi);
 
         printf("\n");
     }
 #endif
 
-#if 1
+#if 0
 
     NumberUnion initialValueZero = {.f64 = 0.0};
     NumberUnion initialValueOne = {.f64 = 1.0};
