@@ -159,63 +159,67 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg* pluto) Line 426
 
 Bikeshed terms:
-    adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result. (see font-size-adjust - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust)
+    adjustment - small alteration or movement made to achieve a desired fit, appearance, or result. (see font-size-adjust - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust)
     alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see text-align - https://developer.mozilla.org/en-US/docs/Web/CSS/text-align)
-    anchor - Provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
-    arrangement - Action, process, or result of arranging or being arranged.
-    attachment - An extra part or extension that is or can be attached to something to perform a particular function.
-    ballast - Heavy material, such as gravel, sand, iron, or lead, placed low in a vessel to improve its stability.
-    binding - Material or device used to bind such as the cover and materials that hold a book together.
-    buttress - Architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
+    anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
+    arrangement - action, process, or result of arranging or being arranged.
+    attachment - an extra part or extension that is or can be attached to something to perform a particular function.
+    ballast - heavy material, such as gravel, sand, iron, or lead, placed low in a vessel to improve its stability.
+    bias - bias is a statistical term which means a systematic deviation from the actual value
+    binding - material or device used to bind such as the cover and materials that hold a book together.
+    buttress - architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
     contract - decrease in size, number, or range.
     constraint - geometric constraints specify a direction or a distance relative to existing geometry.
     contour - an outline, especially one representing or bounding the shape or form of something.
-    delta - Difference between two things or values.
+    delta - difference between two things or values.
     difference - difference in math is the result of subtracting one number from another.
     dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
-    displace - Cause (something) to move from its proper or usual place.
+    displace - cause (something) to move from its proper or usual place.
     displacement - The moving of something from its place or position. A vector whose length is the shortest distance from the initial to the final position of a point P. https://en.wikipedia.org/wiki/Displacement_(geometry)
     distance - numerical measurement of how far apart objects or points are.
     erode - gradually destroy or be gradually destroyed. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
     expand - become or make larger or more extensive.
     fastener - Device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
-    fit - Fix or put (something) into place. be of the right shape and size for.
-    fitment - Thing fitted to another in order to accomplish a specific purpose. The proper positioning and orientation of a thing for it to serve its designed purpose.
-    fixture - Piece of equipment or furniture which is fixed in position in a building or vehicle.
-    frame - Rigid structure that surrounds or encloses something such as a door or window.
-    grapnel - Device consisting essentially of one or more hooks or clamps, for grasping or holding something.
+    fit - fix or put (something) into place. be of the right shape and size for.
+    fitment - thing fitted to another in order to accomplish a specific purpose. The proper positioning and orientation of a thing for it to serve its designed purpose.
+    fixture - piece of equipment or furniture which is fixed in position in a building or vehicle.
+    frame - rigid structure that surrounds or encloses something such as a door or window.
+    grapnel - device consisting essentially of one or more hooks or clamps, for grasping or holding something.
+    grid - a framework of spaced bars that are parallel to or cross each other / a network of lines that cross each other to form a series of squares or rectangles.
     grow - become larger or greater over a period of time; increase.
-    hook - Piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
+    hook - piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
     interval - a space between two things; a gap.
-    keypoint - Characteristic point of interest.
-    node - Point at which lines or pathways intersect or branch; a central or connecting point.
+    keypoint - characteristic point of interest.
+    lattice - infinite array of points in space.
+    node - point at which lines or pathways intersect or branch; a central or connecting point.
     nudge - a light touch or push.
     orthogonal - of or involving right angles; at right angles.
-    pillar - Tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
-    project - Extend outward beyond something else; protrude.
-    protrude - Extend beyond or above a surface.
-    rig - Particular way in which a sailboat's masts, sails, and rigging are arranged.
-    rigging - Network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
+    pillar - tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
+    project - extend outward beyond something else; protrude.
+    protrude - extend beyond or above a surface.
+    rig - particular way in which a sailboat's masts, sails, and rigging are arranged.
+    rigging - network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
     shift - move or cause to move from one place to another, especially over a small distance. a slight change in position, direction, or tendency.
     shrink - become or make smaller in size or amount.
-    support - Thing that bears the weight of something or keeps it upright.
+    spacing - position (two or more items) at a distance from one another.
+    support - thing that bears the weight of something or keeps it upright.
     tweak - improve (a mechanism or system) by making fine adjustments to it.
-    warp - Twist or distortion in the shape or form of something.
+    warp - twist or distortion in the shape or form of something.
 
 Elements:
-    <anchor/> - invisible point for other shapes to align/fit to. Can be used directly in an adjustment attribute (simple translation) or as part of an <anchorTransform/>.
+    <anchor/> - invisible point for other shapes to align/fit to. Can be used directly in an adjustment attribute (simple translation) or as part of an <anchorAdjustment/>.
         id = name of element, which can be referred by other object's grid adjust attribute.
         x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
         y = vertical coordinate. Like x.
         transform = standard transform, affecting anchor point.
         ?postTransform = transform after screen space
-            [naming?] screenTransform? deltaTransform?
+            NAMING: screenTransform? deltaTransform?
         pointAdjust = series of adjustments, including pixel rounding, anchor transforms, and contour offsets.
-            [naming?] grid-rounding
+            NAMING: grid-rounding
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
     <anchorAdjustment/> - a microtransform constructed from anchor points (1 point to 4 points) used for other shapes to align/fit to. It can technically be any affine transform (translation, scaling, rotation, shear, squeeze), but it's really intended for orthogonal and angle-preserving transformations (translation, uniform scaling, non-uniform scaling, and squeeze transforms. A 4th point can be used to use "in" and "out" grid rounding mode.
-        [naming?] grid-anchor-frame, anchor-set, alignmentGroup, anchorAlignment, anchorAdjustment, pointAdjustment, anchorRemapping, anchorDeformation
-        anchorTransform's can be used in adjustment attributes by id name.
+        NAMING: grid-anchor-frame, anchor-set, alignmentGroup, anchorAlignment, anchorAdjustment, pointAdjustment, anchorRemapping, anchorDeformation, anchoredAdjustment, anchoredAdjust
+        anchorAdjustment's can be used in adjustment attributes by id name.
         id = name of element, which can be referred by other object's adjustment attributes.
         type/mode = linear, threePoint, quad, twoPointCorner
         points = list of points, semicolon delimited TODO: Delete? Having 3 different ways to express anchors complicates things, and it makes delimiting more fuzzy (when passing lists of x,y coordinates)
@@ -223,21 +227,22 @@ Elements:
         <anchor/> = nested child elements.
         grid-anchor-units = Sets how percentages are interpreted, with the default being relative to the containing object ('objectBoundingBox', see https://www.w3.org/TR/SVG11/coords.html#ObjectBoundingBoxUnits).
             only viable when passing raw points? <anchors/> and anchor references already have their own grid-anchor-units.
-        pointAdjust = optional adjustments per point, such as rounding
+        ?pointAdjust = optional adjustments per point, such as rounding
         transform = transforms the adjustment, combining the adjustment transform and these additional transforms.
             TODO: Should transform respect the parent's transform for external anchors? It should probably only apply to internal <anchor/> children and points. Does lazy/eager evaluation make a difference?
             TODO: Should there be distinct pretransform and posttransform attributes, one in user space and one to reorient the anchor transform (e.g. turn a gear sprocket displacement 60 degrees).
-        href = refers to another existing anchorTransform as a template, like linearGradient's href.
+        href = refers to another existing anchorAdjustment as a template, like linearGradient's href.
         ?boundsFrom - determines whether to evaluate anchor points bounds within the context of where they are defined or within the using shape that has an adjust attribute.
-            [naming?] transformUsesBounds? parent / usingElement. boundsFrom? boundsUse? boundsSource?
+            NAMING: transformUsesBounds? parent / usingElement. boundsFrom? boundsUse? boundsSource?
             It's not so much a when (lazy/eager), but more of a where to take the transform from, the parent of the element or the using element.
             Inside a <defs> section, anchor transforms default to lazy, so that relative positions use the calling shape's bounds.
             Any anywhere else in the <svg>, it defaults to immediate to use the using scope's transform.
         appliesTo = point / delta, whether the anchor transform applies to the point being adjusted or the delta
     <rounding/> - rounding adjustment via floor/ceiling, bias, scale multiplier, and optional transform to round along a specific vector rather than purely axis aligned. Rounding definitions in the <defs> section can be used by named id. Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
-        [naming?] Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
+        NAMING: Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
         id = name of element, which can be referred by other object's grid-round attribute.
         axes = xy, x, y, stroke-width.
+            NAMING: variable? attributeName? property?
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
             none - no grid rounding along x or y. e.g "x none; y floor"
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: floor(x 0.5 2 -0.5) ceil(y) What about a freedom vector to round along, like 45 degrees? Named parameters? floor(axis:x prebias:0.5 scale:2 postbias:-0.5)
@@ -246,23 +251,34 @@ Elements:
                 Maybe "outward" suffices? We definitely need something for horizontally symmetric objects so both sides round the same direction toward or away from the center.
                 How does bias interact with outward? Does the signs of prebias and postbias negate if the direction changes?
             toZero - round toward zero to nearest integer (equivalent to to-zero-y and to-zero-y). Also called "truncation". Equals iif(x > 0, floor(x), ceil(x)).
-        bias = combo of both that applies to both prebias and postbias. e.g. bias(0.5) equivalent to prebias(-0.5), postbias(0.5). bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+        bias = combo of both that applies to both prebias and postbias. e.g. bias=0.5 equivalent to prebias=-0.5, postbias=0.5.
+            bias differs from transform's "translate" in that both x and y use a single value, whereas transform's "translate" treats an absent y value as 0 (not helpful here). https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+            NAMING: offset?
+            TODO: Replace with transform?
         prebias = amount to add (subtract?) to coordinate before applying scale
+            NAMING: preTransform? preOffset? What about 1D cases?
         postbias = amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
+            NAMING: postTransform? postOffset?
         unscaledBias = ...
-        spacing/multiple = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
+        spacing/multiple/interval = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
             TODO: Can "multiple" accept separate x and y parameters, or just one for both? If separate (e.g. x=2 and y=1), then how does a 90 degree affect it? I think it should swap axes.
-        transform = a transform to multiply the point by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
-            [naming?] gridTransform? screenTransform? It does not apply in user coordinate space like the normal "transform" attribute.
+        transform = a transform to multiply the 1D or 2D point in pixel space by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
+            NAMING: gridTransform? screenTransform? It does not apply in user coordinate space like the normal "transform" attribute.
+            If preTransform/postTransform are specified, they are concatenated, combining preTransform and transform, round, then inverse transform and postTransform.
             TODO: How to align 2:1 slopes to other edges, like the bottom? Is a transform-origin needed?
             The transform is affected by the parent element transform if transformReinterprets is true.
+            TODO: Combine with `bias`?
+            NAMING: orientation?
         fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
-        transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
-            [naming?] transformEffect? applies, axisAligned, none
+        transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring.
+            *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
+            NAMING: transformEffect? enums: applies, axisAligned, none
+            NAMING: parentTransformReinterprets?
+            Only the parent transform affects this, as the transform attribute on rounding applies in pixel space.
         requireAxisAlignmentment = true/false - round-if-axis-aligned? only apply the rounding when it is axis aligned, including straight lines (horizontal/vertical) and bezier nodes with straight handles.
         directionInverts = true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
         windingInverts = true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
-            [naming?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+            NAMING: windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
         proportionalShear = true/false. "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
@@ -287,10 +303,10 @@ Elements:
         prebias = amount to add (subtract?) to coordinate before applying scale
         postbias = amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
         unscaledBias = amount in user units to transform to pixels first before rounding
-        spacing/multiple = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
+        spacing/multiple/interval = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
             TODO: Can "multiple" accept separate x and y parameters, or just one for both? If separate (e.g. x=2 and y=1), then how does a 90 degree affect it? I think it should swap axes.
         fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
-        [naming?] Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion. Offset curve. Parallel curve. Outline extension.
+        NAMING: Thickening. Inflating. Buffering. inward/outward offset. Dilation and erosion. Offset curve. Parallel curve. Outline extension.
         https://stackoverflow.com/questions/1109536/an-algorithm-for-inflating-deflating-offsetting-buffering-polygons
         https://stackoverflow.com/questions/54033808/how-to-offset-polygon-edges
         https://stackoverflow.com/questions/55374305/how-to-get-an-expanded-or-contracted-contour-in-opencv
@@ -305,7 +321,7 @@ Elements:
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
         max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3]
         transform = transformation of the origin and min/max. This enables constraints that aren't axis aligned, like 45 degree distances.
-            [naming?] screenTransform? gridTransform?
+            NAMING: screenTransform? gridTransform?
         origin = the origin point to subtract from the current point before clamping.
         transformReinterprets - true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring. *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
         signRelative = whether to treat distances as signed, such that min=[-1 0] means the current point is at least 1 pixel to the left of the origin, and min=[1 0] means at least 1 pixel to the right. difference = point - origin.
@@ -315,11 +331,11 @@ Elements:
                 difference = (low  >= 0) ? max(low, difference)  : min(low, difference)
     <transformDelta/> - transforms the current displacement of the active point by shear or scale (translation too, but it's less useful), which is useful for keeping angles (top right corner of document icon) or other sprockets of the gear icon.
     ?<displaceByAnchor> - displaces a point by an anchor transform value potentially transformed first. So you could take an anchor transform pointing up and then rotate it by 30 degrees for gear sprockets. Can this be unified with <transformDelta/> via an attribute? Can `<transformDelta/>` be unified with this?
-        [naming?] <displacement/> <transformedAdjustment/> <transformAdjustment/>
+        NAMING: <displacement/> <transformedAdjustment/> <transformAdjustment/>
         id = name of element
         anchor = the anchor (or anchorAdjustment) to modify
-            [naming?] using? (default=none or current delta)
-        transform = rotations, scaling, mirroring [naming?] screenTransform, gridTransform
+            NAMING: using? (default=none or current delta)
+        transform = rotations, scaling, mirroring NAMING: screenTransform, gridTransform
         includeExistingDelta = whether to include the existing delta of an adjustment or just the current anchor's adjustment. The anchor is also optional, meaning to only use the current delta.
         e.g. <displacement id="modifiedAnchor" anchor="#someAnchor" screenTransform="rotate(30)"/>
         Alternately maybe <anchorAdjustment/> with single point and transform?
@@ -352,7 +368,7 @@ Attributes:
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
     path.anchorList - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
-        [naming?] anchors? adjustment-list? adjustments?
+        NAMING: anchors? adjustment-list? adjustments?
     path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor". "r" for rounding?
     framePoints - list in an anchor element of x,y coordinates (first three 3 are used for computing affine transformation).
     frameList - list of id's of other anchors that comprise this anchor. Note the comprising anchors already had a grid-rounding applied where they were defined, making any grid-rounding on this anchor element irrelevant. naming? uses=""? using=""? Not href because it shouldn't be an xlink.
@@ -467,7 +483,7 @@ Adjustments:
         odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             compute an additional bias to add to prebias and postbias based on the PPU-scaled value of some other length metric (e.g. stroke width or shape height).
             By default, ppu-shift-scale = 0, ppu-shift-bias = 0, ppu-shift-modulo = 2, scale = 0.5. For even multiples, the shift is 0. For odd multiples, the shift is 0.5, which aligns 1px strokes well.
-            [naming?] bias-modulo? "size" instead of ppu-shift-scale? Is it even necessary to have a ppu-shift-bias and ppu-shift-scale? Can there just be a ppu-scaled-bias? Or even bias-unscaled, since it's in raw user coordinates before being scaled by PPU to pixels.
+            NAMING: bias-modulo? "size" instead of ppu-shift-scale? Is it even necessary to have a ppu-shift-bias and ppu-shift-scale? Can there just be a ppu-scaled-bias? Or even bias-unscaled, since it's in raw user coordinates before being scaled by PPU to pixels.
             ? Should modulo apply to the unscaled bias or the sum of unscaled bias and scaled bias?
         min? - todo: somehow integrate minimum distance from other anchors into this. Can this be achieved via prebias and scale instead? e.g. for min(2 otherAnchor) use prebias(-otherAnchor) scale(2) prebias(otherAnchor).
             Should it only apply to anchors?
@@ -773,33 +789,33 @@ Example:
         <anchor id="anchorC" x="60" y="60" grid-rounding="down left"/>
         <anchor id="anchorD" x="40" y="60" grid-rounding="up left"/>
         ...
-        <anchorTransform id="anchorTransformA" anchorList="anchorA anchorB anchorC"/>
-        <anchorTransform id="anchorTransformB" anchorList="anchorA anchorD anchorC"/>
+        <anchorAdjustment id="anchorAdjustmentA" anchorList="anchorA anchorB anchorC"/>
+        <anchorAdjustment id="anchorAdjustmentB" anchorList="anchorA anchorD anchorC"/>
 
     Or via containment? (id's on internal anchors are then unnecessary):
     
-        <anchorTransform mode="threePoint" id="anchorSetA">
+        <anchorAdjustment mode="threePoint" id="anchorSetA">
             <anchor x="40" y="40" grid-rounding="up left"/>
             <anchor x="60" y="40" grid-rounding="up right"/>
             <anchor x="40" y="60" grid-rounding="down left"/>
-        </anchorTransform>
+        </anchorAdjustment>
 
     Or via points? (which would allow in/out rounding modes)
 
-        <anchorTransform id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
-        <anchorTransform id="anchorSetA" anchors="40,40 60,40 60,60 40,60" grid-rounding="out"/>
+        <anchorAdjustment id="anchorSetA" points="40,40 60,40 60,60 40,60" grid-rounding="out"/>
+        <anchorAdjustment id="anchorSetA" anchors="40,40 60,40 60,60 40,60" grid-rounding="out"/>
 
-    Or should there just be <anchor>, not anchorTransform, except it accepts multiple existing ones?
+    Or should there just be <anchor>, not anchorAdjustment, except it accepts multiple existing ones?
 
         <anchor id="anchorSetA" adjustments="anchorA anchorB anchorC"/>
 
     Or mix of both?
 
-        <anchorTransform id="anchorSetA" anchors="42,36 anchorB 0%,50% left,top"/>
+        <anchorAdjustment id="anchorSetA" anchors="42,36 anchorB 0%,50% left,top"/>
 
     Or points and rounding?
 
-        <anchorTransform id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
+        <anchorAdjustment id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
 
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
     An anchors attribute is preferred over points, and points over child elements.
@@ -871,14 +887,14 @@ Example:
         <alignment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjustment="leftward upward; rightward upward; rightward downward; leftward downward" />
         <alignment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjustment="outward" />
 
-        <anchorTransform id="foo" mode="point" points="1 1" rounding="floor" />
-        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="floor" />
-        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="floor; ceil" />
-        <anchorTransform id="foo" mode="linear" points="1 1; 2 2" adjust="out" />
-        <anchorTransform id="foo" mode="twoCorner" points="1 1; 2 2" adjust="floor; ceil" />
-        <anchorTransform id="foo" mode="threePoint" points="1 1; 2 2; 3 3" adjust="floor; ceil; floor" />
-        <anchorTransform id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="leftward upward; rightward upward; rightward downward; leftward downward" />
-        <anchorTransform id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="outward" />
+        <anchorAdjustment id="foo" mode="point" points="1 1" rounding="floor" />
+        <anchorAdjustment id="foo" mode="linear" points="1 1; 2 2" adjust="floor" />
+        <anchorAdjustment id="foo" mode="linear" points="1 1; 2 2" adjust="floor; ceil" />
+        <anchorAdjustment id="foo" mode="linear" points="1 1; 2 2" adjust="out" />
+        <anchorAdjustment id="foo" mode="twoCorner" points="1 1; 2 2" adjust="floor; ceil" />
+        <anchorAdjustment id="foo" mode="threePoint" points="1 1; 2 2; 3 3" adjust="floor; ceil; floor" />
+        <anchorAdjustment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="leftward upward; rightward upward; rightward downward; leftward downward" />
+        <anchorAdjustment id="foo" mode="quad" points="0 0; 0 1; 1 1; 1 0" adjust="outward" />
 
         boundsAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         cornerAdjust="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
@@ -888,9 +904,9 @@ Example:
         adjustCorners="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
         adjustPoints ="align(x=50% y=20 rounding=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
 
-        boundsAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        cornerAdjust="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
-        pointAdjust ="anchorTransform(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        boundsAdjust="anchorAdjustment(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        cornerAdjust="anchorAdjustment(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
+        pointAdjust ="anchorAdjustment(mode=point x=50% y=20 adjust=#adjustment) fit-proportional(x1=0 x2=1 y1=2 y2=3 rounding=#adjustments)"
 
     How to transform one anchor by another anchor's existing delta, but at an angle?
 
@@ -898,12 +914,12 @@ Example:
         <anchor href="#topSprocket" transform="rotate(60 30 30)" adjust="transformAnchor(#topSprocket rotate(30))"/>
         <anchor href="#topSprocket" transform="rotate(120 30 30)" adjust="#topSprocket transformDelta(rotate(30)))"/>
         <anchor href="#topSprocket" transform="rotate(-60 30 30)" adjust="combineTransform(#topSprocket rotate(-30))"/>
-        <anchor href="#topSprocket" transform="rotate(-120 30 30)" adjust="anchorTransform(#topSprocket rotate(-60))"/>
+        <anchor href="#topSprocket" transform="rotate(-120 30 30)" adjust="anchorAdjustment(#topSprocket rotate(-60))"/>
         <anchor href="#topSprocket" transform="rotate(-180 30 30)" adjust="applyTransform(#topSprocket transformReinterprets=true)"/>
-        <anchorTransform id="#topRightSprocket" anchors="#topSprocket" matrixAdjust="rotate(30)"/>
-        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" screenTransform="rotate(30)"/>
-        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" displacementTransform="rotate(30)"/>
-        <anchorTransform id="#bottomRightSprocket" anchors="#topSprocket" transform="rotate(30)" transformReinterprets="true"/>
+        <anchorAdjustment id="#topRightSprocket" anchors="#topSprocket" matrixAdjust="rotate(30)"/>
+        <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" screenTransform="rotate(30)"/>
+        <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" displacementTransform="rotate(30)"/>
+        <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" transform="rotate(30)" transformReinterprets="true"/>
 
         Different approaches:
         (1) transform the upright anchor to other angles using "transform"
@@ -1052,18 +1068,18 @@ Example:
         <rect x="1" y="1" w="4" h="4" rx="1" ry="1" transformAdjust="..." shapeAdjust="..." pointAdjust="..." />
 
     Aliases for adjustments:
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=point points=[0% 0%] rounding=[nearest])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[nearest])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[floor; ceil])" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorTransform(type=linear points=[0% 50%; 100% 50%] rounding=outward)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorAdjustment(type=point points=[0% 0%] rounding=[nearest])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorAdjustment(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[nearest])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorAdjustment(type=twoPointCorner points=[0% 0%; 100% 100%] rounding=[floor; ceil])" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="anchorAdjustment(type=linear points=[0% 50%; 100% 50%] rounding=outward)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustPoint(50% 50% nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustTwoCorners(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustFourCorners(outward)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustLeftTop(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustRightBottom(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustCenter(nearest)" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustWidth(nearest)" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustHeight(nearest)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustHorizontally(nearest)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustVertically(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustLinear(0% 50% 100% 50% nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustBounds(nearest)" />
 
