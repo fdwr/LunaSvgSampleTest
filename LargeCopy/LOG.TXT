@@ -1,7 +1,0 @@
-2005-10-20	+Copy modified and created times too.
-			+Added shell browse for destination path.
-2005-10-19	=Decreased copy loop user response delay.
-			+Add current file selection
-			+Add progress bar
-			.Message boxes take focus upon file drop
-2005-10-18	=Started and finished functional version.

@@ -1,2 +1,0 @@
-This is a test of the PknFt server.
-Has it been received?

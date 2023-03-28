@@ -1,3 +1,0 @@
-:: Compile DOS COM file
-@echo Compiling %1.asm into com file...
-\src\nasmw.exe -f bin %1.asm -o %1.com -w+orphan-labels

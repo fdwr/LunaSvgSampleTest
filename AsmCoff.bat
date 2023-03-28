@@ -1,3 +1,0 @@
-:: Asm Source into Win32 COFF using NASM
-@echo Compiling into Win32 COFF with Nasm...
-\src\nasmw.exe %1.asm -o %TEMP%\%1.obj -fwin32 -w+orphan-labels %2 %3 %4 %5 %6 %7 %8 %9 -i\SRC\WIN\

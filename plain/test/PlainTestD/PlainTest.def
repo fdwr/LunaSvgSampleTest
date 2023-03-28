@@ -1,6 +1,0 @@
-EXETYPE NT
-SUBSYSTEM WINDOWS
-IMPORTS
-_SetFilePointerEx@20=KERNEL32.SetFilePointerEx
-_SetLayeredWindowAttributes@16=USER32.SetLayeredWindowAttributes
-_UpdateLayeredWindow@36=USER32._UpdateLayeredWindow

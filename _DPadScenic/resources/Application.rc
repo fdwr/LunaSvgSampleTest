@@ -1,7 +1,0 @@
-#include "windows.h"
-
-#include "RibbonResource.h"
-#include "RibbonResource.rc"
-
-1               ICON    "../resources/DWriteIcon.ico"
-InlineObjects   Image   "../resources/InlineObjects.png"

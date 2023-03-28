@@ -1,5 +1,0 @@
-modSlideShower = 14, 63, 461, 471, C
-frmFullScreen = 70, 39, 705, 447, C, 66, 66, 439, 412, C
-frmGotoPath = 129, 39, 576, 447, C, 44, 44, 417, 390, C
-frmSlideShower = 183, 121, 778, 529, C, 88, 88, 461, 434, C
-frmRenameFile = 35, 103, 482, 511, C, 132, 132, 505, 478, C

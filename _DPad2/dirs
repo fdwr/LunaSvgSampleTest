@@ -1,6 +1,0 @@
-DIRS=           \
-    common      \
-    ui          \
-    editor      \
-    renderer    \
-    app         \

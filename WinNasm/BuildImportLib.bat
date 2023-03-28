@@ -1,1 +1,0 @@
-..\bin\NASMW.EXE -f obj WinImp.def -o WinImp.lib

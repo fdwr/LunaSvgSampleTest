@@ -1,3 +1,0 @@
-:: Debug DOS EXE using WuDebug
-@echo Debugging %1.EXE...
-\src\bin\wudebug.exe %1.exe %2 %3 %4 %5 %6 %7 %8 %9

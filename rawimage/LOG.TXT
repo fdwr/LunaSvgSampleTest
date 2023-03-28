@@ -1,2 +1,0 @@
-20041213	Added bitmap and raw support, including several format conversions
-		Can display StarFox 64 characters BGR5551

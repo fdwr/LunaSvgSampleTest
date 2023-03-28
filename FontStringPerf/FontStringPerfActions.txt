@@ -1,5 +1,0 @@
-LoadFont="c:/windows/fonts/ah*"
-Actions=FontStringPerfActions2.txt
-#LoadFont="d:/fonts/**/z*"
-#LoadFont="d:/fonts/**/*"
-#
