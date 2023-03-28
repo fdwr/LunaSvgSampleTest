@@ -4,7 +4,7 @@ Dwayne Robinson 2022-07-28
 
 ## What
 
-This document extends the SVG specification with elements and attributes for grid fitting/pixel snapping to improve rendering on low-resolution devices where details can become blurry and messy in toolbars, menus, and webpages. SVG is increasingly being used for iconography and smaller symbols, and despite tales of the demise of 96 DPI, such monitors persist to this day, with 1920x1080 being the most common monitor size in 2022. This specification is freely available to adopt without patent or copyright concern, but beware it's currently subject to change while I validate on the implementation details.
+This document extends the SVG specification with elements and attributes for grid fitting/pixel snapping to improve rendering on low-resolution displays where edges become fuzzy and blurry details become overcrowded in toolbars, menus, and webpages. SVG is increasingly being used for iconography, and tales of the demise of 96 DPI have been greatly exaggerated, as such monitors persist to this day, with 1920x1080 being the most common monitor size in 2022. This specification is freely available to adopt without patent or copyright concern, but beware it's currently subject to change while I validate on the implementation details.
 
 ## Why
 
