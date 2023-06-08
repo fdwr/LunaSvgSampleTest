@@ -2408,7 +2408,10 @@ void CopyBitmapToClipboard(
     {
         if (OpenClipboard(hwnd))
         {
-            EmptyClipboard();
+            if (hwnd != nullptr)
+            {
+                EmptyClipboard();
+            }
 
             RECT clampedClipRect = {LONG(0), LONG(0), LONG(bitmap.width()), LONG(bitmap.height())};
             IntersectRect(/*out*/ &clampedClipRect, &clipRect, &clampedClipRect);
@@ -2480,13 +2483,16 @@ void CopyTextToClipboard(std::wstring_view text, HWND hwnd)
 {
     if (OpenClipboard(hwnd))
     {
-        EmptyClipboard();
+        if (hwnd != nullptr)
+        {
+            EmptyClipboard();
+        }
 
         uint32_t const textLength = text.size();
         uint32_t const textByteCount = textLength * sizeof(wchar_t);
         uint32_t const totalByteCount = textByteCount + 2 /*add terminating null*/;
 
-        HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalByteCount);
+        HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE | GMEM_ZEROINIT, totalByteCount);
         if (memory != nullptr)
         {
             void* lockedMemory = GlobalLock(memory);
