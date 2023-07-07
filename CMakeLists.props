@@ -1,0 +1,18 @@
+<!--
+Upgrading to VS 2022 broke the project with:
+
+std.ixx(147,1): fatal error C1010: unexpected end of file while looking for precompiled header. ...
+
+Even though this project does not even use C++ modules, just standard #include's. So, disable them explicitly.
+
+https://stackoverflow.com/questions/76296911/precompiled-header-errors-in-visual-studio-2022-version-17-6
+-->
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <ItemDefinitionGroup>
+        <ClCompile>
+        <BuildStlModules>false</BuildStlModules>
+        </ClCompile>
+    </ItemDefinitionGroup>
+</Project>

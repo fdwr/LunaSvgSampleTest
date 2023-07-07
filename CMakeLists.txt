@@ -18,13 +18,15 @@ set(CMAKE_RUNTIME_LIBRARY_DIRECTORY "$<0:DummyString>")
 
 project(LunaSvgTest VERSION 1.0.0 LANGUAGES CXX C)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_STANDARD 11)
 
 set(BUILD_SHARED_LIBS OFF)
 
 set(PLUTOVG_BGRA_PIXEL_ORDER ON CACHE BOOL "Use BGRA order instead of RGBA, useful for Windows GDI." FORCE)
 add_subdirectory(external/lunasvg)
+# Unfortunately this doesn't fix the VS build bug. So setting set(CMAKE_CXX_STANDARD 20) instead of 23.
+set_property(TARGET lunasvg PROPERTY VS_USER_PROPS CMakeLists.props)
 
 add_executable(LunaSvgTest
     source/precomp.h
@@ -60,6 +62,8 @@ message(PROJECT_SOURCE_DIR="${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 message(CMAKE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
 message(CMAKE_CURRENT_BINARY_DIR="${CMAKE_CURRENT_BINARY_DIR}")
 message(RUNTIME_OUTPUT_DIRECTORY="${RUNTIME_OUTPUT_DIRECTORY}")
+
+set_property(TARGET LunaSvgTest PROPERTY VS_USER_PROPS CMakeLists.props)
 
 #set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT LunaSvgTest)
 
