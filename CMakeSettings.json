@@ -23,6 +23,17 @@
       "inheritEnvironments": [ "msvc_x64_x64" ]
     },
     {
+      "name": "x64-Debug-VS2022",
+      "generator": "Visual Studio 17 2022",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\${name}\\install",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x64_x64" ]
+    },
+    {
       "name": "x64-Release-VS2022",
       "generator": "Visual Studio 17 2022",
       "configurationType": "MinSizeRel",
@@ -56,9 +67,31 @@
       "inheritEnvironments": [ "msvc_x86" ]
     },
     {
+      "name": "x86-Debug-VS2022",
+      "generator": "Visual Studio 17 2022",
+      "configurationType": "Debug",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\${name}\\install",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x86" ]
+    },
+    {
       "name": "x86-Release-VS2022",
       "generator": "Visual Studio 17 2022",
       "configurationType": "MinSizeRel",
+      "buildRoot": "${projectDir}\\build\\${name}",
+      "installRoot": "${projectDir}\\build\\${name}\\install",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x86" ]
+    },
+    {
+      "name": "x86-Debug-ninja",
+      "generator": "Ninja",
+      "configurationType": "Debug",
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\build\\${name}\\install",
       "cmakeCommandArgs": "",
