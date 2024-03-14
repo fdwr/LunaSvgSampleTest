@@ -2177,8 +2177,11 @@ void RedrawCanvasBackgroundAndItems(RECT const& clientRect)
         OffsetRect(/*inout*/ &boundingRect, -boundingRect.left, -boundingRect.top);
 
         // Limit bitmap size to avoid std::bad_alloc in case too many SVG files were loaded.
-        boundingRect.right = std::min(boundingRect.right, 16384L);
-        boundingRect.bottom = std::min(boundingRect.bottom, 16384L);
+        constexpr uint32_t maximumPixelCount = 16384 * 16384;
+        auto clampedRight   = std::min(boundingRect.right, 16384L);
+        auto clampedBottom  = std::min(boundingRect.bottom, 16384L);
+        boundingRect.right  = std::min(boundingRect.right, LONG(maximumPixelCount / clampedBottom));
+        boundingRect.bottom = std::min(boundingRect.bottom, LONG(maximumPixelCount / clampedRight));
 
         bool bitmapChangedSize = (g_bitmap.width() != boundingRect.right || g_bitmap.height() != boundingRect.bottom);
         if (bitmapChangedSize)
