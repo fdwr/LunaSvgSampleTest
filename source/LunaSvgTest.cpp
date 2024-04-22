@@ -2605,11 +2605,11 @@ BOOL StretchBltFixed(
     RECT const& clipRect
     )
 {
-    if (srcW < 0 || srcH < 0 || destW < 0 || destH < 0)
+    if (srcW < 0 || srcH < 0 || destW <= 0 || destH <= 0)
     {
         return true; // No division by zero (would be an empty drawing anyway).
     }
-    if (clipRect.right < clipRect.left || clipRect.bottom < clipRect.top)
+    if (clipRect.right <= clipRect.left || clipRect.bottom <= clipRect.top)
     {
         return true; // No empty drawing.
     }
