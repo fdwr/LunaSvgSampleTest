@@ -327,7 +327,8 @@ BackgroundColorMode g_backgroundColorMode = BackgroundColorMode::GrayCheckerboar
 uint32_t g_bitmapSizePerDocument = 64; // in pixels
 uint32_t g_bitmapMaximumSize = UINT32_MAX; // useful for the waterfall to set a maximum range
 uint32_t g_bitmapPixelZoom = 1; // Assert > 0.
-uint32_t g_gridSize = 8;
+uint32_t g_gridSizeX = 8;
+uint32_t g_gridSizeY = 8;
 int32_t g_bitmapOffsetX = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans right.
 int32_t g_bitmapOffsetY = 0; // In effective screen pixels (in terms of g_bitmapPixelZoom) rather than g_bitmap pixels. Positive pans down.
 double g_svgNudgeOffsetX = 0; // A tiny adjustment to add to the rendering transform.
@@ -3035,11 +3036,19 @@ void RepaintWindow(HWND hwnd)
     };
 
     // Draw the grid.
-    int32_t gridSize = (g_gridSize > 0) ? g_gridSize : INT32_MAX / 2;
-    int32_t gridSpacing = std::min(LONG(gridSize), clientRect.right) * g_bitmapPixelZoom;
+    auto getScaledGridSpacing = [](uint32_t gridSize, LONG limit)
+    {
+        int32_t clampedGridSize = (gridSize > 0) ? gridSize : INT32_MAX / 2;
+        int32_t scaledGridSize = std::min(LONG(clampedGridSize * g_bitmapPixelZoom), limit);
+        return scaledGridSize;
+    };
+    int32_t gridSpacingX = getScaledGridSpacing(g_gridSizeX, clientRect.right);
+    int32_t gridSpacingY = getScaledGridSpacing(g_gridSizeY, clientRect.bottom);
     if (g_gridVisible || g_pixelGridVisible || g_itemBorderVisible)
     {
-        gridSpacing = std::max(gridSpacing, 2);
+        gridSpacingX = std::max(gridSpacingX, 2);
+        gridSpacingY = std::max(gridSpacingY, 2);
+        int32_t minimumGridSpacing = std::min(gridSpacingX, gridSpacingY);
 
         GdiFlush();
         for (const auto& canvasItem : g_canvasItems)
@@ -3059,8 +3068,8 @@ void RepaintWindow(HWND hwnd)
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        int32_t averagecolorAdjustment = std::clamp(gridSpacing * 4u, 32u, 64u); // Scale color adjustment by spacing amount.
-                        DrawGridFast32bpp(itemRect, gridSpacing, gridSpacing, averagecolorAdjustment, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        int32_t averagecolorAdjustment = std::clamp(minimumGridSpacing * 4u, 32u, 64u); // Scale color adjustment by spacing amount.
+                        DrawGridFast32bpp(itemRect, gridSpacingX, gridSpacingY, averagecolorAdjustment, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_itemBorderVisible)
                     {
@@ -3072,7 +3081,7 @@ void RepaintWindow(HWND hwnd)
                     if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
                         // Draw internal points.
-                        int32_t averagecolorAdjustment = std::clamp(22 + g_bitmapPixelZoom * 6u, 32u, 255u); // Scale color adjustment by spacing amount.
+                        int32_t averagecolorAdjustment = std::clamp(22 + g_bitmapPixelZoom * 6u, 32u, 255u); // Scale color adjustment by zoom.
                         DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, averagecolorAdjustment, /*drawDots:*/true, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
@@ -3203,7 +3212,7 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
         {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
         {IDM_VIEW, IDM_RASTER_FILLS_STROKES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_rasterFillsStrokesVisible); }},
-        {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, g_gridSize)); }},
+        {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, std::min(g_gridSizeX, g_gridSizeY))); }},
     };
 
     for (auto& menuItem : menuItemData)
@@ -3804,26 +3813,39 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_GRID_SIZE_128:
             case IDM_GRID_SIZE_192:
             case IDM_GRID_SIZE_256:
-                g_gridVisible = true;
-                static_assert(IDM_GRID_SIZE_0 == IDM_GRID_SIZE_FIRST);
-                static_assert(IDM_GRID_SIZE_256 == IDM_GRID_SIZE_LAST);
-                static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
-                g_gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
-                InvalidateClientRectBitmap(hwnd);
+                {
+                    g_gridVisible = true;
+                    static_assert(IDM_GRID_SIZE_0 == IDM_GRID_SIZE_FIRST);
+                    static_assert(IDM_GRID_SIZE_256 == IDM_GRID_SIZE_LAST);
+                    static_assert(IDM_GRID_SIZE_LAST + 1 - IDM_GRID_SIZE_FIRST == _countof(g_gridSizes), "g_gridSizes is not the correct size");
+                    auto gridSize = g_gridSizes[wmId - IDM_GRID_SIZE_FIRST];
+                    bool isShiftHeld = GetKeyState(VK_SHIFT) & 0x80;
+                    bool isControlHeld = GetKeyState(VK_CONTROL) & 0x80;
+                    bool areBothEqual = isControlHeld == isShiftHeld;
+                    if (isShiftHeld || areBothEqual)
+                    {
+                        g_gridSizeX = gridSize;
+                    }
+                    if (isControlHeld || areBothEqual)
+                    {
+                        g_gridSizeY = gridSize;
+                    }
+                    InvalidateClientRectBitmap(hwnd);
+                }
                 break;
 
-            case IDM_NAVIGATE_LINE_LEFT:  HandleBitmapScrolling(hwnd, SB_LINELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_LINE_LEFT:  HandleBitmapScrolling(hwnd, SB_LINELEFT,  g_bitmapScrollStep, /*isHorizontal*/ true); break;
             case IDM_NAVIGATE_LINE_RIGHT: HandleBitmapScrolling(hwnd, SB_LINERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_LINE_UP:    HandleBitmapScrolling(hwnd, SB_LINEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_LINE_DOWN:  HandleBitmapScrolling(hwnd, SB_LINEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_PAGE_LEFT:  HandleBitmapScrolling(hwnd, SB_PAGELEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_LINE_UP:    HandleBitmapScrolling(hwnd, SB_LINEUP,    g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_LINE_DOWN:  HandleBitmapScrolling(hwnd, SB_LINEDOWN,  g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_PAGE_LEFT:  HandleBitmapScrolling(hwnd, SB_PAGELEFT,  g_bitmapScrollStep, /*isHorizontal*/ true); break;
             case IDM_NAVIGATE_PAGE_RIGHT: HandleBitmapScrolling(hwnd, SB_PAGERIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_PAGE_UP:    HandleBitmapScrolling(hwnd, SB_PAGEUP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_PAGE_DOWN:  HandleBitmapScrolling(hwnd, SB_PAGEDOWN, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_END_LEFT:   HandleBitmapScrolling(hwnd, SB_LEFT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_END_RIGHT:  HandleBitmapScrolling(hwnd, SB_RIGHT, g_bitmapScrollStep, /*isHorizontal*/ true); break;
-            case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP, g_bitmapScrollStep, /*isHorizontal*/ false); break;
-            case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM, g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_PAGE_UP:    HandleBitmapScrolling(hwnd, SB_PAGEUP,    g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_PAGE_DOWN:  HandleBitmapScrolling(hwnd, SB_PAGEDOWN,  g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_END_LEFT:   HandleBitmapScrolling(hwnd, SB_LEFT,      g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_END_RIGHT:  HandleBitmapScrolling(hwnd, SB_RIGHT,     g_bitmapScrollStep, /*isHorizontal*/ true); break;
+            case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP,       g_bitmapScrollStep, /*isHorizontal*/ false); break;
+            case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM,    g_bitmapScrollStep, /*isHorizontal*/ false); break;
 
             case IDM_NUDGE_LEFT:  g_svgNudgeOffsetX -= 0.125; RedrawCanvasItemsLater(hwnd); break;
             case IDM_NUDGE_RIGHT: g_svgNudgeOffsetX += 0.125; RedrawCanvasItemsLater(hwnd); break;
