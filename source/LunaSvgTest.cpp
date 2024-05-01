@@ -500,7 +500,6 @@ void HideToolTip()
 
 /*TIMERPROC*/void CALLBACK HideToolTipTimerProc(HWND hwnd, UINT uElapse, UINT_PTR uIDEvent, DWORD dwTime)
 {
-    g_errorMessage.clear();
     KillTimer(hwnd, uIDEvent);
     HideToolTip();
 }
@@ -1030,11 +1029,11 @@ const uint8_t g_smallDigitPixels[10][g_smallDigitHeight][g_smallDigitWidth] =
 
 // Draw a string of tiny digits.
 void DrawSmallDigits(
-    uint8_t* pixels, // BGRA
+    uint8_t* pixels, // destination pixels BGRA
     char8_t const* digits,
     uint32_t digitCount,
-    uint32_t x,
-    uint32_t y,
+    int32_t x,
+    int32_t y,
     uint32_t bitmapWidth,
     uint32_t bitmapHeight,
     uint32_t bitmapByteStridePerRow
@@ -1054,11 +1053,11 @@ void DrawSmallDigits(
     pixels += y * bitmapByteStridePerRow;
     const uint32_t rowByteDelta = bitmapByteStridePerRow - (g_smallDigitWidth * sizeof(uint32_t));
 
-    for (uint32_t digitIndex = 0; digitIndex < digitCount; ++digitIndex)
+    for (uint32_t digitIndex = 0; digitIndex < digitCount; ++digitIndex, x += g_smallDigitAdvance + 1)
     {
         if (x < 0 || x + g_smallDigitWidth > bitmapWidth)
         {
-            return;
+            continue;
         }
 
         uint32_t digit = digits[digitIndex] - '0';
@@ -1166,7 +1165,7 @@ void DrawBackgroundColorUnderneath(
 }
 
 
-// Draws a color underneath the already existing image, as if the color had been drawn first and then the image later.
+// Draws a color over the already existing image.
 void DrawBackgroundColorOver(
     std::byte* pixels, // BGRA
     uint32_t x,
@@ -1205,7 +1204,7 @@ void DrawBackgroundColorOver(
 }
 
 
-// Draw dark gray/light gray checkerboard of 8x8 pixels.
+// Draw BGRA bitmap 1:1 with alpha blend.
 void DrawBitmap32Bit(
     uint8_t* destPixels, // 32-bits of {B,G,R,A}.
     int32_t destX,
@@ -1345,8 +1344,8 @@ HRESULT LoadImageData(
 
 
 HRESULT StoreImageData(
-    std::span<std::byte const> pixelBytes,
     std::array<uint32_t, 4> dimensions, // width, height, channels, bytes per channel
+    std::span<std::byte const> pixelBytes,
     _In_z_ wchar_t const* outputFilename
     )
 {
@@ -1540,9 +1539,10 @@ void ShowErrors()
 {
     if (!g_errorMessage.empty())
     {
-        // Show error messages, after two second delay.
+        // Show error messages, hiding after a few seconds.
         ShowToolTip(g_errorMessage.c_str());
         SetTimer(g_windowHandle, IDM_OPEN_FILE, 3000, &HideToolTipTimerProc);
+        g_errorMessage.clear();
     }
 }
 
@@ -2677,7 +2677,7 @@ std::tuple<
     HBITMAP /*bitmap*/,
     std::byte* /*pixels*/
 >
-CreateDIBSection32bpp(HDC memoryDc, SIZE size)
+CreateDIBSection32bpp(SIZE size)
 {
     BITMAPHEADERv3 memoryBitmapHeader =
     {
@@ -2696,7 +2696,7 @@ CreateDIBSection32bpp(HDC memoryDc, SIZE size)
 
     std::byte* bitmapPixels = nullptr;
     HBITMAP bitmap = CreateDIBSection(
-        nullptr, // memoryDc,
+        nullptr, // memoryDc can be null
         reinterpret_cast<BITMAPINFO const*>(&memoryBitmapHeader),
         DIB_RGB_COLORS,
         reinterpret_cast<void**>(&bitmapPixels),
@@ -2965,7 +2965,7 @@ void RepaintWindow(HWND hwnd)
     // b. SetPixel is very slow, leaving us to set the pixels directly instead.
     if (g_cachedScreenBitmap == nullptr)
     {
-        std::tie(g_cachedScreenBitmap, g_cachedScreenBitmapPixels) = CreateDIBSection32bpp(memoryDc, g_cachedScreenBitmapSize);
+        std::tie(g_cachedScreenBitmap, g_cachedScreenBitmapPixels) = CreateDIBSection32bpp(g_cachedScreenBitmapSize);
         if (g_cachedScreenBitmap == nullptr)
         {
             return; // Can't do anything about it. So at least don't crash.
@@ -3570,8 +3570,8 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                         std::array<uint32_t, 4> dimensions = {g_bitmap.width(), g_bitmap.height(), 4, 1};
                         std::byte const* pixelBytes = reinterpret_cast<std::byte const*>(g_bitmap.data());
                         HRESULT hr = StoreImageData(
-                                        { pixelBytes, pixelBytes + g_bitmap.stride() * g_bitmap.height() },
                                         dimensions,
+                                        { pixelBytes, pixelBytes + g_bitmap.stride() * g_bitmap.height() },
                                         fileNameBuffer
                                      );
                         if (FAILED(hr))
