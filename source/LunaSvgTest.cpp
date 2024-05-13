@@ -230,8 +230,8 @@ union PixelBgra
         // uint32_t pixelValue = (blue << 0) | (green << 8) | (red << 16) | (alpha << 24);
         // https://stackoverflow.com/questions/1102692/how-to-alpha-blend-rgba-unsigned-byte-color-fast
         // Note this isn't identical to n / 255, which can be approximated by (r + 1 + (r >> 8)) >> 8 or ((x + 1) * 257) >> 16.
-        uint32_t rb = (newColor.i & 0x00FF00FFu) + ( (inverseBitmapAlpha * (existingColor.i & 0x00FF00FFu)) >> 8u);
-        uint32_t ag = (newColor.i & 0xFF00FF00u) + ( (inverseBitmapAlpha * (existingColor.i & 0xFF00FF00u)) >> 8u);
+        uint32_t rb = (newColor.i & 0x00FF00FFu) + ((inverseBitmapAlpha *  (existingColor.i & 0x00FF00FFu)) >> 8u);
+        uint32_t ag = (newColor.i & 0xFF00FF00u) + ((inverseBitmapAlpha * ((existingColor.i & 0xFF00FF00u)  >> 8u)));
         uint32_t pixelValue = (rb & 0x00FF00FFu) + (ag & 0xFF00FF00u);
 
         return PixelBgra{ .i = pixelValue };
@@ -488,14 +488,14 @@ void ShowToolTip(
     SendMessage(g_toolTipWindowHandle, TTM_SETMAXTIPWIDTH, 0, 1024); // No wrapping. Just let it be as wide as it needs to be.
     g_toolTipInfo.lpszText = const_cast<LPWSTR>(message);
     SendMessage(g_toolTipWindowHandle, TTM_UPDATETIPTEXT, 0, (LPARAM)&g_toolTipInfo);
-    SendMessage(g_toolTipWindowHandle, TTM_TRACKPOSITION, 0, (LPARAM)(toolTipScreenX | toolTipScreenY << 16)); // reposition one last time
+    SendMessage(g_toolTipWindowHandle, TTM_TRACKPOSITION, 0, (LPARAM)((toolTipScreenX & 0xFFFF) | toolTipScreenY << 16)); // reposition
     SendMessage(g_toolTipWindowHandle, TTM_TRACKACTIVATE, (WPARAM)true, (LPARAM)&g_toolTipInfo); // now show it so it calcs size
 }
 
 
 void HideToolTip()
 {
-    SendMessage(g_toolTipWindowHandle, TTM_TRACKACTIVATE, (WPARAM)false, (LPARAM)&g_toolTipInfo); // now show it so it calcs size
+    SendMessage(g_toolTipWindowHandle, TTM_TRACKACTIVATE, (WPARAM)false, (LPARAM)&g_toolTipInfo);
 }
 
 
@@ -794,7 +794,7 @@ void DrawGridFast32bpp(
     int32_t y1 = std::min(gridRect.bottom, bitmapBoundingRect.bottom);
     int32_t x0Adjusted = gridRect.left + RoundUp<int32_t>(x0 - gridRect.left, xSpacing);
     int32_t y0Adjusted = gridRect.top + RoundUp<int32_t>(y0 - gridRect.top, ySpacing);
-    if (x0 > x1 || y0 > y1)
+    if (x0 >= x1 || y0 >= y1)
     {
         return;
     }
@@ -854,6 +854,8 @@ void DrawGridFast32bpp(
     }
     else // Draw lines
     {
+        // TODO: (minor) Avoid cross sections where horizontal and vertical lines meet being brighter.
+
         // Vertical lines drawn left to right.
         for (int32_t x = x0Adjusted; x < x1; x += xSpacing)
         {
