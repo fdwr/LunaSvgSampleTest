@@ -81,7 +81,7 @@ struct BITMAPHEADERv2 // BITMAPCOREHEADER
     WORD         bitCount;
 };
 
-struct BITMAPHEADERv3 // BITMAPINFOHEADER (not v3 is not backwards compatible with v2, as the width/height are LONG)
+struct BITMAPHEADERv3 // BITMAPINFOHEADER (note v3 is not backwards compatible with v2, as the width/height are LONG)
 {
     DWORD        size;
     LONG         width;
