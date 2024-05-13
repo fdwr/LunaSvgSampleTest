@@ -3068,8 +3068,8 @@ void RepaintWindow(HWND hwnd)
                     if (g_gridVisible)
                     {
                         // Draw internal grid.
-                        int32_t averagecolorAdjustment = std::clamp(minimumGridSpacing * 4u, 32u, 64u); // Scale color adjustment by spacing amount.
-                        DrawGridFast32bpp(itemRect, gridSpacingX, gridSpacingY, averagecolorAdjustment, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        int32_t averageColorAdjustment = std::clamp(minimumGridSpacing * 4u, 32u, 64u); // Scale color adjustment by spacing amount.
+                        DrawGridFast32bpp(itemRect, gridSpacingX, gridSpacingY, averageColorAdjustment, /*drawDots:*/false, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                     if (g_itemBorderVisible)
                     {
@@ -3081,8 +3081,8 @@ void RepaintWindow(HWND hwnd)
                     if (g_pixelGridVisible && g_bitmapPixelZoom > 1)
                     {
                         // Draw internal points.
-                        int32_t averagecolorAdjustment = std::clamp(22 + g_bitmapPixelZoom * 6u, 32u, 255u); // Scale color adjustment by zoom.
-                        DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, averagecolorAdjustment, /*drawDots:*/true, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
+                        int32_t averageColorAdjustment = std::clamp(22 + g_bitmapPixelZoom * 6u, 32u, 255u); // Scale color adjustment by zoom.
+                        DrawGridFast32bpp(itemRect, g_bitmapPixelZoom, g_bitmapPixelZoom, averageColorAdjustment, /*drawDots:*/true, /*adjustColor:*/true, memoryBitmapPixels, memoryBitmapRowByteStride, clientRect);
                     }
                 }
                 break;
