@@ -1,6 +1,6 @@
 # LunaSvgSampleTest
 
-Dwayne Robinson 2022-03-27 to 2022-04-24
+Dwayne Robinson 2022-03-27 to 2026-09-08
 
 ## What is it?
 Just a test of [LunaSvg](https://github.com/sammycage/lunasvg) to see how it works and if I can incorporate it into another project (LunaSvg is wonderfully stand-alone with no large framework dependencies like Skia or Cairo).

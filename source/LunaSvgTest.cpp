@@ -1087,8 +1087,6 @@ void DrawSmallDigits(
             }
             pixel += rowByteDelta;
         }
-
-        x += g_smallDigitAdvance + 1;
     }
 }
 
@@ -2430,7 +2428,8 @@ void CopyBitmapToClipboard(
             // Although DIB sections understand negative height just fine (the standard top-down image layout used by
             // most image formats), other programs sometimes choke when seeing it. IrfanView displays the image upside
             // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
-            // appear on Windows 10 understand upside down images just fine. Word just displays an empty box with red X.
+            // on Windows 10 appear to understand upside down images just fine. Word just displays an empty box with
+            // a red X.
             bitmapInfo.height = abs(bitmapInfo.height);
 
             // InkScape does not recognize transparency anymore when setting BI_BITFIELDS
@@ -2444,11 +2443,11 @@ void CopyBitmapToClipboard(
             HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
             if (memory != nullptr)
             {
-                void* lockedMemory= GlobalLock(memory);
+                void* lockedMemory = GlobalLock(memory);
                 if (lockedMemory != nullptr)
                 {
                     assert(bitmapInfo.planes == 1);
-                    assert(bitmapInfo.bitCount == 32);
+                    assert(bitmapInfo.bitCount >= 8);
 
                     // Copy the older bitmapinfo header (not v5) for greater compatibility with other
                     // applications reading the clipboard data.
@@ -2457,6 +2456,8 @@ void CopyBitmapToClipboard(
                     clipboardBitmapInfo.size = sizeof(clipboardBitmapInfo);
 
                     // Point to the beginning of the pixel data.
+                    // The source data is packed between rows (no padding),
+                    // but the clipboard data needs to be 32-bit aligned.
                     uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
                     uint32_t const sourceBytesPerRow = bitmap.width() * bitmapInfo.bitCount / 8u;
                     uint32_t const destBytesPerRow = ((bitmapInfo.width * bitmapInfo.bitCount / 8u) + 3) & ~3u;
@@ -2494,7 +2495,7 @@ void CopyTextToClipboard(std::wstring_view text, HWND hwnd)
             EmptyClipboard();
         }
 
-        uint32_t const textLength = text.size();
+        uint32_t const textLength = static_cast<uint32_t>(text.size());
         uint32_t const textByteCount = textLength * sizeof(wchar_t);
         uint32_t const totalByteCount = textByteCount + 2 /*add terminating null*/;
 
@@ -3205,13 +3206,13 @@ void InitializePopMenu(HWND hwnd, HMENU hmenu, uint32_t indexInTopLevelMenu)
         {IDM_GRID, IDM_PIXEL_GRID_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_pixelGridVisible); }},
         {IDM_GRID, IDM_ITEM_BORDER_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_itemBorderVisible); }},
         {IDM_BACKGROUND, IDM_BACKGROUND_FIRST, IDM_BACKGROUND_LAST, []() -> uint32_t {return uint32_t(g_backgroundColorMode); }},
-        {IDM_VIEW, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
-        {IDM_VIEW, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
         {IDM_SIZE, IDM_SIZE_FIRST, IDM_SIZE_LAST, []() -> uint32_t {return g_bitmapSizingDisplay == BitmapSizingDisplay::FixedSize ? uint32_t(FindValueIndexGE<uint32_t>(g_waterfallBitmapSizes, g_bitmapSizePerDocument)) : 0xFFFFFFFF; }},
         {IDM_SIZE, IDM_SIZE_DISPLAY_FIRST, IDM_SIZE_DISPLAY_LAST, []() -> uint32_t {return uint32_t(g_bitmapSizingDisplay); }},
         {IDM_SIZE, IDM_SIZE_WRAPPED, 0, []() -> uint32_t {return uint32_t(g_bitmapSizeWrapped); }},
         {IDM_SIZE, IDM_SIZE_FLOW_FIRST, IDM_SIZE_FLOW_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<CanvasItem::FlowDirection>(g_menuFlowDirections, g_canvasFlowDirections.front())); }},
         {IDM_VIEW, IDM_ZOOM_FIRST, IDM_ZOOM_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_zoomFactors, g_bitmapPixelZoom)); }},
+        {IDM_VIEW, IDM_INVERT_COLORS, 0, []() -> uint32_t {return uint32_t(g_invertColors); }},
+        {IDM_VIEW, IDM_SHOW_ALPHA_CHANNEL, 0, []() -> uint32_t {return uint32_t(g_showAlphaChannel); }},
         {IDM_VIEW, IDM_OUTLINES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_outlinesVisible); }},
         {IDM_VIEW, IDM_RASTER_FILLS_STROKES_VISIBLE, 0, []() -> uint32_t {return uint32_t(g_rasterFillsStrokesVisible); }},
         {IDM_GRID, IDM_GRID_SIZE_FIRST, IDM_GRID_SIZE_LAST, []() -> uint32_t {return uint32_t(FindValueIndexGE<uint32_t>(g_gridSizes, std::min(g_gridSizeX, g_gridSizeY))); }},
@@ -3849,10 +3850,11 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_NAVIGATE_END_UP:     HandleBitmapScrolling(hwnd, SB_TOP,       g_bitmapScrollStep, /*isHorizontal*/ false); break;
             case IDM_NAVIGATE_END_DOWN:   HandleBitmapScrolling(hwnd, SB_BOTTOM,    g_bitmapScrollStep, /*isHorizontal*/ false); break;
 
-            case IDM_NUDGE_LEFT:  g_svgNudgeOffsetX -= 0.125; RedrawCanvasItemsLater(hwnd); break;
-            case IDM_NUDGE_RIGHT: g_svgNudgeOffsetX += 0.125; RedrawCanvasItemsLater(hwnd); break;
-            case IDM_NUDGE_UP:    g_svgNudgeOffsetY -= 0.125; RedrawCanvasItemsLater(hwnd); break;
-            case IDM_NUDGE_DOWN:  g_svgNudgeOffsetY += 0.125; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_LEFT:  g_svgNudgeOffsetX -= 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_RIGHT: g_svgNudgeOffsetX += 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_UP:    g_svgNudgeOffsetY -= 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_DOWN:  g_svgNudgeOffsetY += 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_ZERO:  g_svgNudgeOffsetY = 0; g_svgNudgeOffsetY = 0; RedrawCanvasItemsLater(hwnd); break;
 
             case IDM_PRESET_INSPECT:
                 g_gridVisible = true;

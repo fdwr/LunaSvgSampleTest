@@ -29,23 +29,23 @@ TODO:
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
         - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
     - Documentation screenshot candidates
-        - icons8-fluency-fill-color.svg lavender horizontal paint level needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left
+        - icons8-fluency-fill-color.svg has a dark horizontal band at the lavender/blue paint level. It needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left. Rounding the bottom diagonal point to pixel centers or pixel corners would work (but not pixel mid-edges).
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
         - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
         - icons8-google-play boundaries are dark between blue and red, needing MSAA
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
-        - icons8-color-check-circle checkmark can round points only to pixel corners or centers on both axes or else 45 angle would distort
+        - icons8-color-check-circle checkmark can round points only to pixel corners or centers on both axes or else 45 angle would distort. If each checkmark point is rounded independently to pixel corners, the lines can become misaligned, but if each point is rounded to pixel diagonals (corners or centers, but not midedges), it should work fine. The circle height must be computed by rounding the edges. If you round the top and then round the height separately, you'll have an imbalance (see 32x32 where you have 3 pixels on top and 2 on the bottom if you round, or 40x40 where you have the opposite problem).
         - icons8-color-settings gear shape for displacement of gear cogs. Displacing the top/bottom cogs should display the others along their tangent.
         - icons8-applet pie chart as example where you want the circle to always be an even number of pixels to avoid blurry midline
         - icons8-libre-office-writer blue lines disappear
         - Microsoft Teams View 16x16 needs midline to be crisp, so round a multiple of 2 pixels
         - Google news.svg 18x18 show individual points snapped vs 4-part, 19x19 will have uneven stem widths horizontally vs vertically
         - YouTube apps icon 28px through 40px in waterfall
-        - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent
+        - stackoverflow.com Inbox.svg keeping inner bottom angle at 45 degrees while moving outer angle along tangent. If you round each point individually, the 45 angle will not hold. For 8x8, the top bar would collapse with round nearest, without any distance separation constraint. Moving the top bar up (along with all 8 topmost points), followed by the moving the underbar (4 points) back down
         - icons8-blog.svg is very blurry for 24px (all one gray streak) with dramatically looking thickness for the keys per row.
         - MicrosoftSharePointFiles.svg top right corner because aligning the edges does not align the folder corner, and there's shear
-        - booth.pm assets illustration...svg show weird tiny cubic beziers in top right under the wedge which would mess with projection.
+        - booth.pm assets illustration.svg show weird tiny cubic beziers in top right under the wedge which would mess with projection.
         - icons8-fluency-afro-pick.svg seam in vertical midpoint
         - icons8-fluency-right.svg alpha overlap - see right arrow tip in is thicker/darker than it should be.
         - icons8-bmo.svg eyes disappear into gray mush at 24px, despite looking okay at 20px and 28px.
@@ -74,9 +74,9 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
             (a) anchor(12 42 floor(x))
             (b) 12,42, 13,66 floor(x)
             (c) 12,42; 13,16; top,left floor(x).
-        Semicolons have precedent in svg.elements.animate.keyTimes https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/keyTimes
-        Semicolons are also oddly used to separate attributes inside attributes svgView(viewBox(0,0,200,200);preserveAspectRatio(none))) https://svgwg.org/svg-next/linking.html#SVGFragmentIdentifiersDefinitions
-        They need not be on-contour. Indeed, for rounded rectangles, off-contour corners are desired.
+        Semicolons have precedent in svg.elements.animate.keyTimes https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/keyTimes e.g. keyTimes="0; 0.25; 0.5; 0.75; 1"
+        Semicolons are also oddly used to separate attributes inside attributes svgView(viewBox(0,0,200,200);preserveAspectRatio(none)) https://svgwg.org/svg-next/linking.html#SVGFragmentIdentifiersDefinitions
+        They need not be on-contour. Indeed, for rounded rectangles, off-contour 4-corner points beyond the curve are desired.
         Anchor adjustments can apply to multiple objects, including ones that are far away. For example a keyboard full of keys might have only one anchor to snap a keycap to whole pixels, but every other keycap can reuse that same anchor.
         Transformation of anchors and adjustments could apply to the directed line segment (finite ray) as a whole, or just the vector part. e.g. rotate the displacement vector around it's origin point.
     Anchor adjustment / grid fitting / object alignment / pixel snapping / fine adjustment
@@ -242,7 +242,7 @@ Elements:
         NAMING: Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
         id = name of element, which can be referred by other object's grid-round attribute.
         axes = xy, x, y, stroke-width.
-            NAMING: variable? attributeName? property?
+            NAMING: variable? attributeName? property? The animate element uses attributeName.
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
             none - no grid rounding along x or y. e.g "x none; y floor"
             floor - round to nearest integer toward negative infinity (equivalent to floor(xy)). Can specify prebias, scale, and postbias: floor(x 0.5 2 -0.5) ceil(y) What about a freedom vector to round along, like 45 degrees? Named parameters? floor(axis:x prebias:0.5 scale:2 postbias:-0.5)
@@ -287,7 +287,7 @@ Elements:
     <adjustments/> - define a reusable series of adjustments, which can be include rounding, anchors, and transforms (maybe?).
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
-        e.g. <adjustments id="foo" value="centerRoundNearest #boundsOutward displace(1)"/>
+        e.g. <adjustments id="foo" value="centerRound #boundsOutward displace(1)"/>
     ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path).
         id = name of element, which can be referred by other object's grid-round attribute.
         ?axes = xy, x, y.
@@ -316,10 +316,10 @@ Elements:
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
         Hard corners remain hard (like stroke-linejoin = miter), and round corners remain round (like stroke-linejoin = round), just pushing the *existing* points out along the path normal vector, not generating any new points. So a miter does not become bevel or butt or rounded.
     ?<roundParity/> - very similar to round. Can it be joined? Should it be joined? [naming] doubleRounding? multipleRounding?
-    ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] <clamping/>? <distance/>? <relativeDistance/>? <range/>? <difference/>? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
+    ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] clamping? distance? relativeDistance? range? difference? separation? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
-        max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3]
+        max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3] I'm not sure this is ever needed, as there really shouldn't be a maximum distance if you scale up the image.
         transform = transformation of the origin and min/max. This enables constraints that aren't axis aligned, like 45 degree distances.
             NAMING: screenTransform? gridTransform?
         origin = the origin point to subtract from the current point before clamping.
@@ -334,7 +334,7 @@ Elements:
         NAMING: <displacement/> <transformedAdjustment/> <transformAdjustment/>
         id = name of element
         anchor = the anchor (or anchorAdjustment) to modify
-            NAMING: using? (default=none or current delta)
+            NAMING: using? (default=none or current delta) project?
         transform = rotations, scaling, mirroring NAMING: screenTransform, gridTransform
         includeExistingDelta = whether to include the existing delta of an adjustment or just the current anchor's adjustment. The anchor is also optional, meaning to only use the current delta.
         e.g. <displacement id="modifiedAnchor" anchor="#someAnchor" screenTransform="rotate(30)"/>
@@ -363,7 +363,7 @@ Attributes:
     -*.gridRounding - left/right/up/down/in/out/floor/ceil/to-infinity/to-zero (combined modes: nearest-left, center-down, nearest-center-right, evenodd, evenodd-left)
     *.anchorAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
     *.shapeAdjustment - specific to anchors without interfering with grid-rounding, which is useful for inline anchors where applying both can yield detrimental results. Defaults to inherit-grid-rounding. Can use any values from grid-rounding.
-    *.strokeWidthAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" />
+    *.strokeWidthAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" /> TODO: Just combine with normal adjust? e.g. adjust="ceil(stroke-width)"
     *.anchorPoints - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
         Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
@@ -378,6 +378,7 @@ Attributes:
         For objectBoundingBox, the union of the bounds of all contained objects are considered (as using the individual objects would be useless). This differs from fill painting where each object inherits the fill property and independently .
     *.anchor? - Instead of "adjust" e.g. <rect anchor="top" transform-adjust="upward"/> or just stick with <rect transform-adjust="top floor"/>? or <rect transform-adjust="anchor(top floor)"/>?
     *.transform - include origin(). e.g. <rect ... transform="origin(13 42) scale(...) rotate(...)" />. Is an existing transform-origin is replaced or accumulated? If multiple origin statements exist inside the transform, do they accumulate or reset? Should that choice be consistent between the two?
+    *.stroke-mode - controls whether a stroke is drawn inside, outside, or centered (middle | inside | outside), so you don't have to deal with half-center stroke issues on paths. Although you can use clip-path to achieve this, it's rather clumsy, needing to duplicate shape definitions.
 
     todo: elements-like-this or elementsLikeThis? SVG is a goofy mix of the two, both camel-case and hypenated/kebab case.
         "Property or method names start with the initial keyword in lowercase, and each subsequent word starts with a capital letter." https://svgwg.org/svg2-draft/types.html#SVGDOMNamingConventions
@@ -460,23 +461,24 @@ Adjustments:
             add origin
             untransform distance
     transform order:
-        1.  world transform              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity
+        0.  animate/set attributeName
+        1.  world transform              [sx, hy ], [hx, sy ], [dx, dy ] nop if identity
             (now in screen space)
         2.  anchor(s) grid fit/align/adjustment
-            a. nop                       [[1,  0  ], [0,  1  ], [0,  0  ] nop
-            b. translate                 [[1,  0  ], [0,  1  ], [dx, dy ]
-            c. scale & translate         [[s,  0  ], [0,  s  ], [dx, dy ]
-            d. arbitrary                 [[sx, hy ], [hx, sy ], [dx, dy ]
-        3.  ppu stroke widening/thinning [[1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
-        4.  anchor delta multiplier      [[sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
-        5.  ?scaled prebias(sx hy hx sy) [[sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
-        6.  prebias(dx dy)               [[1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-        7.  inverse scale(s)             [[1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
-        8.  floor/ceil/none              [[1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
-        9.  size scale(s)                [[s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
-        10. delta multiplier(dx dy)      [[sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
-        11. postbias(dx dy)              [[sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
-        12. minimum distance             [[1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
+            a. nop                       [1,  0  ], [0,  1  ], [0,  0  ] nop
+            b. translate                 [1,  0  ], [0,  1  ], [dx, dy ]
+            c. scale & translate         [s,  0  ], [0,  s  ], [dx, dy ]
+            d. arbitrary                 [sx, hy ], [hx, sy ], [dx, dy ]
+        3.  ppu stroke widening/thinning [1,  0  ], [0,  1  ], [ppu*dx, ppu*dy ] perpendicular to line segments
+        4.  anchor delta multiplier      [sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
+        5.  ?scaled prebias(sx hy hx sy) [sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
+        6.  prebias(dx dy)               [1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
+        7.  inverse scale(s)             [1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
+        8.  floor/ceil/none              [1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
+        9.  size scale(s)                [s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
+        10. delta multiplier(dx dy)      [sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
+        11. postbias(dx dy)              [sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
+        12. minimum distance             [1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
         ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
     operators:
         even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
@@ -524,7 +526,7 @@ Adjustments:
         leftward - snap to nearest pixel integer coordinate left from x, if not already perfectly aligned. Equals floor(x). naming: leftward? west? roundLeft? "left" is already used in SVG transform-origin to mean the left *side* rather than leftward as a direction. So use leftward to distinguish.
         rightward - snap to nearest pixel integer coordinate right from x, if not already perfectly aligned. Equals ceil(x). naming: rightward? east? roundRight?
         upward - snap to nearest pixel integer coordinate up from y, if not already perfectly aligned. Equals floor(y).
-        downward - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x).
+        downward - snap to nearest pixel integer coordinate down from y, if not already perfectly aligned. Equals ceil(x). TODO: maybe these aliases don't add much, because they're nearly same length with added cognitive burden. Compare <rect x="2" y="3" width="20" height="30" adjust="leftward upward"/> with <rect x="2" y="3" width="20" height="30" adjust="floor(x) floor(y)"/>.
         nearestTiesLow - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
         nearestTiesHigh - round to nearest integer with ties down, not banker's rounding which would yield uneven appearance. Equals nearestLeft and nearestUp.
         nearestLeftward - snap to nearest pixel coordinate left from x and up from y (if not already perfectly aligned). Equals `ceil(x-.5)`.
@@ -587,7 +589,7 @@ Adjustments:
         adjustCorners(nearest) - ...
         adjustLeftTop(nearest) - ...
         adjustCenter(nearest) - ...
-        adjustWidth(nearest) - valid in shapeAdjust for any object that has width (e.g. rect, image, pattern).
+        adjustWidth(nearest) - valid in shapeAdjust for any object that has width (e.g. rect, image, pattern). Alternately adjust="nearest(width)"
         adjustHeight(nearest) - valid in shapeAdjust for any object that has height (e.g. rect, image, pattern).
         adjustLinear(0 50 100 50 nearest) - adjust(type:linear points=[# # # #] rounding:$)
         vectorRound - round along given vector. e.g. vector-round(axes=xy mode=floor/ceil scale=1 bias=0 vector=[1 1]) todo: minimal 2D vector via 2 scalars or full vector 4 scalars? [1 1 -1 1]
@@ -603,6 +605,7 @@ Adjustments:
         stroke-alignment (https://www.w3.org/TR/svg-strokes/#SpecifyingStrokeAlignment) and outline projection are independent. Imo Gavin Kistner's stroke-alignment is currently insufficiently defined, as inner and outer are ambiguous in too many cases, but it's a step forward. There should also be a 'left' and 'right' side enum, depending on the stroke direction. Clipping and masks are another way to achieve them: https://alexwlchan.net/2021/03/inner-outer-strokes-svg/.
         vector effects (https://dev.w3.org/SVG/modules/vectoreffects/master/SVGVectorEffectsPrimer.html) apply to the individual shapes, not the result.
         filter effects should support rounding adjustment. e.g. feDropShadow has deltaAdjust to round dx and dy to whole pixels. feImage supports transformAdjust to snap images to tile whole pixels, which avoids Moire patterns.
+        property animation occurs first before any shape/point adjustments.
     questions:
         How to snap diagonal lines, to either pixel centers or corners, but not midpoints between pixel centers? e.g. D:\src\Pikselai\resources\icons\icons8\icons8-color-close.svg
         ?How does vector-effect="non-scaling-stroke" interact?
@@ -635,7 +638,7 @@ Adjustments:
                     y-ceil
 
 Example:
-    Grid alignment can be part of the existing transform="..." attribute, because browsers (Chrome and Edge anyway) ignore the remainder of the transforms upon seeing any unrecognized calls.
+    Grid alignment cannot be part of the existing transform="..." attribute, because browsers (Chrome and Edge anyway) ignore the remainder of the transforms upon seeing any unrecognized calls.
         e.g. transform="scale(3) grid-align(plusSignCenter) translate(13 24)"
         Chrome ignores scale and translate. LunaSvg respects everything before the unrecognized token, meaning scale but not translate.
         So (short of changing browser behavior) it must be a separate attribute, like transform-adjust.
@@ -660,6 +663,7 @@ Example:
         </g>
 
         Newer syntax:
+        <svg ... xmlns:grid="https://pikensoft.com/gridfit">
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" ps:point-adjust="upward leftward" />
         <g ps:transform-adjust="#plusSignTopLeftCorner">
@@ -679,34 +683,35 @@ Example:
 
         <svg xmlns="http://www.w3.org/2000/svg" xmlns:ps="https://github.com/fdwr/LunaSvgSampleTest">
           ...
-          <grid:anchor id="plusSignCenter" x="38" y="38" grid:rounding="upward leftward" />
+          <ps:anchor id="plusSignCenter" x="38" y="38" ps:rounding="upward leftward" /> // Or just "floor(y) floor(x)"
           ...
-          <g grid:adjust="plusSignCenter">
+          <g ps:adjust="plusSignCenter">
             <circle cx="38" cy="38" r="10"/>
             <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
             <path d="m 33,38.5 v -1 C 33,37.224 33.224,37 33.5,37 h 9 c 0.276,0 0.5,0.224 0.5,0.5 v 1 c 0,0.276 -0.224,0.5 -0.5,0.5 h -9 C 33.224,39 33,38.776 33,38.5 z" fill="#FFFFFF">
           </g>
           ...
           <switch>
-            <g grid:ppu-range="0 16">
+            <g ps:ppu-range="0 16">
               <!-- less detailed version for less than 16 pixels per unit... -->
             </g>
-            <g grid:ppu-range="16">
+            <g ps:ppu-range="16">
               <!-- tiny details visible at higher ppu, at least 16 PPU... -->
             </g>
           </switch>
         </svg>
 
     One anchor can be defined relative to another one.
-    Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them.
-        <anchor x="20" y="30" grid-minimum-distance="otherAnchor 1 0; secondAnchor 0 -1"/>
-        <anchor x="20" y="30" adjust="adjustMinimumDistance(#otherAnchor 1 0)"/>
-    todo: second anchor is relative to the first anchor's rounded screen location rather than user coordinates.
+    Below, the bottom component is kept at least 1 pixel away from the top component so there is separation between them at small distances.
+        <anchor id="firstAnchor"  x="20" y="30"/>
+        <anchor id="secondAnchor" x="21" y="32" adjust="minimumDistance(#firstAnchor 1 2)"/> // minimum 1 pixel to the right, 2 pixels down
+        OR: <anchor x="20" y="30" adjust="minDistance(x #firstAnchor 1) minDistance(y #firstAnchor 2)"/>
+    Note the second anchor is relative to the first anchor's *rounded screen location*, not the original user coordinates.
     todo: what if you want *exactly* 1 device pixel regardless of size, not just a minimum? round up combined with minimum?
     todo: should origin be the final device pixels or the user coordinates? rounding to nearest half pixel would be useful, e.g. grid-origin="0.5px 0.5px"
           are antialiased if the straight lines are snapped, and probably more important they have the same relative thickness.
           A grid-rounding attribute like "tangential" or "linear" or "fromOrigin" or "alongOriginAxis"...?
-    todo: can you have relative inline anchors, such as <rect ...><anchor position="0% 0%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
+    todo: can you have relative inline anchors, such as <rect ...><anchor x="0%" y="0%" grid-rounding="up"/></rect> which is positioned at the left top of the rect.
           How do you align to it though? Does it need an id, just for that one case, which kinda defeats the convenience factor?
           Or <rect ... anchor-points="0% 100%" anchor-rounding="up" grid-rounding="out"/></rect> ?
           Percentages are similar in concept to primitiveUnits="objectBoundingBox" which make the lengths relative to the referencing object's bounding box https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/primitiveUnits
@@ -716,32 +721,40 @@ Example:
         <anchor id="bottomComponentTopAnchor" y="41" grid-rounding="down" grid-origin="topComponentBottomAnchor"/><!-- ensure at least one pixel away -->
         <path id="topComponent" adjustments="topComponentBottomAnchor" d="an m0 0 h80 an0 v40 h-80 z"/><!-- first "an" sets to no anchors, second "an" sets anchor #0 -->
         <path id="bottomComponent" adjustments="bottomComponentTopAnchor" d="an0 m0 41 h80 an v40 h-80 z"/><!-- first "an" sets anchor, second "an" resets to no anchors -->
+        TODO: "an" is 2 letters, whereas all other letters are 1. We can't use "a" for anchor (already arc) or "t" for transform (already smooth quadratic Bezier curve), but maybe "d" for displacement or "p" for pixel snapping.
 
     You can supply a scale and bias directly in the rounding mode. floor((x-bias)/multiple)*multiple+bias
 
-        <g grid-rounding="floor-x(1 0.5)"><!-- round down to pixel centers -->
-        <g grid-rounding="floor-x(2 0.0)"><!-- scale grid by 2x -->
-        <g grid-rounding="floor-x(2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
-        <g grid-rounding="floor-x(0.5)"><!-- round to every half a pixel -->
-
-        <g grid-rounding="x floor prebias(0.5)"><!-- round down to pixel centers -->
-        <g grid-rounding="x floor scale(2)"><!-- scale grid by 2x -->
-        <g grid-rounding="x floor scale(2) prebias(-0.5) postbias(0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
-        <g grid-rounding="x floor scale(0.5)"><!-- round to every half a pixel -->
-
+    Function accepts attribute to modify as first parameter, followed by positional parameters:
         <g grid-rounding="floor(x 1 0.5)"><!-- round down to pixel centers -->
         <g grid-rounding="floor(x 2 0.0)"><!-- scale grid by 2x to round to multiples of 2 -->
         <g grid-rounding="floor(x 2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
         <g grid-rounding="floor(x 0.5)"><!-- round to every half a pixel -->
 
+    Function accepts attribute to modify as first parameter, followed by named parameters:
         <g grid-rounding="floor(x bias=0.5 multiple=1)"><!-- round down to pixel centers -->
         <g grid-rounding="floor(x bias=0.0 multiple=2)"><!-- scale grid by 2x -->
         <g grid-rounding="floor(x prebias=0.5 postbias=0.5 multiple=2)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
         <g grid-rounding="floor(x bias=0.5)"><!-- round to every half a pixel -->
 
-    Referring to the same anchor twice in a nested group will be a nop, since the outer group
+    Attribute to modify is part of the function name (not really generic, because what if you want floor-cx for circles or floor-rx for rounded rects?)
+        <g grid-rounding="floor-x(1 0.5)"><!-- round down to pixel centers -->
+        <g grid-rounding="floor-x(2 0.0)"><!-- scale grid by 2x -->
+        <g grid-rounding="floor-x(2 -0.5 0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="floor-x(0.5)"><!-- round to every half a pixel -->
+
+    Attribute to modify comes first:
+        <g grid-rounding="x floor prebias(0.5)"><!-- round down to pixel centers -->
+        <g grid-rounding="x floor scale(2)"><!-- scale grid by 2x -->
+        <g grid-rounding="x floor scale(2) prebias(-0.5) postbias(0.5)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="x floor scale(0.5)"><!-- round to every half a pixel -->
+
+
+    Referring to the same anchor twice in a nested group should be a nop if viewed as alignment, since the outer group
     already aligned the anchor. (but how to achieve this? how to know the outer one applied?)
-    Naming "adjust" would make this clearer, or be less surprising at least.
+    Naming it "adjust" would make things clearer that double adjustment could happen, or be less surprising at least.
+    Another possibility would be to treat the anchor as if the g's transform was applied to the anchor, so the translation would cancel out on the inner g.
+    Normally you would not want this though, because the point of an anchor is to *not* move.
 
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid-rounding="up left">
         <g grid-align="plusSignTopLeftCorner">
@@ -758,18 +771,22 @@ Example:
             <circle cx="50" cy="50" r="10"/>
         </g>
 
-        More concise:
+        More concise: (concern though - would this distort the circle into a slight ellipse?)
         <g adjust="bounds outward">  OR  align="bounds outward"
             <circle cx="50" cy="50" r="10"/>
         </g>
 
     Inline notation?
 
-        <rect anchor="top" transform-adjust="upward"/>
-        <rect transform-adjust="top upward"/>
-        <rect transform-adjust="anchor(top upward)"/>
-        <rect transform-adjust="bounds upward"/> // round top and bottom upward
-        <rect transform-adjust="round-edges-upward"/> // round top and bottom upward (bounds are implicit if not given)
+        <rect ... anchor="top" transform-adjust="upward"/>
+        <rect ... transform-adjust="top upward"/>
+        <rect ... transform-adjust="anchor(top upward)"/>
+        <rect ... transform-adjust="bounds upward"/> // round top and bottom upward
+        <rect ... transform-adjust="round-edges-upward"/> // round top and bottom upward (bounds are implicit if not given)
+        <rect ... transform-adjust="floor(top)"/>
+        <rect ... transform-adjust="floor(bottom)"/>
+        <rect ... transform-adjust="floor(verticals)"/> // round top and bottom upward
+        <rect ... transform-adjust="floor(y)"/>
 
     Center in position vs rounding ambiguity?
 
@@ -784,7 +801,7 @@ Example:
 
     You should be able to define an anchor frame comprised of other existing anchors:
     
-        <anchor id="anchorA" x="40" y="40" grid-rounding="up left"/>
+        <anchor id="anchorA" x="40" y="40" grid-rounding="up left"/>  // <anchor id="anchorA" x="40" y="40" grid:adjust="floor(xy)"/>
         <anchor id="anchorB" x="60" y="40" grid-rounding="up right"/>
         <anchor id="anchorC" x="60" y="60" grid-rounding="down left"/>
         <anchor id="anchorD" x="40" y="60" grid-rounding="up left"/>
@@ -817,11 +834,15 @@ Example:
 
         <anchorAdjustment id="anchorSetA" anchors="42,36 up left anchorB 0%,50% down left west,north"/>
 
+    Have align and displace keywords, where align basically sets one property to another (like that of an anchor) and adds to a property (like anchor's displacement)?
+
+        <g adjust="align(x #firstAnchor) displace(xy #secondAnchor) floor(y)"> ... </g>
+
     Anchor sets may only take "anchors" or "points" attributes or child anchor elements, but not more than one.
     An anchors attribute is preferred over points, and points over child elements.
 
     Can anchors have multiple points? e.g. <anchor points="40,60 40,40 60,60" grid-rounding="down left"/>
-    Or should anchors only ever be 1D points? And only anchor sets allow "points" attributes?
+    Or should anchors only ever be 2D points? And only anchor sets allow "points" attributes?
     It would be more concise to allow anchor with "points" and often mean only one primitive to think about <anchor>.
     Though it would be confusing if anchor allowed multiple points because when an anchor set then references an anchor, what does that mean?
 
@@ -839,35 +860,40 @@ Example:
     Instead of:
 
         <anchor id="RectAnchor" x="23" y="42" grid-point-rounding="upward leftward"/>
-        <rect x1="23" y1="42" width="20" height="10" grid-align="RectAnchor"/>
+        <rect x="23" y="42" width="20" height="10" grid-align="RectAnchor"/>
 
     Just say:
-        <rect x1="23" y1="42" width="20" height="10" grid-align="anchor(x=23 y=42 rounding=lower)"/>
-        ❌ <rect x1="23" y1="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
-        <rect x1="23" y1="42" width="20" height="10" adjust="bounds round-out)"/>
-        <rect x1="23" y1="42" width="20" height="10" adjust="points(0%,0% 100%,100%) rounding(up left))"/>
+        <rect x="23" y="42" width="20" height="10" grid-align="anchor(x=23 y=42 rounding=lower)"/>
+        ❌ <rect x="23" y="42" width="20" height="10" grid-align="0%,0% 100%,100% up left)"/>
+        <rect x="23" y="42" width="20" height="10" adjust="bounds round-out)"/>
+        <rect x="23" y="42" width="20" height="10" adjust="points(0%,0% 100%,100%) rounding(up left)"/>
 
     Note aligning a single anchor point is different from aligning all the points individually, which would change the height/width:
-        <rect x1="23" y1="42" width="20" height="10" grid-point-rounding="up left"/>
+        <rect x="23" y="42" width="20" height="10" grid-point-rounding="up left"/>
+        <rect x="23" y="42" width="20" height="10" ps:adjust="upward leftward"/>
 
     Or maybe:
-        <rect x1="23" y1="42" width="20" height="10" grid-points="0%,0% 100%,100%" anchor-rounding="up left"/>
-        <rect x1="23" y1="42" width="20" height="10" grid-points="0%,0%" anchor-rounding="up left"/> // translate by rounded top left
+        <rect x="23" y="42" width="20" height="10" grid-points="0%,0% 100%,100%" anchor-rounding="up left"/>
+        <rect x="23" y="42" width="20" height="10" grid-points="0%,0%" anchor-rounding="up left"/> // translate by rounded top left
 
     Or concise:
-        <rect x1="23" y1="42" width="20" height="10" adjust="left top" adjustment-rounding="leftward upward"/> // translate by rounded top left
-        <rect x1="23" y1="42" width="20" height="10" adjust="left top leftward upward"/> // translate by rounded top left
-        <rect x1="23" y1="42" width="20" height="10" adjust="left top leftward upward right bottom rightward downward"/> // stretch corners out
-        <rect x1="23" y1="42" width="20" height="10" adjust="left top floor right bottom ceil"/> // stretch corners out
-        <rect x1="23" y1="42" width="20" height="10" adjust="bounds out"/> // round boundary outward
-        <rect x1="23" y1="42" width="20" height="10" adjust="#outerFrame out"/> // round boundary outward
+        <rect x="23" y="42" width="20" height="10" adjust="left top" adjustment-rounding="leftward upward"/> // translate by rounded top left
+        <rect x="23" y="42" width="20" height="10" adjust="left top leftward upward"/> // translate by rounded top left
+        <rect x="23" y="42" width="20" height="10" adjust="left top leftward upward right bottom rightward downward"/> // stretch corners out
+        <rect x="23" y="42" width="20" height="10" adjust="left top floor right bottom ceil"/> // stretch corners out
+        <rect x="23" y="42" width="20" height="10" adjust="bounds out"/>      // round boundary outward
+        <rect x="23" y="42" width="20" height="10" adjust="outward(bounds)"/> // round boundary outward
+        <rect x="23" y="42" width="20" height="10" adjust="bounds-outward"/>  // round boundary outward
+        <rect x="23" y="42" width="20" height="10" adjust="#outerFrame out"/> // round boundary outward
 
     Minimum stroke:
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" grid-minimum-stroke-width="1px"/>
 
     Pixel aligned stroke width (e.g. rounded to nearest whole pixel):
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" adjust="ceil(stroke-width 0.5) maximum(stroke-width 1)"/>
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" grid-stroke-width-rounding="ceil" grid-stroke-width-bias="0.5"/>
         <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" stroke-width-rounding="round(mode=ceil bias=0.5 minimum=1)"/>
+        <circle cx="50" cy="50" r="10" stroke="#70F800" stroke-width="3" adjust-stroke-width="round(mode=ceil bias=0.5 minimum=1)"/>
 
     Maybe declare different kinds of alignments/anchors, like linearGradient vs radialGradient:
 
@@ -910,21 +936,22 @@ Example:
 
     How to transform one anchor by another anchor's existing delta, but at an angle?
 
-        <anchor id="topSprocket" x="30" y="30" adjust="roundNearest(y)"/>
+        <anchor id="topSprocket" x="30" y="30" adjust="round(y)"/>
         <anchor href="#topSprocket" transform="rotate(60 30 30)" adjust="transformAnchor(#topSprocket rotate(30))"/>
-        <anchor href="#topSprocket" transform="rotate(120 30 30)" adjust="#topSprocket transformDelta(rotate(30)))"/>
+        <anchor href="#topSprocket" transform="rotate(120 30 30)" adjust="#topSprocket transformDelta(rotate(30))"/>
         <anchor href="#topSprocket" transform="rotate(-60 30 30)" adjust="combineTransform(#topSprocket rotate(-30))"/>
         <anchor href="#topSprocket" transform="rotate(-120 30 30)" adjust="anchorAdjustment(#topSprocket rotate(-60))"/>
         <anchor href="#topSprocket" transform="rotate(-180 30 30)" adjust="applyTransform(#topSprocket transformReinterprets=true)"/>
+        <anchor href="#topSprocket" adjust="project(#topSprocket vector=[2 1])"/> // 60 degree vector
         <anchorAdjustment id="#topRightSprocket" anchors="#topSprocket" matrixAdjust="rotate(30)"/>
         <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" screenTransform="rotate(30)"/>
         <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" displacementTransform="rotate(30)"/>
         <anchorAdjustment id="#bottomRightSprocket" anchors="#topSprocket" transform="rotate(30)" transformReinterprets="true"/>
 
         Different approaches:
-        (1) transform the upright anchor to other angles using "transform"
-        (2) pretransform the anchor position to its rotated position and transform the displacement
-        (3) transform in screen space via the adjust statement after rounding which rotates the position and displacement
+        (a) transform the upright anchor to other angles using "transform"
+        (b) pretransform the anchor position to its rotated position and transform the displacement
+        (c) transform in screen space via the adjust statement after rounding which rotates the position and displacement
         <anchor x="32" y="4" id="topSprocket" />
         <anchor x="32" y="4" transform="rotate(60 32 32)" />
         <anchor x="32" y="4" transform="rotate(120 32 32)" />
@@ -1026,6 +1053,7 @@ Example:
 
     Separate anchors by a minimum distance:
 
+        minimumDistance(x #leftTop 1)
         minimumDistance(#leftTop distance=[1 0])
         minimumDistance(#rightTop distance=[-1 0])
         minimumDistance(#leftTop [1 0])
@@ -1049,11 +1077,13 @@ Example:
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO 1 rotateCw90) nearest">
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y 1) nearest">
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y -1) nearest">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="round(y) separation(y #clipboardTLO 1)">
 
         Should be able to clamp stroke widths too, as a single scalar:
 
         <line strokeWidthAdjust="clamp(2 3)"/>
         <line strokeWidthAdjust="clamp(1)"/>
+        <line adjust="clamp(strokeWidth 1)"/>
         <line strokeWidthAdjust="clamp(1.5 indefinite #origin)"/>
 
         Should min and max (or rather low and high) be interpreted as absolute values to apply a min(max()) against, or should they be sign relative?
@@ -1076,7 +1106,7 @@ Example:
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustTwoCorners(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustFourCorners(outward)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustLeftTop(nearest)" />
-        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustRightBottom(nearest)" />
+        <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustRightBottom(nearest)" /> // or just adjust="round(right) round(bottom)"?
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustCenter(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustHorizontally(nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustVertically(nearest)" />
@@ -1115,6 +1145,24 @@ Example:
             M = R; a = M[0][0]; b = M[0][1]; c = M[1][0]; d = M[1][1]; sqrt(b*b + d*d); sqrt(a*a + c*c)
       Possibly just check x and y after rotating the transform back to axis alignment?
       Unfortunately just transforming 2 unit vectors of axis aligned x and y don't seem robust to all transformations, such as scaling along the diagonal, such as numpy.array([[ 0.707, -0.707], [ 0.354,  0.354]]).
+
+Pseudoattributes:
+    Rounding statements (round, floor, ceil...) can refer to actual properties (in screen space) of the graphic element, pseudoattributes for the shape boundaries (excluding stroke width), and compound pseudoattributes:
+    
+    Actual properties:
+        x, y, width, height, cx, cy, rx, ry
+    Pseudoattributes:
+        left, right, top, bottom - for the shape edges (excluding stroke width).
+        cx, cy - if the shape doesn't have them, they are fabricated for the shape's center so they work even for non-circles, letting you easily align the midpoint of a rectangle, path, or group.
+    Compound pseudoattributes:
+        xy - x&y lets conveniently say round(xy) rather than round(x) round(y)
+        xs, ys, xys - refer to all x coordinates and all y coordinates (eachX? allX? everyX? points instead of xys?), not just the top/left. For a rect, it means all 4 corners.
+        size, bounds - round the size (width and height) or the coordinates of the bounds (excluding stroke width)
+        horizontals, verticals - round the top and bottom or left and right. Naming: sides and poles? For circles, to avoid distortion, the other axis is updated accordingly.
+
+    For anything even more complex (like say 25% of the shape's width along x), you would need anchor points.
+
+    Note that changing one property can affect another property. Changing x doesn't affect y, but changing x affects top and cx. Changing height affects bottom. Changing bounds will affect potentially all {left, right, top, bottom, x, y, width, height, cx, cy}.
 
 Code snippets
     Determine winding order: https://stackoverflow.com/a/18472899/937938
@@ -1313,6 +1361,25 @@ Code snippets
 
         [19, 0] x [0,5,10] = 30,115,210; displacement = 20,110,200
         [ 0, 1]   [1,1, 1]
+
+Achieving inner strokes without stroke-mode via clip-path:
+
+    // That SVG still doesn't support this directly by 2026 (rather than clipping or masks and clumsy shape definition duplication) is ridiculous.
+    // stroke-alignment? https://svgwg.org/specs/strokes/#SpecifyingStrokeAlignment
+    //                   https://svgwg.org/svg2-draft/painting.html#SpecifyingStrokeAlignment
+    // stroke-position?  https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/Stroke_position
+
+    <svg width="600" height="600" xmlns="http://www.w3.org/2000/svg">
+    <!-- Define a clip path (the original shape) -->
+    <clipPath id="innerClip">
+        <rect x="50" y="50" width="500" height="500" stroke-width="100" /> <!-- Same as target shape -->
+    </clipPath>
+    
+    <!-- Apply clip path to the stroked element -->
+    <rect id="selfClip" x="50" y="50" width="500" height="500" 
+            fill="lightblue" stroke="black" stroke-width="20" 
+            clip-path="url(#innerClip)" /> <!-- Clip to original shape -->
+    </svg>
 
 Reference:
     TrueType

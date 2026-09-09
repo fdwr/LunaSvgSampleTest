@@ -132,6 +132,7 @@
 #define IDM_NUDGE_RIGHT                     254
 #define IDM_NUDGE_UP                        255
 #define IDM_NUDGE_DOWN                      256
+#define IDM_NUDGE_ZERO                      257
 #define IDM_BACKGROUND_FIRST                260
 #define IDM_BACKGROUND_TRANSPARENT_BLACK    260
 #define IDM_BACKGROUND_GRAY_CHECKERBOARD    261
