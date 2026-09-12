@@ -61,3 +61,4 @@ extern "C"
 #include <filesystem>
 #include <variant>
 #include <format>
+#include <ranges>

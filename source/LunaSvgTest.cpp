@@ -248,6 +248,37 @@ union PixelBgra
     }
 };
 
+// Holds the last Win32 error code, updating it if an error occurs, keeping the first error that happens.
+struct LastError
+{
+    HRESULT hr;
+
+    LastError()
+    {
+        hr = S_OK;
+        SetLastError(NOERROR);
+    }
+
+    // Update the HRESULT if a Win32 error occurred.
+    // Otherwise, if success or already have an error,
+    // leave the existing error code alone. This
+    // preserves the first error code that happens, and
+    // it avoids later check's of cleanup functions from
+    // clobbering the error.
+    HRESULT Check()
+    {
+        if (SUCCEEDED(hr))
+        {
+            DWORD lastError = GetLastError();
+            if (lastError != NOERROR)
+            {
+                hr = HRESULT_FROM_WIN32(GetLastError());
+            }
+        }
+        return hr;
+    }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // Horrible assortment of (gasp) global variables rather than a proper class instance.
 
@@ -1467,6 +1498,20 @@ HRESULT AppendSingleImageFile(wchar_t const* filePath)
 
     std::unique_ptr<RasterImage> newImage(new RasterImage{ .width = dimensions[0], .height = dimensions[1], .pixels = std::move(pixelBytes) });
     g_images.emplace_back(std::move(newImage));
+    g_filenameList.push_back(filePath);
+    return S_OK;
+}
+
+
+HRESULT AppendSingleImageFileData(std::span<const std::byte> pixelBytes, uint32_t width, uint32_t height)
+{
+    assert(pixelBytes.size_bytes() == width * height * 4);
+    std::unique_ptr<std::byte[]> pixelBytesCopy(new std::byte[pixelBytes.size()]);
+    std::memcpy(pixelBytesCopy.get(), pixelBytes.data(), pixelBytes.size());
+
+    std::unique_ptr<RasterImage> newImage(new RasterImage{ .width = width, .height = height, .pixels = std::move(pixelBytesCopy) });
+    g_images.emplace_back(std::move(newImage));
+    g_filenameList.push_back(L"(unknown)");
     return S_OK;
 }
 
@@ -1478,6 +1523,19 @@ HRESULT AppendSingleSvgFile(wchar_t const* filePath)
     RETURN_IF(!document, HRESULT_FROM_WIN32(ERROR_XML_PARSE_ERROR));
 
     g_images.emplace_back(std::move(document));
+    g_filenameList.push_back(filePath);
+    return S_OK;
+}
+
+
+HRESULT AppendSingleSvgFileData(std::string fileData)
+{
+    auto document = lunasvg::Document::loadFromData(fileData);
+    // LunaSvg doesn't return any form of more specific error code for us :/.
+    RETURN_IF(!document, HRESULT_FROM_WIN32(ERROR_XML_PARSE_ERROR));
+
+    g_images.emplace_back(std::move(document));
+    g_filenameList.push_back(L"(unknown)");
     return S_OK;
 }
 
@@ -1531,8 +1589,6 @@ void AppendSingleDocumentFile(wchar_t const* filePath)
         AppendError(std::format(L"Error loading file (0x{:08X}): {}", uint32_t(loadResult), filePath));
         return;
     }
-
-    g_filenameList.push_back(filePath);
 }
 
 
@@ -2325,6 +2381,40 @@ void RedrawCanvasBackgroundAndItems(HWND hwnd)
 }
 
 
+// Draw a rectangle minus the inner rectangle, filling in a frame.
+// This 4-piece drawing eliminates the flicker would otherwise happen from
+// filling the entire background followed by the image atop.
+// ____________
+// |  ______  |
+// |  |    |  |
+// |  |____|  |
+// |__________|
+//
+void DrawRectangleAroundRectangle(
+    HDC hdc,
+    const RECT& outerRect,
+    const RECT& innerRect,
+    HBRUSH brush
+    )
+{
+    RECT rects[4] =
+    {
+        /* Top */       { outerRect.left,  outerRect.top,    outerRect.right, innerRect.top, },
+        /* Bottom */    { outerRect.left,  innerRect.bottom, outerRect.right, outerRect.bottom, },
+        /* Left */      { outerRect.left,  innerRect.top,    innerRect.left,  innerRect.bottom, },
+        /* Right */     { innerRect.right, innerRect.top,    outerRect.right, innerRect.bottom, },
+    };
+
+    for (auto& rect : rects)
+    {
+        if (!IsRectEmpty(&rect))
+        {
+            FillRect(hdc, &rect, brush);
+        }
+    }
+}
+
+
 // Fill in a GDI BITMAPHEADER from the bitmap information.
 void FillBitmapInfoFromLunaSvgBitmap(
     lunasvg::Bitmap const& bitmap,
@@ -2367,161 +2457,420 @@ void FillBitmapInfoFromLunaSvgBitmap(
 }
 
 
-// Draw a rectangle minus the inner rectangle, filling in a frame.
-// This 4-piece drawing eliminates the flicker would otherwise happen from
-// filling the entire background followed by the image atop.
-// ____________
-// |  ______  |
-// |  |    |  |
-// |  |____|  |
-// |__________|
-//
-void DrawRectangleAroundRectangle(
-    HDC hdc,
-    const RECT& outerRect,
-    const RECT& innerRect,
-    HBRUSH brush
-    )
-{
-    RECT rects[4] =
-    {
-        /* Top */       { outerRect.left,  outerRect.top,    outerRect.right, innerRect.top, },
-        /* Bottom */    { outerRect.left,  innerRect.bottom, outerRect.right, outerRect.bottom, },
-        /* Left */      { outerRect.left,  innerRect.top,    innerRect.left,  innerRect.bottom, },
-        /* Right */     { innerRect.right, innerRect.top,    outerRect.right, innerRect.bottom, },
-    };
-
-    for (auto& rect : rects)
-    {
-        if (!IsRectEmpty(&rect))
-        {
-            FillRect(hdc, &rect, brush);
-        }
-    }
-}
-
-
 // Why is using the clipboard so much more complicated than it ought to be?
-void CopyBitmapToClipboard(
+HRESULT CopyBitmapToClipboard(
     lunasvg::Bitmap& bitmap,
     RECT const& clipRect,
     HWND hwnd
     )
 {
-    if (bitmap.valid())
+    if (!bitmap.valid())
     {
-        if (OpenClipboard(hwnd))
-        {
-            if (hwnd != nullptr)
-            {
-                EmptyClipboard();
-            }
-
-            RECT clampedClipRect = {LONG(0), LONG(0), LONG(bitmap.width()), LONG(bitmap.height())};
-            IntersectRect(/*out*/ &clampedClipRect, &clipRect, &clampedClipRect);
-
-            BITMAPHEADERv5 bitmapInfo;
-            FillBitmapInfoFromLunaSvgBitmap(bitmap, clampedClipRect, /*out*/bitmapInfo);
-
-            uint32_t totalBytes = sizeof(bitmapInfo) + bitmapInfo.sizeImage;
-
-            // Although DIB sections understand negative height just fine (the standard top-down image layout used by
-            // most image formats), other programs sometimes choke when seeing it. IrfanView displays the image upside
-            // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
-            // on Windows 10 appear to understand upside down images just fine. Word just displays an empty box with
-            // a red X.
-            bitmapInfo.height = abs(bitmapInfo.height);
-
-            // InkScape does not recognize transparency anymore when setting BI_BITFIELDS
-            // (even though it is identical to BI_RGB for 32-bit BGRA). So set it for compat.
-            // If Word/Outlook/PowerPoint recognized transparency on BI_BITFIELDS, then I'd be
-            // tempted to keep it anyway, but they always just display black pixels instead
-            // (likely because they can't be sure whether to use premultiplied or not)
-            // XnView recognizes transparency via BI_RGB or BI_BITFIELDS.
-            bitmapInfo.compression = BI_RGB;
-
-            HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
-            if (memory != nullptr)
-            {
-                void* lockedMemory = GlobalLock(memory);
-                if (lockedMemory != nullptr)
-                {
-                    assert(bitmapInfo.planes == 1);
-                    assert(bitmapInfo.bitCount >= 8);
-
-                    // Copy the older bitmapinfo header (not v5) for greater compatibility with other
-                    // applications reading the clipboard data.
-                    auto& clipboardBitmapInfo = *reinterpret_cast<std::remove_reference_t<decltype(bitmapInfo)>*>(lockedMemory);
-                    memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
-                    clipboardBitmapInfo.size = sizeof(clipboardBitmapInfo);
-
-                    // Point to the beginning of the pixel data.
-                    // The source data is packed between rows (no padding),
-                    // but the clipboard data needs to be 32-bit aligned.
-                    uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
-                    uint32_t const sourceBytesPerRow = bitmap.width() * bitmapInfo.bitCount / 8u;
-                    uint32_t const destBytesPerRow = ((bitmapInfo.width * bitmapInfo.bitCount / 8u) + 3) & ~3u;
-                    assert(bitmapInfo.height * destBytesPerRow == bitmapInfo.sizeImage);
-
-                    // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
-                    uint8_t const* sourceBitmapData = bitmap.data() + bitmap.stride() * clampedClipRect.bottom + (bitmapInfo.bitCount * clampedClipRect.left / 8u);
-                    for (uint32_t y = 0; y < uint32_t(bitmapInfo.height); ++y)
-                    {
-                        sourceBitmapData -= sourceBytesPerRow;
-                        assert(sourceBitmapData >= bitmap.data());
-                        memcpy(clipboardPixels, sourceBitmapData, destBytesPerRow);
-                        clipboardPixels += destBytesPerRow;
-                    }
-                }
-                GlobalUnlock(memory);
-
-                if (SetClipboardData(CF_DIBV5, memory) == nullptr)
-                {
-                    GlobalFree(memory);
-                };
-            }
-            CloseClipboard();
-        }
+        return E_INVALIDARG;
     }
-}
 
-
-void CopyTextToClipboard(std::wstring_view text, HWND hwnd)
-{
-    if (OpenClipboard(hwnd))
+    if (!OpenClipboard(hwnd))
     {
-        if (hwnd != nullptr)
-        {
-            EmptyClipboard();
-        }
+        return CLIPBRD_E_CANT_OPEN;
+    }
 
-        uint32_t const textLength = static_cast<uint32_t>(text.size());
-        uint32_t const textByteCount = textLength * sizeof(wchar_t);
-        uint32_t const totalByteCount = textByteCount + 2 /*add terminating null*/;
+    if (hwnd != nullptr && !EmptyClipboard())
+    {
+        CloseClipboard();
+        return CLIPBRD_E_CANT_EMPTY;
+    }
 
-        HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE | GMEM_ZEROINIT, totalByteCount);
-        if (memory != nullptr)
+    LastError lastError;
+
+    RECT clampedClipRect = {LONG(0), LONG(0), LONG(bitmap.width()), LONG(bitmap.height())};
+    IntersectRect(/*out*/ &clampedClipRect, &clipRect, &clampedClipRect);
+
+    BITMAPHEADERv5 bitmapInfo;
+    FillBitmapInfoFromLunaSvgBitmap(bitmap, clampedClipRect, /*out*/bitmapInfo);
+
+    uint32_t totalBytes = sizeof(bitmapInfo) + bitmapInfo.sizeImage;
+
+    // Although DIB sections understand negative height just fine (the standard top-down image layout used by
+    // most image formats), other programs sometimes choke when seeing it. IrfanView displays the image upside
+    // down. XnView fails to load it. At least this happens on Windows 7, whereas later versions of IrfanView
+    // on Windows 10 appear to understand upside down images just fine. Word just displays an empty box with
+    // a red X.
+    bitmapInfo.height = abs(bitmapInfo.height);
+
+    // InkScape does not recognize transparency anymore when setting BI_BITFIELDS
+    // (even though it is identical to BI_RGB for 32-bit BGRA). So set it for compat.
+    // If Word/Outlook/PowerPoint recognized transparency on BI_BITFIELDS, then I'd be
+    // tempted to keep it anyway, but they always just display black pixels instead
+    // (likely because they can't be sure whether to use premultiplied or not)
+    // XnView recognizes transparency via BI_RGB or BI_BITFIELDS.
+    bitmapInfo.compression = BI_RGB;
+
+    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, totalBytes);
+    if (memory != nullptr)
+    {
+        lastError.Check();
+        void* lockedMemory = GlobalLock(memory);
+        if (lockedMemory != nullptr)
         {
-            void* lockedMemory = GlobalLock(memory);
-            if (lockedMemory != nullptr)
+            lastError.Check();
+            assert(bitmapInfo.planes == 1); // Must be packed, not planar.
+
+            // Copy the older bitmapinfo header (not v5) for greater compatibility with other
+            // applications reading the clipboard data.
+            auto& clipboardBitmapInfo = *reinterpret_cast<std::remove_reference_t<decltype(bitmapInfo)>*>(lockedMemory);
+            memcpy(&clipboardBitmapInfo, &bitmapInfo, sizeof(clipboardBitmapInfo));
+            clipboardBitmapInfo.size = sizeof(clipboardBitmapInfo);
+
+            // Point to the beginning of the pixel data.
+            // The source data is packed between rows, but byte aligned (no extra 32-bit padding),
+            // but the clipboard data needs to be 32-bit aligned.
+            uint8_t* clipboardPixels = reinterpret_cast<uint8_t*>(lockedMemory) + sizeof(clipboardBitmapInfo);
+            uint32_t const sourceBytesPerRow = (bitmap.width() * bitmapInfo.bitCount + 7) / 8u;
+            uint32_t const destBytesPerRow = ((bitmapInfo.width * bitmapInfo.bitCount + 31) / 8u) & ~3u;
+            assert(bitmapInfo.height * destBytesPerRow == bitmapInfo.sizeImage);
+
+            // Copy the rows backwards for the sake of silly programs that don't understand top-down bitmaps.
+            uint8_t const* sourceBitmapData = bitmap.data() + bitmap.stride() * clampedClipRect.bottom + (bitmapInfo.bitCount * clampedClipRect.left / 8u);
+            for (uint32_t y = 0; y < uint32_t(bitmapInfo.height); ++y)
             {
-                wchar_t* clipboardText = reinterpret_cast<wchar_t*>(lockedMemory);
-                memcpy(clipboardText, text.data(), textByteCount);
-                clipboardText[textLength] = '\0';
+                sourceBitmapData -= sourceBytesPerRow;
+                assert(sourceBitmapData >= bitmap.data());
+                memcpy(clipboardPixels, sourceBitmapData, destBytesPerRow);
+                clipboardPixels += destBytesPerRow;
             }
             GlobalUnlock(memory);
-
-            if (SetClipboardData(CF_UNICODETEXT, memory) == nullptr)
-            {
-                GlobalFree(memory);
-            };
         }
-        CloseClipboard();
+
+        // Free the memory if SetClipboardData fails. Otherwise the clipboard owns it now.
+        if (SetClipboardData(CF_DIBV5, memory) == nullptr)
+        {
+            GlobalFree(memory);
+        }
+        lastError.Check();
+    }
+    CloseClipboard();
+    return lastError.hr;
+}
+
+
+// If the bitmap is fully transparent, set all pixels to fully opaque.
+void SetAlphaToFullyOpaqueIfFullyTransparentBGRA(/*inout*/ std::span<uint32_t> pixels)
+{
+    bool hasTransparency = std::ranges::any_of(pixels, [](uint32_t p) {return p > 0x00FFFFFF;});
+    if (!hasTransparency)
+    {
+        std::ranges::for_each(pixels, [](uint32_t& p) {p |= 0xFF000000;});
     }
 }
 
 
-void CopyFilenamesToClipboard(
+// Extract the bitmap information and pixel data from a GDI bitmap, returning the pixel data in the desired bit depth in top-down order.
+HRESULT CopyImageBitmap(
+    HBITMAP bitmap,
+    uint32_t bitDepth,
+    bool setFullAlphaIfTransparent,
+    /*out*/ BITMAPINFOHEADER& bitmapInfo,
+    /*out*/ std::vector<std::byte>& pixels,
+    /*out*/ std::vector<std::byte>& palette
+)
+{
+    struct BitmapInfoWithPalette
+    {
+        BITMAPINFOHEADER bmiHeader;
+        union
+        {
+            RGBQUAD bmiColors[256];
+            std::byte bmiColorsAsBytes[sizeof(RGBQUAD) * 256];
+        };
+    } bitmapInfoWithPalette = {sizeof(BITMAPINFOHEADER)};
+
+    HDC hdc = CreateCompatibleDC(nullptr);
+    auto cleanupMemoryDc = DeferCleanup([=]() {DeleteDC(hdc); });
+
+    // Get bitmap attributes.
+    if (!GetDIBits(
+        hdc,
+        bitmap,
+        0,
+        0,
+        nullptr,
+        reinterpret_cast<BITMAPINFO*>(&bitmapInfoWithPalette),
+        DIB_RGB_COLORS
+        ))
+    {
+        return CLIPBRD_E_BAD_DATA;
+    }
+
+    bitmapInfoWithPalette.bmiHeader.biBitCount = bitDepth;
+    bitmapInfoWithPalette.bmiHeader.biPlanes = 1;
+    bitmapInfoWithPalette.bmiHeader.biSizeImage = (bitDepth * bitmapInfoWithPalette.bmiHeader.biWidth / 8) * bitmapInfoWithPalette.bmiHeader.biHeight;
+    bitmapInfoWithPalette.bmiHeader.biHeight = -bitmapInfoWithPalette.bmiHeader.biHeight; // Set height to negative to get standard top-down bitmap.
+    bitmapInfoWithPalette.bmiHeader.biClrUsed = std::min(bitmapInfoWithPalette.bmiHeader.biClrUsed, DWORD(std::size(bitmapInfoWithPalette.bmiColors)));
+    bitmapInfoWithPalette.bmiHeader.biCompression = BI_RGB;
+    pixels.resize(bitmapInfoWithPalette.bmiHeader.biSizeImage);
+
+    if (!GetDIBits(
+        hdc,
+        bitmap,
+        0,
+        abs(bitmapInfoWithPalette.bmiHeader.biHeight),
+        pixels.data(),
+        reinterpret_cast<BITMAPINFO*>(&bitmapInfoWithPalette),
+        DIB_RGB_COLORS
+        ))
+    {
+        return CLIPBRD_E_BAD_DATA;
+    }
+
+    // Fix height to positive again before returning so caller is not confused.
+    bitmapInfoWithPalette.bmiHeader.biHeight = -bitmapInfoWithPalette.bmiHeader.biHeight;
+
+    const size_t dibBytesPerRow = (((bitDepth * bitmapInfoWithPalette.bmiHeader.biWidth) + 31) & ~31) >> 3; // Round up to 32 bits.
+    const size_t pixelBytesPerRow = ((bitDepth * bitmapInfoWithPalette.bmiHeader.biWidth) + 7) >> 3; // Round up to 8 bits.
+
+    // Remove trailing padding on the ends of rows which Windows added for 32-bit alignment.
+    if (dibBytesPerRow > pixelBytesPerRow)
+    {
+        auto* sourceRow = pixels.data();
+        auto* destRow = pixels.data();
+        for (uint32_t y = 0; y < uint32_t(bitmapInfoWithPalette.bmiHeader.biHeight); ++y)
+        {
+            memcpy(destRow, sourceRow, pixelBytesPerRow);
+            sourceRow += dibBytesPerRow;
+            destRow   += pixelBytesPerRow;
+        }
+    }
+
+    bitmapInfo = bitmapInfoWithPalette.bmiHeader;
+    size_t paletteByteSize = bitmapInfoWithPalette.bmiHeader.biClrUsed * sizeof(RGBQUAD);
+    palette.assign(bitmapInfoWithPalette.bmiColorsAsBytes, bitmapInfoWithPalette.bmiColorsAsBytes + paletteByteSize);
+
+    if (setFullAlphaIfTransparent && bitmapInfoWithPalette.bmiHeader.biBitCount == 32)
+    {
+        auto pixelsBgra = std::span<uint32_t>{reinterpret_cast<uint32_t*>(pixels.data()), pixels.size() / sizeof(uint32_t)};
+        SetAlphaToFullyOpaqueIfFullyTransparentBGRA(pixelsBgra);
+    }
+
+    return S_OK;
+}
+
+
+HRESULT CopyImageFromClipboard(
+    HWND hwnd,
+    bool isUpsideDown,
+    bool setFullAlphaIfTransparent,
+    std::span<const uint32_t> supportedBitDepths,
+    /*out*/ BITMAPINFOHEADER& targetBitmapInfo,
+    /*out*/ std::vector<std::byte>& pixels,
+    /*out*/ std::vector<std::byte>& palette
+)
+{
+    targetBitmapInfo = {};
+    pixels.clear();
+    palette.clear();
+
+    LastError lastError;
+
+    if (!OpenClipboard(hwnd))
+    {
+        return CLIPBRD_E_CANT_OPEN;
+    }
+    auto closeClipboard = DeferCleanup([](){CloseClipboard();});
+
+    HGLOBAL bufferHandle = GetClipboardData(CF_DIB);
+    if (bufferHandle == nullptr)
+    {
+        return CLIPBRD_E_BAD_DATA;
+    }
+
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(GlobalLock(bufferHandle));
+    if (buffer == nullptr)
+    {
+        return lastError.Check();
+    }
+    auto globalUnlock = DeferCleanup([=](){GlobalUnlock(bufferHandle);});
+
+    BITMAPINFO const& bitmapInfo = *reinterpret_cast<BITMAPINFO const*>(buffer);
+    BITMAPINFOHEADER const& bitmapInfoHeader = bitmapInfo.bmiHeader;
+
+    if (bitmapInfoHeader.biSize < sizeof(BITMAPINFOHEADER)
+    ||  !(bitmapInfoHeader.biCompression == BI_RGB || bitmapInfoHeader.biCompression == BI_BITFIELDS)
+    ||  bitmapInfoHeader.biBitCount <= 0
+    ||  bitmapInfoHeader.biPlanes != 1
+    ||  bitmapInfoHeader.biWidth <= 0
+    ||  bitmapInfoHeader.biHeight <= 0)
+    {
+        return CLIPBRD_E_BAD_DATA;
+    }
+
+    if (!supportedBitDepths.empty() && !std::ranges::contains(supportedBitDepths, bitmapInfoHeader.biBitCount))
+    {
+        HBITMAP bitmapHandle = reinterpret_cast<HBITMAP>(GetClipboardData(CF_BITMAP));
+        if (bitmapHandle == nullptr)
+        {
+            return CLIPBRD_E_BAD_DATA;
+        }
+
+        BITMAP bitmap = {};
+        if (GetObject(bitmapHandle, sizeof(bitmap), &bitmap) != sizeof(bitmap))
+        {
+            return CLIPBRD_E_BAD_DATA;
+        }
+        return CopyImageBitmap(
+            bitmapHandle,
+            supportedBitDepths.back(), // Pass the last supported bit depth as a hint for conversion.
+            setFullAlphaIfTransparent,
+            /*out*/ targetBitmapInfo,
+            /*out*/ pixels,
+            /*out*/ palette
+        );
+    }
+
+    const size_t dibBytesPerRow = (((bitmapInfoHeader.biBitCount * bitmapInfoHeader.biWidth) + 31) & ~31) >> 3; // Round up to 32 bits.
+    const size_t pixelBytesPerRow = ((bitmapInfoHeader.biBitCount * bitmapInfoHeader.biWidth) + 7) >> 3; // Round up to 8 bits.
+    const size_t pixelsByteSize = bitmapInfoHeader.biHeight * pixelBytesPerRow;
+    const size_t paletteByteSize = sizeof(bitmapInfo.bmiColors[0]) * bitmapInfoHeader.biClrUsed;
+    pixels.resize(pixelsByteSize);
+    palette.resize(paletteByteSize);
+
+    // 1. Copy the header.
+    memcpy(&targetBitmapInfo, &bitmapInfoHeader, sizeof(targetBitmapInfo));
+
+    // 2. Copy the pixel rows.
+    uint8_t const* sourceRow = buffer + sizeof(bitmapInfoHeader) + paletteByteSize;
+    if (isUpsideDown && pixelBytesPerRow == dibBytesPerRow)
+    {
+        // The image is a bottom-up orientation. Though, since
+        // Windows legacy bitmaps are upside down too, the two
+        // upside-downs cancel out.
+        memcpy(pixels.data(), sourceRow, pixelsByteSize);
+    }
+    else
+    {
+        // We have a standard top-down image, but DIBs when shared
+        // on the clipboard are actually upside down. Simply flipping
+        // the height to negative works for a few applications, but
+        // it confuses most.
+
+        uint8_t* destRow = reinterpret_cast<uint8_t*>(pixels.data()) + (bitmapInfoHeader.biHeight - 1) * pixelBytesPerRow;
+
+        // Copy each scanline in backwards order.
+        for (long y = 0; y < bitmapInfoHeader.biHeight; ++y)
+        {
+            memcpy(destRow, sourceRow, pixelBytesPerRow);
+            sourceRow += ptrdiff_t(dibBytesPerRow);
+            destRow   -= pixelBytesPerRow;
+        }
+    }
+
+    // 3. Copy the palette.
+    memcpy(palette.data(), &bitmapInfo.bmiColors[0], paletteByteSize);
+    auto paletteBgra = std::span<uint32_t>{reinterpret_cast<uint32_t*>(palette.data()), palette.size() / sizeof(uint32_t)};
+    SetAlphaToFullyOpaqueIfFullyTransparentBGRA(paletteBgra);
+
+    // 4. Fix cases of missing alpha channel.
+    if (setFullAlphaIfTransparent && bitmapInfoHeader.biBitCount == 32)
+    {
+        auto pixelsBgra = std::span<uint32_t>{reinterpret_cast<uint32_t*>(pixels.data()), pixels.size() / sizeof(uint32_t)};
+        SetAlphaToFullyOpaqueIfFullyTransparentBGRA(pixelsBgra);
+    }
+
+    return lastError.hr;
+}
+
+
+HRESULT CopyTextFromClipboard(OUT std::wstring& utf16text)
+{
+    // Copy Unicode text from clipboard.
+
+    LastError lastError;
+
+    if (OpenClipboard(nullptr))
+    {
+        HGLOBAL hClipboardData = GetClipboardData(CF_UNICODETEXT);
+
+        if (hClipboardData != nullptr)
+        {
+            void* memory = GlobalLock(hClipboardData); // [byteSize] in bytes
+            if (memory != nullptr)
+            {
+                // Get text and size of text.
+                // There could be embedded nulls, and the memory block can be larger than the actual text.
+                // So take the minimum of the global size and wcsnlen.
+
+                try
+                {
+                    wchar_t const* inputText = reinterpret_cast<wchar_t const*>(memory);
+                    size_t totalByteCount = GlobalSize(hClipboardData);
+                    size_t maximumTextLength = totalByteCount / sizeof(wchar_t);
+                    size_t textLength = wcsnlen(inputText, maximumTextLength);
+                    utf16text.assign(inputText, textLength);
+                }
+                catch (std::bad_alloc const&)
+                {
+                    lastError.hr = E_OUTOFMEMORY;
+                }
+                catch (...)
+                {
+                    lastError.hr = E_FAIL;
+                }
+
+                GlobalUnlock(hClipboardData);
+            }
+            lastError.Check();
+        }
+        lastError.Check();
+        CloseClipboard();
+    }
+    lastError.Check();
+
+    return lastError.hr;
+}
+
+
+HRESULT CopyTextToClipboard(std::wstring_view text, HWND hwnd)
+{
+    LastError lastError;
+
+    if (!OpenClipboard(hwnd))
+    {
+        return CLIPBRD_E_CANT_OPEN;
+    }
+
+    if (hwnd != nullptr && !EmptyClipboard())
+    {
+        CloseClipboard();
+        return CLIPBRD_E_CANT_EMPTY;
+    }
+
+    uint32_t const textLength = static_cast<uint32_t>(text.size());
+    uint32_t const textByteCount = textLength * sizeof(wchar_t);
+    uint32_t const totalByteCount = textByteCount + 2 /*add terminating null*/;
+
+    HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE | GMEM_ZEROINIT, totalByteCount);
+    lastError.Check();
+    if (memory != nullptr)
+    {
+        void* lockedMemory = GlobalLock(memory);
+        if (lockedMemory != nullptr)
+        {
+            wchar_t* clipboardText = reinterpret_cast<wchar_t*>(lockedMemory);
+            memcpy(clipboardText, text.data(), textByteCount);
+            clipboardText[textLength] = '\0';
+        }
+        GlobalUnlock(memory);
+
+        if (SetClipboardData(CF_UNICODETEXT, memory) == nullptr)
+        {
+            GlobalFree(memory);
+        };
+    }
+    CloseClipboard();
+    return lastError.hr;
+}
+
+
+HRESULT CopyFilenamesToClipboard(
     std::span<std::wstring const> filenameList,
     HWND hwnd
     )
@@ -2535,11 +2884,11 @@ void CopyFilenamesToClipboard(
             concatenatedFilenames.append(L"\r\n", 2);
         }
     }
-    CopyTextToClipboard(concatenatedFilenames, hwnd);
+    return CopyTextToClipboard(concatenatedFilenames, hwnd);
 }
 
 
-void CopyFilenamesToClipboard(
+HRESULT CopyFilenamesToClipboard(
     std::span<std::wstring const> filenameList,
     std::span<uint32_t const> filenameListIndices,
     HWND hwnd
@@ -2555,11 +2904,11 @@ void CopyFilenamesToClipboard(
             concatenatedFilenames.append(L"\r\n", 2);
         }
     }
-    CopyTextToClipboard(concatenatedFilenames, hwnd);
+    return CopyTextToClipboard(concatenatedFilenames, hwnd);
 }
 
 
-void CopyFilenamesToClipboard(
+HRESULT CopyFilenamesToClipboard(
     std::span<CanvasItem const> canvasItems,
     std::span<std::wstring const> filenameList,
     RECT const& selectionRect,
@@ -2569,13 +2918,13 @@ void CopyFilenamesToClipboard(
     // Find all the filenames of the canvas items within the selection rect.
     std::vector<uint32_t> canvasItemIndices = GetCanvasItemIndicesWithin(canvasItems, selectionRect);
     std::vector<uint32_t> filenameIndices; // 1:1 with image indices.
-    std::vector<bool> filenamesUsed(filenameList.size());
+    std::vector<bool> filenamesUsed(filenameList.size()); // For uniqueness checks.
 
     // Collect all the filename indices from the canvas items.
     for (auto canvasItemIndex : canvasItemIndices)
     {
-        auto [imageIndex, isImageIndex] = canvasItems[canvasItemIndex].GetImageIndex();
-        if (isImageIndex && !filenamesUsed[imageIndex])
+        auto [imageIndex, isImage] = canvasItems[canvasItemIndex].GetImageIndex();
+        if (isImage && !filenamesUsed[imageIndex])
         {
             assert(imageIndex < filenameList.size());
             filenamesUsed[imageIndex] = true;
@@ -2583,7 +2932,83 @@ void CopyFilenamesToClipboard(
         }
     }
 
-    CopyFilenamesToClipboard(filenameList, filenameIndices, hwnd);
+    return CopyFilenamesToClipboard(filenameList, filenameIndices, hwnd);
+}
+
+
+void ConvertUtf8ToUtf16(std::string_view utf8text, /*out*/ std::wstring& utf16text)
+{
+    utf16text.clear();
+    utf16text.resize(utf8text.size());  // UTF-16 (1-2 code units) will always have equal or fewer code units than UTF-8 (1-4 code units).
+    auto utf16textLength = MultiByteToWideChar(CP_UTF8, 0, utf8text.data(), int(utf8text.size()), /*out*/ utf16text.data(), int(utf16text.size()));
+    utf16text.resize(std::max(utf16textLength, 0));
+}
+
+
+void ConvertUtf16ToUtf8(std::wstring_view utf16text, /*out*/ std::string& utf8text)
+{
+    utf8text.clear();
+    utf8text.resize(utf16text.size() * 2);  // Preallocate up to 2 UTF-8 code units per UTF-16 code unit.
+    auto utf8textLength = WideCharToMultiByte(CP_UTF8, 0, utf16text.data(), int(utf16text.size()), /*out*/ utf8text.data(), int(utf8text.size()), nullptr, nullptr);
+    utf8text.resize(std::max(utf8textLength, 0));
+}
+
+
+HRESULT PasteSvgOrBitmapFromClipboard(HWND hwnd)
+{
+    if (IsClipboardFormatAvailable(CF_TEXT))
+    {
+        std::wstring utf16text;
+        std::string utf8text;
+
+        RETURN_IF_FAILED(CopyTextFromClipboard(/*out*/ utf16text));
+        ConvertUtf16ToUtf8(utf16text, /*out*/ utf8text);
+        ClearDocumentList();
+        RETURN_IF_FAILED(AppendSingleSvgFileData(utf8text));
+    }
+    else if (IsClipboardFormatAvailable(CF_DIB))
+    {
+        std::vector<std::byte> pixelBytes;
+        std::vector<std::byte> palette;
+        std::array<uint32_t, 1> supportedBitDepths = {32};
+        BITMAPINFOHEADER targetBitmapInfo;
+        RETURN_IF_FAILED(CopyImageFromClipboard(
+            hwnd,
+            false, // isUpsideDown
+            true, // setFullAlphaIfTransparent
+            supportedBitDepths,
+            targetBitmapInfo,
+            pixelBytes,
+            palette
+        ));
+
+        ClearDocumentList();
+        RETURN_IF_FAILED(AppendSingleImageFileData(pixelBytes, targetBitmapInfo.biWidth, targetBitmapInfo.biHeight));
+    }
+    else
+    {
+        AppendError(L"Unknown clipboard format.");
+        return CLIPBRD_E_BAD_DATA;
+    }
+
+    ConstrainBitmapOffsetsLater();
+    RealignBitmapOffsetsLater();
+    RelayoutAndRedrawCanvasItemsLater(hwnd);
+
+    return S_OK;
+}
+
+
+HRESULT PasteSvgOrBitmapFromClipboardWithMessage(HWND hwnd)
+{
+    HRESULT hr = PasteSvgOrBitmapFromClipboard(hwnd);
+    if (FAILED(hr))
+    {
+        AppendError(L"Failed to paste SVG or bitmap from clipboard.");
+    }
+    ShowErrors();
+
+    return hr;
 }
 
 
@@ -3750,6 +4175,10 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_ZOOM_IN:
             case IDM_ZOOM_OUT:
                 ChangeBitmapZoomCentered(hwnd, FindValueNextPrevious<uint32_t>(g_zoomFactors, g_bitmapPixelZoom, wmId == IDM_ZOOM_IN ? 1 : -1));
+                break;
+
+            case IDM_PASTE_SVG_OR_BITMAP:
+                PasteSvgOrBitmapFromClipboardWithMessage(hwnd);
                 break;
 
             case IDM_COPY_BITMAP:

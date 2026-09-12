@@ -143,6 +143,7 @@
 #define IDM_PIXEL_GRID_VISIBLE              271
 #define IDM_ITEM_BORDER_VISIBLE             272
 #define IDM_COPY_BITMAP_SELECTION           273
+#define IDM_PASTE_SVG_OR_BITMAP             274
 
 #define IDC_MYICON                  2
 #ifndef IDC_STATIC
