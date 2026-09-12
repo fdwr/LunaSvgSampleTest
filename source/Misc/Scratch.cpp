@@ -1,7 +1,7 @@
 // Scratch code that I don't want to delete, but that shouldn't go in the main code.
 
 
-#if 1
+#if 0
 // Lay all the canvas item positions by flow direction.
 void LayoutCanvasItems(
     RECT const& boundingRect,
