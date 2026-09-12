@@ -133,6 +133,8 @@ Transform Parser::parseTransform(const std::string& string)
         Utils::skipWsComma(ptr, end);
         switch(type) {
         case TransformType::Matrix:
+            // TODO: Check for 2 values:
+            //      transform.transform(values[0], values[1], -values[1], values[0], 0, 0);
             transform.transform(values[0], values[1], values[2], values[3], values[4], values[5]);
             break;
         case TransformType::Rotate:
@@ -954,6 +956,8 @@ bool Parser::parseTransform(const char*& ptr, const char* end, TransformType& ty
     if(Utils::skipDesc(ptr, end, "matrix"))
     {
         type = TransformType::Matrix;
+        // TODO: Add support for abbreviated scale+rotate matrix transforms via first two components.
+        // Set optional to 4, expanding {scaleX shearYToX} into {scaleX shearYToX shearXToY scaleY translateX translateY}.
         required = 6;
         optional = 0;
     }

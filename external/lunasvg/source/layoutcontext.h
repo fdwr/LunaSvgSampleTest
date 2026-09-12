@@ -36,7 +36,7 @@ public:
     virtual void render(RenderState&) const;
     virtual void apply(RenderState&) const;
     virtual void enumerateContours(RenderState&, EnumerateContoursSink&) const;
-    virtual Rect map(const Rect&) const;
+    virtual Rect map(const Rect&) const; // Transform 
 
     virtual const Rect& fillBoundingBox() const { return Rect::Invalid;}
     virtual const Rect& strokeBoundingBox() const { return Rect::Invalid;}
@@ -260,7 +260,7 @@ public:
     const LayoutObject* painter{nullptr};
     Color color{Color::Transparent};
     double opacity{0};
-    double width{1};
+    double width{1}; // Really the thickness, not the data's width.
     double miterlimit{4};
     LineCap cap{LineCap::Butt};
     LineJoin join{LineJoin::Miter};

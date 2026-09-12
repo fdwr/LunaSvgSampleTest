@@ -429,7 +429,8 @@ void LayoutShape::render(RenderState& state) const
     // newState.transform = gridFitTransform * transform * state.transform;
     // TODO: Generate new path based on rounding and transform.
     // Do it here, or inside FillData::fill?
-    // Maybe set plutovg to identity to reduce numeric error.
+    // Maybe precomputing the path with transform applied, and setting plutovg to identity makes sense.
+    // Repeating all the computations on the same path twice for stroke and fill is costly.
     newState.transform = transform * state.transform;
     newState.beginGroup(state, info);
 
