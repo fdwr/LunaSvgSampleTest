@@ -1259,6 +1259,10 @@ Code snippets
                    (bBitValue - aBitValue); // abs() only accepts signed values
         }
 
+    Vector projection:
+
+        project(a, b) = b * mulsum(a, b) / mulsum(b, b)
+
     Displacement transformation:
 
         Given a 1D transformation matrix [sx,dx] which displaces any point p by some amount,
