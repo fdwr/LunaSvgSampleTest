@@ -16,7 +16,7 @@ TODO: Insert image showing problems. Include cases of: blurry lines, excess deta
 
 SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting) on the problem, and [OpenType/TrueType typography](https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01) already solved these problems decades ago for glyphs, but implementing a complex Turing complete programming language is overkill here (which would hamper adoption and likely increase software security risks), as the problems can be satisfied by a set of new elements and attributes for the following aspects:
 
-1. Rounding points to pixels (e.g. rounding to nearest, floor, ceil)
+1. Rounding points to pixels (e.g. rounding to nearest, floor, ceil, pixel corners, pixel centers, half pixels...)
 2. Microadjustment transforms constructed from anchor points (e.g. translating and stretching entire shapes to the pixel grid)
 3. Contour displaced offsets (e.g. thickening a path edge to whole pixels)
 4. Geometric constraints between components (e.g. keeping two lines at least 1 pixel apart)
