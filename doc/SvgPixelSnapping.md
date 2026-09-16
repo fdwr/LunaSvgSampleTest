@@ -34,8 +34,8 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - `floor(... mode=low ...)` - round attribute toward negative infinity.
 - `ceil( ... mode=high  ...)` - round attribute toward positive infinity.
 - `recontour(attributeName originalThickness=1 bias=0 spacing=1 mode=ceil scale=0.5)` - push the contour in or out by the scaled amount, displacing individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments).
-- `roundParity(...)` - 
-- `grid(xScale yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, hexagonal, rhombic, oblique. A common one is grid(1 1) to map to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale sqrt(2)); grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1) is identity.
+- `roundParity(...)` - round to either pixel centers or pixel corners depending on whether the scaled input value is odd or even.
+- `grid(xScale yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, hexagonal, rhombic, oblique. A common one is grid(1 1) to map to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale sqrt(2)); grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1) is identity (or just grid()).
 - `separate(attributeName #anchorName distance)` - ensure coordinates are separated by at least the given absolute distance.
 - `<switch><$ ppuRange="low high"></$></switch>` - conditional pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
