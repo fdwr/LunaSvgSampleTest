@@ -289,7 +289,7 @@ Elements:
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <adjustments id="foo" value="centerRound #boundsOutward displace(1)"/>
-    ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting", to expand a contour (polygon or path).
+    ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting" or "normal displacement", to expand a contour (polygon or path).
         id = name of element, which can be referred by other object's grid-round attribute.
         ?axes = xy, x, y.
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
@@ -1078,7 +1078,7 @@ Example:
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO 1 rotateCw90) nearest">
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y 1) nearest">
         <anchor x="8" y="16" id="clipboardTLI" adjust="constrainMin(#clipboardTLO y -1) nearest">
-        <anchor x="8" y="16" id="clipboardTLI" adjust="round(y) separation(y #clipboardTLO 1)">
+        <anchor x="8" y="16" id="clipboardTLI" adjust="round(y) separate(y #clipboardTLO 1)">
 
         Should be able to clamp stroke widths too, as a single scalar:
 
