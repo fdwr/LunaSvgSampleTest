@@ -89,11 +89,11 @@ Gridfitting prototype - add extended SVG attributes for gridfitting
         grid-adjust(...)
     Rounding
         Modes:
-            floor, ceil
+            floor (low), ceil (high)
             upward, downward, leftward, rightward - achieved via floor/ceil and rounding only one axis.
             ?toZero, toInfinity
             inward, outward - achieved via floor/ceil and flipping based on a point's edge directions.
-            halves to nearest floor or ceil - achieved via floor/ceil and a prebias.
+            nearestLow, nearestHigh - halves to nearest floor or ceil. achieved via floor/ceil and a midbias (after prebias and downscaling).
             floor or ceil to nearest half - achieved via floor/ceil and a prebias and postbias.
             no rounding mode supported for halves toward even numbers (also called "banker's rounding" or "convergent").
         rounding-origin for in (toward zero) and out (toward infinity) rounding, or maybe an offset inside the rounding mode. e.g. toward-zero(x 0 -23 0)
@@ -160,6 +160,7 @@ Investigate callstack for pixel coordinate rounding / grid-fitting:
     lunasvgtest.exe!plutovg_fill(plutovg* pluto) Line 426
 
 Bikeshed terms:
+    TODO: Delete this and move to SvgPixelSnapping.md.
     adjustment - small alteration or movement made to achieve a desired fit, appearance, or result. (see font-size-adjust - https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust)
     alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see text-align - https://developer.mozilla.org/en-US/docs/Web/CSS/text-align)
     anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see text-anchor - https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
@@ -358,8 +359,8 @@ Attributes:
         [naming] "adjustment" would be more consistent with the general nounness of attributes, but there's already precedent for "adjust" in "font-size-adjust" and "lengthAdjust".
             font-size-adjust is problematic because if you want to round the font size, it may conflict with the existing property unless both the old and the new operators are supported in the same property.
         [naming] Should it just be "grid-transform" since anchors and anchor-frames yield transforms?
-    *.gridOrigin - relative origin in user coordinates. e.g. <anchor id="foo" x="13" y="42" origin="bar"/>. When anchor names are given, it's relative to the snapped position, not the original user coordinates.
-    *.gridOffset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead?
+    *.gridOrigin - relative origin in user coordinates. e.g. <anchor id="foo" x="13" y="42" origin="bar"/>. When anchor names are given, it's relative to the snapped position, not the original user coordinates. TODO: Actualy, how is this useful?
+    *.gridOffset - adjustment in device pixels, such as shifting to a half pixel. todo: just use grid-rounding prebias and postbias instead? Just use grid(1 0 0 1 0.5 0.5) instead?
     *.gridScale - multiplier for the device grid, such as rounding to every half pixel instead.
     *.gridTransform - apply multiple transformation matrix operations (scale, offset, shear) to the grid's tranform (not the general shape transform).
         [naming] transformAdjust.
@@ -438,6 +439,7 @@ Adjustments:
                 todo: Where does "bias-modulo" fit into this? Should it apply to just (ppu * unscaled-bias) or the whole (prebias + scale-bias)?
                 should this be a separate function, not jamming it into the already complex round?
             roundedCoordinateValue = modeFunction((originalCoordinateValue - prebias) / scale) * scale + postbias
+                or rather  modeFunction((((originalCoordinateValue - prebias) / scale) - midbiasForNearest) * scale + postbias  for including completeness with nearest mode
             if explicit vector given, unmultiply
             if should apply shear based on edge angle (proportional-shear=true)
                 orthogonalAxisValue += (roundCoordinateValue - originalCoordinateValue) * slope of perpendicular edge
@@ -499,6 +501,7 @@ Adjustments:
         directionInverts - true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
         windingInverts - true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             [name?] windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+            TODO: Is directionInverts redundant with this? Is there any case where you want one without the other?
         proportionalShear - "tangent"? adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             proportion(1 0 0 1) - multiply the final deltas with an additional proportional bias. naming: delta-shear? displacement-scale? delta-multiplier?
             ?proportional is essentially a form of postbias (or maybe it literally is the m12 and m21 fields of the postbias transform).
@@ -650,7 +653,7 @@ Example:
         Additionally fine adjustments/grid alignment need to be relative to the actual device pixel space, whereas transform is relative to user coordinate space.
 
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
-        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid:rounding="up left" />
+        <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid:rounding="upward leftward" />
         <g grid:align="plusSignTopLeftCorner">
             <anchor id="plusSignCenter" x="38" y="38" grid:rounding="edgeTieLow" grid:multiple="0.5"/><!-- round to nearest half pixel -->
             <g grid:adjust="plusSignCenter">
@@ -738,7 +741,7 @@ Example:
     Function accepts attribute to modify as first parameter, followed by named parameters:
         <g grid-rounding="floor(x bias=0.5 multiple=1)"><!-- round down to pixel centers -->
         <g grid-rounding="floor(x bias=0.0 multiple=2)"><!-- scale grid by 2x -->
-        <g grid-rounding="floor(x prebias=0.5 postbias=0.5 multiple=2)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5 -->
+        <g grid-rounding="floor(x prebias=0.5 postbias=0.5 multiple=2)"><!-- scale grid by 2x and round to 0.5's, where 0 to 2.49 yield 0.5, 2.5 to 4.49 yield 2.5. Formula = floor((x-.5)/2)*2+.5, or actually probably floor((x/2 - 0.5) * 2 + 0.5) -->
         <g grid-rounding="floor(x bias=0.5)"><!-- round to every half a pixel -->
 
     Attribute to modify is part of the function name (not really generic, because what if you want floor-cx for circles or floor-rx for rounded rects?)
