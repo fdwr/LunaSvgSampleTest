@@ -4283,7 +4283,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_NUDGE_RIGHT: g_svgNudgeOffsetX += 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
             case IDM_NUDGE_UP:    g_svgNudgeOffsetY -= 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
             case IDM_NUDGE_DOWN:  g_svgNudgeOffsetY += 1.0f / 16.0f; RedrawCanvasItemsLater(hwnd); break;
-            case IDM_NUDGE_ZERO:  g_svgNudgeOffsetY = 0; g_svgNudgeOffsetY = 0; RedrawCanvasItemsLater(hwnd); break;
+            case IDM_NUDGE_ZERO:  g_svgNudgeOffsetX = 0; g_svgNudgeOffsetY = 0; RedrawCanvasItemsLater(hwnd); break;
 
             case IDM_PRESET_INSPECT:
                 g_gridVisible = true;

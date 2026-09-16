@@ -16,19 +16,28 @@ TODO: Insert image showing problems. Include cases of: blurry lines, excess deta
 
 SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting) on the problem, and [OpenType/TrueType typography](https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01) already solved these problems decades ago for glyphs, but implementing a complex Turing complete programming language is overkill here (which would hamper adoption and likely increase software security risks), as the problems can be satisfied by a set of new elements and attributes for the following aspects:
 
-1. Rounding points to pixels (e.g. rounding to nearest, floor, ceil)
+1. Rounding points to pixels (e.g. rounding to nearest, floor, ceil, pixel corners, pixel centers, half pixels...)
 2. Microadjustment transforms constructed from anchor points (e.g. translating and stretching entire shapes to the pixel grid)
 3. Contour displaced offsets (e.g. thickening a path edge to whole pixels)
 4. Geometric constraints between components (e.g. keeping two lines at least 1 pixel apart)
 5. Shape visibility based on pixel density (e.g. selectively hiding complex geometry at low pixel resolutions)
 
-- `<rounding/>` - controls how to round points, defined in `<defs>` and used later in adjustment attributes via `id`.
+### Elements
+
 - `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`.
-- `<anchorAdjustment/>` - microtransform to nudge shapes or entire groups of shapes to the pixel grid, used in adjustment attributes via `id`. They can be built from 1 to 3 anchor points, depending on the type, and unlike ordinary transform attributes, they cannot accept arbitrary translation, scale, or rotation operations, as they are implicitly constructed by the small rounding adjustments to anchors.
-- `<contourOffset/>` - displaces individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments).
-- `<constraint/>` - a minimum/maximum geometric relative distance from another point. Each axis can range independently, and the vector can be reoriented to other angles such as 45 degrees.
-- `<transform/>` - defines a named transform for reuse by `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]).
-- `<adjustmentList/>` - a reusable series of adjustments, including rounding, anchor transforms, contour offsets, and contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. 
+- `<transformation/>` - defines a named transform for reuse by `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]).
+- `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms, contour offsets, and contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. 
+
+### Adjustment operators:
+- `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
+- `round(attributeName bias=0 spacing=1 prebias=bias postbias=bias mode=nearestLow reorient=[1 0] keepTangent=false requireAxisAlignment=true transformReinterprets=false directionInverts=false windingInverts=false)` - round attribute to nearest whole value, with halves toward negative infinity (not round to nearest even, which would introduce a staggered appearance).
+- `floor(... mode=low ...)` - round attribute toward negative infinity.
+- `ceil( ... mode=high  ...)` - round attribute toward positive infinity.
+- `recontour(attributeName originalThickness=1 bias=0 spacing=1 mode=ceil scale=0.5)` - push the contour in or out by the scaled amount, displacing individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments).
+- `roundParity(...)` - 
+- `grid(xScale yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, hexagonal, rhombic, oblique. A common one is grid(1 1) to map to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale sqrt(2)); grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1) is identity.
+- `separate(attributeName #anchorName distance)` - ensure coordinates are separated by at least the given absolute distance.
+- `<switch><$ ppuRange="low high"></$></switch>` - conditional pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
 # Terms for bikeshed naming
 
@@ -37,6 +46,7 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see [text-anchor](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor)). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
 - arrangement - action, process, or result of arranging or being arranged.
 - attachment - an extra part or extension that is or can be attached to something to perform a particular function.
+- attenuate - reduce in thickness; make thin.
 - ballast - heavy material, such as gravel, sand, iron, or lead, placed low in a vessel to improve its stability.
 - binding - material or device used to bind such as the cover and materials that hold a book together.
 - buttress - architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
@@ -68,6 +78,8 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - project - extend outward beyond something else; protrude.
 - protrude - extend beyond or above a surface.
 - recede - go or move back or further away from a previous position.
+- recontour - reshape or modify the contour or shape of something, such as land, a body part, or an object.
+- refine - improve (something) by making small changes, in particular make (an idea, theory, or method) more subtle and accurate:
 - retract - to draw back or in or pull back
 - rig - particular way in which a sailboat's masts, sails, and rigging are arranged.
 - rigging - network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
@@ -93,3 +105,10 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
     - Cairo rendering API - https://cairographics.org/download/
     - SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
     - SVG Native Viewer - https://github.com/adobe/svg-native-viewer
+
+## Deleted
+
+- `<rounding/>` - *Use adjustment operator `round` instead*. controls how to round points, defined in `<defs>` and used later in adjustment attributes via `id`.
+- `<contourOffset/>` - *Use adjustment operator `recontour` instead*. displaces individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments).
+- `<anchorAdjustment/>` - *Generally seems a poor idea since it distorts shapes and yields asymmetric stem widths*. microtransform to nudge shapes or entire groups of shapes to the pixel grid, used in adjustment attributes via `id`. They can be built from 1 to 3 anchor points, depending on the type, and unlike ordinary transform attributes, they cannot accept arbitrary translation, scale, or rotation operations, as they are implicitly constructed by the small rounding adjustments to anchors.
+- `<constraint/>` - *Use adjustment operator `separate` instead*. a minimum/maximum geometric relative distance from another point. Each axis can range independently, and the vector can be reoriented to other angles such as 45 degrees.

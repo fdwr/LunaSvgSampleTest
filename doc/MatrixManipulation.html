@@ -1,0 +1,222 @@
+<html>
+<head>
+<title>Matrix Manipulation</title>
+<style>
+    body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; }
+    #canvas { border: 1px solid #888; background: #FFF; }
+    table.matrix td { padding: 2px; }
+    input.matrixCell { width: 60px; }
+    #svgPath { width: 200px; }
+    #concatMatrix { width: 200px; }
+    #commonPaths { width: 200px; }
+    #commonMatrices { width: 200px; }
+    .row { margin-bottom: 8px; }
+    .container { display: flex; gap: 16px; align-items: flex-start; }
+</style>
+</head>
+<body>
+
+<main class="container">
+<div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+</div>
+
+<div>
+    <div class="row">
+        <label>SVG path (d attribute contents):</label><br>
+        <textarea id="svgPath" rows="2">M-80,-80 L-80,80 M-80,-80 L40,-80 A20,20 0 0 1 40,0 L-80,0 M-80,0 L80,80</textarea>
+    </div>
+
+    <div class="row">
+        <label>Sample paths:</label><br>
+        <select id="commonPaths" size="12">
+            <option value="M0,0 L100,0">Right-pointing vector</option>
+            <option value="M0,0 L0,100">Down-pointing vector</option>
+            <option value="M0,0 L100,0 L0,100 Z">Right-angle triangle</option>
+            <option value="M0,-100 A100,100 0 0 1 100,0 A100,100 0 0 1 0,100 A100,100 0 0 1 -100,0 A100,100 0 0 1 0,-100 Z">Circle (via 4 arcs)</option>
+            <option value="M-100,-60 L100,-60 L100,60 L-100,60 Z">Rectangle</option>
+            <option value="M-80,-60 L80,-60 A20,20 0 0 1 100,-40 L100,40 A20,20 0 0 1 80,60 L-80,60 A20,20 0 0 1 -100,40 L-100,-40 A20,20 0 0 1 -80,-60 Z">Rounded rectangle</option>
+            <option value="M-80,-80 L-80,80 M-80,-80 L40,-80 A20,20 0 0 1 40,0 L-80,0 M-80,0 L80,80">Letter R</option>
+            <option value="M-60,-100 L-60,100 M-60,-100 L20,-100 A40,40 0 0 1 20,-20 L-60,-20 M-60,-20 L60,100">Letter R2</option>
+        </select>
+    </div>
+</div>
+
+<div>
+    <div class="row">
+        <label>Concatenated matrix (sx hy hx sy dx dy):</label><br>
+        <textarea id="concatMatrix" rows="2">1 0 0 1 0 0</textarea>
+    </div>
+
+    <div class="row">
+        <label>Common matrices:</label><br>
+        <select id="commonMatrices" size="12">
+            <option value="1 0 0 1 0 0">Identity</option>
+            <option value="-1 0 0 1 0 0">Flip horizontal</option>
+            <option value="1 0 0 -1 0 0">Flip vertical</option>
+            <option value="0.707 0.707 -0.707 0.707 0 0">45 degree rotation</option>
+            <option value="1 1 -1 1 0 0">45 degree rotation x sqrt(2)</option>
+            <option value="0 1 -1 0 0 0">90 degree rotation</option>
+            <option value="2 0 0 2 0 0">2x scale</option>
+            <option value="0.5 0 0 0.5 0 0">0.5x scale</option>
+            <option value="1 0 1 1 0 0">Shear (x by y)</option>
+            <option value="1 1 0 1 0 0">Shear (y by x)</option>
+            <option value="1 0 0.5 1 0 0">Shear (1/2x by y)</option>
+            <option value="1 0 0 1 50 50">Translate 50,50</option>
+        </select>
+    </div>
+
+    <div class="row">
+        <label>Matrix (3x2):</label><br>
+        <table class="matrix">
+            <tr>
+                <td><input type="text" class="matrixCell" id="m11" value="1"></td>
+                <td><input type="text" class="matrixCell" id="m12" value="0"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="matrixCell" id="m21" value="0"></td>
+                <td><input type="text" class="matrixCell" id="m22" value="1"></td>
+            </tr>
+            <tr>
+                <td><input type="text" class="matrixCell" id="m31" value="0"></td>
+                <td><input type="text" class="matrixCell" id="m32" value="0"></td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+</main> <!-- container -->
+
+<script>
+    const canvas = document.getElementById("canvas");
+    const canvasContext = canvas.getContext("2d");
+    const svgPathInput = document.getElementById("svgPath");
+    const concatMatrixInput = document.getElementById("concatMatrix");
+    const commonMatricesSelect = document.getElementById("commonMatrices");
+    const commonPathsSelect = document.getElementById("commonPaths");
+    const matrixCellIds = ["m11", "m12", "m21", "m22", "m31", "m32"];
+    const matrixCells = matrixCellIds.map(id => document.getElementById(id));
+
+    const canvasSize = 400;
+    const gridSpacing = 10;
+
+    function getMatrixValues()
+    {
+        return matrixCells.map(cell => parseFloat(cell.value) || 0);
+    }
+
+    function setMatrixValues(values)
+    {
+        for (let i = 0; i < matrixCellIds.length && i < values.length; ++i)
+        {
+            matrixCells[i].value = values[i];
+        }
+    }
+
+    function drawGrid()
+    {
+        // Horizontal and vertical gridlines.
+        canvasContext.strokeStyle = "#DDD";
+        canvasContext.lineWidth = 1;
+        canvasContext.beginPath();
+        const limit = canvasSize / gridSpacing;
+        for (let i = 0; i <= limit; ++i)
+        {
+            const p = i * gridSpacing;
+            canvasContext.moveTo(p, 0);
+            canvasContext.lineTo(p, 400);
+            canvasContext.moveTo(0, p);
+            canvasContext.lineTo(400, p);
+        }
+        canvasContext.stroke();
+
+        // Axes through the center.
+        canvasContext.strokeStyle = "#999";
+        canvasContext.beginPath();
+        canvasContext.moveTo(200, 0);
+        canvasContext.lineTo(200, 400);
+        canvasContext.moveTo(0, 200);
+        canvasContext.lineTo(400, 200);
+        canvasContext.stroke();
+    }
+
+    function drawPath()
+    {
+        const m = getMatrixValues();
+        let path;
+        try
+        {
+            path = new Path2D(svgPathInput.value);
+        }
+        catch (e)
+        {
+            return;
+        }
+
+        canvasContext.save();
+
+        // Canvas origin should be canvas's center. Y already points down like SVG.
+        const halfSize = canvasSize / 2;
+        canvasContext.translate(halfSize, halfSize);
+
+        // m = [m11, m12, m21, m22, m31, m32] maps directly to canvas's (a, b, c, d, e, f) matrix.
+        canvasContext.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        canvasContext.strokeStyle = "#0078D4C0";
+        canvasContext.fillStyle = "#7800D440";
+        canvasContext.lineWidth = 3 / Math.max((Math.hypot(m[0], m[1]) + Math.hypot(m[2], m[3]) / 2), 0.001);
+        console.log("line width", canvasContext.lineWidth);
+        canvasContext.fill(path);
+        canvasContext.stroke(path);
+
+        canvasContext.restore();
+    }
+
+    function redraw()
+    {
+        canvasContext.clearRect(0, 0, canvasSize, canvasSize);
+        drawGrid();
+        drawPath();
+    }
+
+    function updateConcatFromMatrixCells()
+    {
+        concatMatrixInput.value = getMatrixValues().join(" ");
+        redraw();
+    }
+
+    function updateMatrixCellsFromConcat()
+    {
+        const values = concatMatrixInput.value.trim().split(/\s+/).map(parseFloat);
+        if (values.length == 6 && values.every(v => !isNaN(v)))
+        {
+            setMatrixValues(values);
+        }
+        redraw();
+    }
+
+    for (const cell of matrixCells)
+    {
+        cell.addEventListener("input", updateConcatFromMatrixCells);
+    }
+
+    concatMatrixInput.addEventListener("input", updateMatrixCellsFromConcat);
+    svgPathInput.addEventListener("input", redraw);
+
+    commonMatricesSelect.addEventListener("change", () =>
+    {
+        concatMatrixInput.value = commonMatricesSelect.value;
+        updateMatrixCellsFromConcat();
+    });
+
+    commonPathsSelect.addEventListener("change", () =>
+    {
+        svgPathInput.value = commonPathsSelect.value;
+        redraw();
+    });
+
+    // Initial population of matrix.
+    updateConcatFromMatrixCells();
+</script>
+
+</body>
+</html>
