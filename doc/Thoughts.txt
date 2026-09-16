@@ -655,7 +655,7 @@ Example:
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" grid:rounding="upward leftward" />
         <g grid:align="plusSignTopLeftCorner">
-            <anchor id="plusSignCenter" x="38" y="38" grid:rounding="edgeTieLow" grid:multiple="0.5"/><!-- round to nearest half pixel -->
+            <anchor id="plusSignCenter" x="38" y="38" grid:rounding="nearestLow" grid:multiple="0.5"/><!-- round to nearest half pixel -->
             <g grid:adjust="plusSignCenter">
                 <circle cx="38" cy="38" r="10"/>
                 <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
@@ -674,7 +674,7 @@ Example:
         <!-- icons8-fluency-add-ot-clipboard-4-sizes.svg -->
         <anchor id="plusSignTopLeftCorner" x="37.5" y="37.5" ps:point-adjust="upward leftward" />
         <g ps:transform-adjust="#plusSignTopLeftCorner">
-            <anchor id="plusSignCenter" x="38" y="38" ps:rounding="edgeTieLow(multiple=0.5)"/><!-- round to nearest half pixel -->
+            <anchor id="plusSignCenter" x="38" y="38" ps:rounding="nearestLow(multiple=0.5)"/><!-- round to nearest half pixel -->
             <g ps:transform-adjust="#plusSignCenter">
                 <circle cx="38" cy="38" r="10"/>
                 <path d="m 38.5,43 h -1 C 37.224,43 37,42.776 37,42.5 v -9 C 37,33.224 37.224,33 37.5,33 h 1 c 0.276,0 0.5,0.224 0.5,0.5 v 9 c 0,0.276 -0.224,0.5 -0.5,0.5 z" fill="#FFFFFF">
