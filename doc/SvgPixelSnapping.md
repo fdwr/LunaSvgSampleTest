@@ -47,6 +47,8 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 
 ### Adjustment operators:
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
+TODO: Just use translate? e.g. `translate(#anchorName)` `translate(#anchorName1ForX #anchorName2ForY)`
+TODO: Support multinudge to average an anchor between two others? You could achieve this with two fractional nudges `nudge(x #anchor1 0.5) nudge(x #anchor2 0.5)` but `nudgeAverage(x #anchor1 #anchor2)` would be more concise. Maybe nudge is variadic rather than taking more positional parameters `nudge(x #anchor1 #anchor2)` or it takes a list `nudge(x [#anchor1 #anchor2])`.
 - `round(attributeName bias=0 spacing=1 prebias=bias postbias=bias mode=nearestLow reorient=[1 0] keepTangent=false requireAxisAlignment=true transformReinterprets=false directionInverts=false windingInverts=false)` - round attribute to nearest whole value, with halves toward negative infinity (not round to nearest even, which would introduce a staggered appearance).
 - `floor(... mode=low ...)` - round attribute toward negative infinity.
 - `ceil( ... mode=high  ...)` - round attribute toward positive infinity.
