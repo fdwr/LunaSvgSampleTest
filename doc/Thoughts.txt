@@ -62,8 +62,8 @@ TODO:
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
         Invisible points solely for anchoring other shape's points to
-        It has no fill, stroke, or visibility.
-        Bounding box and clipping path calculations do not apply (so getBBox, getBoundingClientRect, getClientRects). Though SVG editors may have a more inclusive bounding box to show anchors.
+        They have no fill, stroke, or visibility (except in SVG editors).
+        Bounding box and clipping path calculations do not apply (so getBBox, getBoundingClientRect, getClientRects). Though SVG editors may show a more inclusive bounding box to show anchors.
         Pointer or keyboard events do not apply.
         Anchor sets/frames contain multiple anchors, each potentially with different rounding modes
             1 point yields translation
@@ -194,7 +194,7 @@ Bikeshed terms:
     keypoint - characteristic point of interest.
     lattice - infinite array of points in space.
     node - point at which lines or pathways intersect or branch; a central or connecting point.
-    nudge - a light touch or push.
+    nudge - a light touch or push (a smaller displacement than a shift would be).
     orthogonal - of or involving right angles; at right angles.
     pillar - tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
     project - extend outward beyond something else; protrude.
@@ -209,6 +209,7 @@ Bikeshed terms:
     warp - twist or distortion in the shape or form of something.
 
 Elements:
+    <svg gridFittingSizeThreshold="300"> - an author recommended threshold where grid fitting matters, with fitting applied for any SVG size below this, and safely disabled for any size equal to or above it. A renderer might have additional control flags to explicitly enable it anyway or to disable it for other reasons, such as for animation. The default value is "infinity", meaning grid-fitting attributes (if present) are enabled for all sizes.
     <anchor/> - invisible point for other shapes to align/fit to. Can be used directly in an adjustment attribute (simple translation) or as part of an <anchorAdjustment/>.
         id = name of element, which can be referred by other object's grid adjust attribute.
         x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
@@ -1391,6 +1392,67 @@ Achieving inner strokes without stroke-mode via clip-path:
             fill="lightblue" stroke="black" stroke-width="20" 
             clip-path="url(#innerClip)" /> <!-- Clip to original shape -->
     </svg>
+
+Different ways of rounding rounded rectangle paths with anchors:
+
+    Which of these is simplest, most concise, and/or most flexible?
+
+    // Naive outward rounding (could lead to asymmetric results, since each point is rounded individually).
+    <adjustments id="roundOut" value="ceil(xy followNormal=true)" />
+    <path d="M-80,-60 L80,-60   A20,20 0 0 1 100,-40 L100,40 A20,20 0 0 1 80,60   f3 L-80,60 A20,20 0 0 1 -100,40   f0 L-100,-40 A20,20 0 0 1 -80,-60 Z" adjustments="#roundOut"/>
+
+    // Creating an adjustment list from corners.
+    <anchor id="topLeft" x="-80" y="-60" adjust="floor(xy)" />
+    <anchor id="bottomRight" x="80" y="60" adjust="ceil(xy)" />
+    <adjustments id="rectangleEdgesOut" value="nudge(xy #topLeft); nudge(x #bottomRight) nudge(y #topLeft); nudge(x #topLeft) nudge(y #bottomRight); nudge(xy #bottomRight)" />
+    <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#rectangleEdgesOut"/>
+
+    // External anchors.
+    <anchor id="topLeft"     x="-80" y="-60" adjust="floor(x) floor(y)" />
+    <anchor id="topRight"    x="80"  y="-60" adjust="ceil(x)  floor(y)" />
+    <anchor id="bottomLeft"  x="-80" y="60"  adjust="floor(x) ceil(y)"  />
+    <anchor id="bottomRight" x="80"  y="60"  adjust="ceil(x)  ceil(y)"  />
+    <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#topLeft; #bottomLeft; #topRight; #bottomRight" />
+
+    // Nested anchors, which enable positioning based on the containing shape.
+    <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#topLeft; #bottomLeft; #topRight; #bottomRight">
+        <anchor id="topLeft"     x="left"   y="top"     adjust="floor(x) floor(y)" />
+        <anchor id="topRight"    x="right"  y="top"     adjust="ceil(x)  floor(y)" />
+        <anchor id="bottomLeft"  x="left"   y="bottom"  adjust="floor(x) ceil(y)"  />
+        <anchor id="bottomRight" x="right"  y="bottom"  adjust="ceil(x)  ceil(y)"  />
+    </path>
+
+    // Nested anchors using adjustment instead, so you don't have to repeat 4 corners for each shape. Resolution of the anchor positions is deferred until usage by a shape.
+    <adjustments id="rectangleEdgesOut" value="#topLeft; #bottomLeft; #topRight; #bottomRight" />
+        <anchor id="topLeft"     x="left"   y="top"     adjust="floor(x) floor(y)" />
+        <anchor id="topRight"    x="right"  y="top"     adjust="ceil(x)  floor(y)" />
+        <anchor id="bottomLeft"  x="left"   y="bottom"  adjust="floor(x) ceil(y) " />
+        <anchor id="bottomRight" x="right"  y="bottom"  adjust="ceil(x)  ceil(y) " />
+    </adjustment>
+    <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#rectangleEdgesOut" />
+
+    // Nested anchors using edges rather than corners.
+    <adjustments id="rectangleEdgesOut" value="#left #top; #right #top; #left #bottom; #right #bottom" />
+        <anchor id="left"   x="left"   adjust="floor(x)" />
+        <anchor id="right"  x="right"  adjust="ceil(x) " />
+        <anchor id="top"    y="top"    adjust="floor(y)" />
+        <anchor id="bottom" y="bottom" adjust="ceil(y) " />
+    </adjustment>
+    <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#rectangleEdgesOut" />
+
+    // Inline anchors inside adjustments. It's a possibility, but I think a little too complicated. Plus it would be difficult to display the virtual anchor in an SVG editor, since it has no associated element.
+    <path
+        d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z"
+        adjustments="anchor(left top round(xy)); anchor(right top round(xy)); anchor(left bottom round(xy)); anchor(left bottom round(xy))"
+    />
+
+    // An alternate similar idea to inline anchors, but it might be cramming too much into a single function,
+    // combining positioning of an anchor and rounding and nudging - kinda like nudge(xy round([left top])).
+    // Also nested functions complicate implementation.
+    <path
+        d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z"
+        adjustments="nudgeByRoundedPoint(xy [left top]); nudgeByRoundedPoint(xy [left bottom]); nudgeByRoundedPoint(xy [right top]); nudgeByRoundedPoint(xy [right bottom]);"
+    />
 
 Reference:
     TrueType

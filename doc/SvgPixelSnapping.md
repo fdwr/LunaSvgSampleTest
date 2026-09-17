@@ -4,13 +4,30 @@ Dwayne Robinson 2022-07-28
 
 ## What
 
-This document extends the SVG specification with elements and attributes for grid fitting/pixel snapping to improve rendering on low-resolution displays where edges become fuzzy and blurry details become overcrowded in toolbars, menus, and webpages. SVG is increasingly being used for iconography, and tales of the demise of 96 DPI have been greatly exaggerated, as such monitors persist to this day, with 1920x1080 being the most common monitor size in 2022. This specification is freely available to adopt without patent or copyright concern, but beware it's currently subject to change while I validate on the implementation details.
+This document extends SVG with new elements and attributes for grid fitting/pixel snapping to improve rendering on low to medium DPI displays, where edges become fuzzy and blurry details become overcrowded in toolbars, menus, and webpages. SVG has increasingly been used for iconography, but tales of the demise of 96 DPI have been greatly exaggerated, as such monitors persist to this day, with 1920x1080 being the most common monitor size in 2022. This specification is freely available to adopt without patent or copyright concern, but beware it's subject to change until I validate the implementation details and end-to-end tooling (might realize there's a better way to do things).
 
 ## Why
 
 A picture speaks a thousand words...
 
 TODO: Insert image showing problems. Include cases of: blurry lines, excess detail which becomes a blurry mess, detail collapse, minimum pixel distance, contour offset.
+
+These extensions help:
+
+- Crisp horizontal and vertical edges.
+- Consistent stem thickness.
+- Shape symmetry around centers.
+- Equal shape spacing and gaps.
+- Selective removal of small details at smaller PPU's.
+- Alignment between separate shapes that are part of a large object.
+- Ensure minimal gaps between items so they don't abut and appear merged.
+
+It doesn't ensure:
+
+- Pixel alignment under arbitrary transforms.
+- Identical pixel results under different rasterizers.
+- Preserved geometry and aspect ratio after grid fitting.
+- Automatic good fitting without author intervention.
 
 ## How
 
@@ -24,9 +41,9 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 
 ### Elements
 
-- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`.
-- `<transformation/>` - defines a named transform for reuse by `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]).
-- `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms, contour offsets, and contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. 
+- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`. An unspecified x or y defaults to 0.
+- `<transformation/>` - defines a reuseable transform via `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]). e.g. `<transformation id="myTransform" values="scale(2) translate(100 300)" />` and `<g transform="#myTransform"> ...` or `<transformation id="turn45" values="matrix(1 1)" />` and `<line adjust="grid(#turn45) round(xy)" x1=...>` (naming note: using noun form rather than verb to avoid confusion with "transform", in that it's not an action applied to the scene, but rather a reusable component useable later by a "transform" statement)
+- `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms (nudges), contour offsets, and separation contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. e.g. `<adjustment id="myAdjustment" values="round(x) floor(y)" />` and `<polygon adjust="#myAdjustment" points="..."/>`
 
 ### Adjustment operators:
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
@@ -44,6 +61,7 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result. (see [font-size-adjust](https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust))
 - alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see [text-align](https://developer.mozilla.org/en-US/docs/Web/CSS/text-align))
 - anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see [text-anchor](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor)). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
+- alteration - the act or process of altering something, such as a change made in fitting a garment.
 - arrangement - action, process, or result of arranging or being arranged.
 - attachment - an extra part or extension that is or can be attached to something to perform a particular function.
 - attenuate - reduce in thickness; make thin.
