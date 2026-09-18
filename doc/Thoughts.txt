@@ -288,12 +288,12 @@ Elements:
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
-        e.g. <transform id="foo" value="scale(2) translate(13 42) rotate(45)"/>
+        e.g. <transform id="foo" values="scale(2) translate(13 42) rotate(45)"/>
         One extension is that matrix may accept a variable number of parameters, including 1, 2, 4, and 6, where [a] => [a 0 0 a 0 0 ], [a, b] = [a, b, -b, a, 0, 0], , [a, b, c, d] = [a, b, c, d, 0, 0]. The two parameter form is very useful for grid orientation, like matrix(1 1) for a 45 degree angle scaled by sqrt(2), which rounds to the nearest pixel center or pixel corner.
     <adjustments/> - define a reusable series of adjustments, which can be include rounding, anchors, and transforms (maybe?).
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
-        e.g. <adjustments id="foo" value="centerRound #boundsOutward displace(1)"/>
+        e.g. <adjustments id="foo" values="centerRound #boundsOutward displace(1)"/>
     ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting" or "normal displacement", to expand a contour (polygon or path).
         id = name of element, which can be referred by other object's grid-round attribute.
         ?axes = xy, x, y.
@@ -345,7 +345,7 @@ Elements:
         includeExistingDelta = whether to include the existing delta of an adjustment or just the current anchor's adjustment. The anchor is also optional, meaning to only use the current delta.
         e.g. <displacement id="modifiedAnchor" anchor="#someAnchor" screenTransform="rotate(30)"/>
         Alternately maybe <anchorAdjustment/> with single point and transform?
-        Alternately <adjustments/> or <transform id="newAdjustment" value="rotate(90) #originalAnchorAdjustment"/>
+        Alternately <adjustments/> or <transform id="newAdjustment" values="rotate(90) #originalAnchorAdjustment"/>
 
 Attributes:
     *.ppuRange - display the object if the pixels per unit is within this range (upper bound exclusive). Can be used inside a switch statement or by itself (alternate name required-ppu?). This level of detail enables small blurry details to hide.
@@ -1393,18 +1393,28 @@ Achieving inner strokes without stroke-mode via clip-path:
             clip-path="url(#innerClip)" /> <!-- Clip to original shape -->
     </svg>
 
+Distributing inner points across adjusted outer bounds:
+
+    <anchor id="leftSide"      x="100" y="50" adjust="floor(x)" />
+    <anchor id="quarterPoint1" x="150" y="50" adjust="lerp(x #leftSide #rightSide)" /> <!-- (--O--|--|--) -->
+    <anchor id="quarterPoint2" x="200" y="50" adjust="lerp(x #leftSide #rightSide)" /> <!-- (--|--O--|--) -->
+    <anchor id="quarterPoint3" x="250" y="50" adjust="lerp(x #leftSide #rightSide)" /> <!-- (--|--|--O--) -->
+    <anchor id="rightSide"     x="300" y="50" adjust="ceil(x)" />
+
+    NAMING: distribute? rebalance? warp? stretch? stretchLinear? stretchCorners? spread? between?
+
 Different ways of rounding rounded rectangle paths with anchors:
 
     Which of these is simplest, most concise, and/or most flexible?
 
     // Naive outward rounding (could lead to asymmetric results, since each point is rounded individually).
-    <adjustments id="roundOut" value="ceil(xy followNormal=true)" />
+    <adjustments id="roundOut" values="ceil(xy followNormal=true)" />
     <path d="M-80,-60 L80,-60   A20,20 0 0 1 100,-40 L100,40 A20,20 0 0 1 80,60   f3 L-80,60 A20,20 0 0 1 -100,40   f0 L-100,-40 A20,20 0 0 1 -80,-60 Z" adjustments="#roundOut"/>
 
     // Creating an adjustment list from corners.
     <anchor id="topLeft" x="-80" y="-60" adjust="floor(xy)" />
     <anchor id="bottomRight" x="80" y="60" adjust="ceil(xy)" />
-    <adjustments id="rectangleEdgesOut" value="nudge(xy #topLeft); nudge(x #bottomRight) nudge(y #topLeft); nudge(x #topLeft) nudge(y #bottomRight); nudge(xy #bottomRight)" />
+    <adjustments id="rectangleEdgesOut" values="nudge(xy #topLeft); nudge(x #bottomRight) nudge(y #topLeft); nudge(x #topLeft) nudge(y #bottomRight); nudge(xy #bottomRight)" />
     <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#rectangleEdgesOut"/>
 
     // External anchors.
@@ -1423,7 +1433,7 @@ Different ways of rounding rounded rectangle paths with anchors:
     </path>
 
     // Nested anchors using adjustment instead, so you don't have to repeat 4 corners for each shape. Resolution of the anchor positions is deferred until usage by a shape.
-    <adjustments id="rectangleEdgesOut" value="#topLeft; #bottomLeft; #topRight; #bottomRight" />
+    <adjustments id="rectangleEdgesOut" values="#topLeft; #bottomLeft; #topRight; #bottomRight" />
         <anchor id="topLeft"     x="left"   y="top"     adjust="floor(x) floor(y)" />
         <anchor id="topRight"    x="right"  y="top"     adjust="ceil(x)  floor(y)" />
         <anchor id="bottomLeft"  x="left"   y="bottom"  adjust="floor(x) ceil(y) " />
@@ -1432,7 +1442,7 @@ Different ways of rounding rounded rectangle paths with anchors:
     <path d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z" adjustments="#rectangleEdgesOut" />
 
     // Nested anchors using edges rather than corners.
-    <adjustments id="rectangleEdgesOut" value="#left #top; #right #top; #left #bottom; #right #bottom" />
+    <adjustments id="rectangleEdgesOut" values="#left #top; #right #top; #left #bottom; #right #bottom" />
         <anchor id="left"   x="left"   adjust="floor(x)" />
         <anchor id="right"  x="right"  adjust="ceil(x) " />
         <anchor id="top"    y="top"    adjust="floor(y)" />

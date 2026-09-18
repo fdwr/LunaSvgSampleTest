@@ -44,6 +44,7 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`. An unspecified x or y defaults to 0.
 - `<transformation/>` - defines a reuseable transform via `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]). e.g. `<transformation id="myTransform" values="scale(2) translate(100 300)" />` and `<g transform="#myTransform"> ...` or `<transformation id="turn45" values="matrix(1 1)" />` and `<line adjust="grid(#turn45) round(xy)" x1=...>` (naming note: using noun form rather than verb to avoid confusion with "transform", in that it's not an action applied to the scene, but rather a reusable component useable later by a "transform" statement)
 - `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms (nudges), contour offsets, and separation contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. e.g. `<adjustment id="myAdjustment" values="round(x) floor(y)" />` and `<polygon adjust="#myAdjustment" points="..."/>`
+TODO: Should adjustment use `values=` or `adjust=`?
 
 ### Adjustment operators:
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
@@ -62,50 +63,64 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 
 - adjustment - Small alteration or movement made to achieve a desired fit, appearance, or result. (see [font-size-adjust](https://developer.mozilla.org/en-US/docs/Web/CSS/font-size-adjust))
 - alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see [text-align](https://developer.mozilla.org/en-US/docs/Web/CSS/text-align))
-- anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see [text-anchor](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor)). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
 - alteration - the act or process of altering something, such as a change made in fitting a garment.
+- anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see [text-anchor](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor)). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
 - arrangement - action, process, or result of arranging or being arranged.
 - attachment - an extra part or extension that is or can be attached to something to perform a particular function.
 - attenuate - reduce in thickness; make thin.
 - ballast - heavy material, such as gravel, sand, iron, or lead, placed low in a vessel to improve its stability.
 - binding - material or device used to bind such as the cover and materials that hold a book together.
 - buttress - architectural structure built against or projecting from a wall which serves to support or reinforce the wall.
-- contract - decrease in size, number, or range.
 - constraint - geometric constraints specify a direction or a distance relative to existing geometry.
 - contour - an outline, especially one representing or bounding the shape or form of something.
+- contract - decrease in size, number, or range.
 - delta - difference between two things or values.
 - difference - difference in math is the result of subtracting one number from another.
 - dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
 - displace - cause (something) to move from its proper or usual place. (nudge would carry semantics of small displacements, whereas displacement could be large)
 - displacement - the moving of something from its place or position. A vector whose length is the shortest distance from the initial to the final position of a point P. https://en.wikipedia.org/wiki/Displacement_(geometry)
 - distance - numerical measurement of how far apart objects or points are.
+- distort - pull or twist out of shape.
+- distribute - to divide among several or many, to spread out so as to cover something, to place or position so as to be properly apportioned over or throughout an area.
 - erode - gradually destroy or be gradually destroyed. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
 - expand - become or make larger or more extensive.
+- expanse - a wide continuous area of something, the distance to which something expands or can be expanded.
 - fastener - device that closes or secures something. Any of various devices, as a snap or hook and eye, for holding together two objects.
-- fit - fix or put (something) into place. be of the right shape and size for.
+- fit - fix or put (something) into place, be of the right shape and size for.
 - fitment - thing fitted to another in order to accomplish a specific purpose. The proper positioning and orientation of a thing for it to serve its designed purpose.
 - fixture - piece of equipment or furniture which is fixed in position in a building or vehicle.
 - frame - Rigid structure that surrounds or encloses something such as a door or window.
+- gamut - an entire range or series.
 - grapnel - Device consisting essentially of one or more hooks or clamps, for grasping or holding something.
 - grow - become larger or greater over a period of time; increase.
 - hook - piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
 - interval - a space between two things; a gap.
 - keypoint - Characteristic point of interest.
+- latitude - the angular distance of a place north or south of the earth's equator, or of a celestial object north or south of the celestial equator, usually expressed in degrees and minutes.
+- longitude - the angular distance of a place east or west of the Greenwich meridian, or west of the standard meridian of a celestial object, usually expressed in degrees and minutes.
 - node - Point at which lines or pathways intersect or branch; a central or connecting point.
 - nudge - a light touch or push.
 - orthogonal - of or involving right angles; at right angles.
 - pillar - tall vertical structure of stone, wood, or metal, used as a support for a building, or as an ornament or monument.
 - project - extend outward beyond something else; protrude.
 - protrude - extend beyond or above a surface.
+- range - a series of things in a line, a direction line, the space or extent included/covered/used, a sequence/series/scale between limits.
+- reach - to touch or grasp by extending a part of the body (such as a hand) or an object, to pick up and draw toward one.
+- rebalance - to restore balance to or adjust the balance.
 - recede - go or move back or further away from a previous position.
 - recontour - reshape or modify the contour or shape of something, such as land, a body part, or an object.
 - refine - improve (something) by making small changes, in particular make (an idea, theory, or method) more subtle and accurate:
 - retract - to draw back or in or pull back
 - rig - particular way in which a sailboat's masts, sails, and rigging are arranged.
 - rigging - network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.
+- scope - the extent of the area or subject matter that something deals with or to which it is relevant.
 - shift - move or cause to move from one place to another, especially over a small distance. a slight change in position, direction, or tendency.
 - shrink - become or make smaller in size or amount.
+- span - an extent/stretch/reach/spread between two limits, the spread or extent between abutments or supports (as of a bridge).
+- spread - to open or expand over a larger area, to distribute over an area, to apply on a surface, to push apart by weight or force.
+- stretch - to extend in length, to enlarge or distend especially by force, to cause to reach or continue (as from one point to another or across a space), to amplify or enlarge beyond natural or proper limits.
 - support - Thing that bears the weight of something or keeps it upright.
+- sweep - to move or proceed smoothly and readily, move or remove (dirt or litter) by brushing it away, move or push (someone or something) with great force.
 - tweak - improve (a mechanism or system) by making fine adjustments to it.
 - warp - twist or distortion in the shape or form of something.
 
