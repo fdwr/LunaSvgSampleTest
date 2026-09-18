@@ -98,6 +98,7 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 - keypoint - Characteristic point of interest.
 - latitude - the angular distance of a place north or south of the earth's equator, or of a celestial object north or south of the celestial equator, usually expressed in degrees and minutes.
 - longitude - the angular distance of a place east or west of the Greenwich meridian, or west of the standard meridian of a celestial object, usually expressed in degrees and minutes.
+- move - go in a specified direction or manner; change position.
 - node - Point at which lines or pathways intersect or branch; a central or connecting point.
 - nudge - a light touch or push.
 - orthogonal - of or involving right angles; at right angles.
@@ -110,6 +111,11 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 - recede - go or move back or further away from a previous position.
 - recontour - reshape or modify the contour or shape of something, such as land, a body part, or an object.
 - refine - improve (something) by making small changes, in particular make (an idea, theory, or method) more subtle and accurate:
+- reframe - place (a picture or photograph) in a new frame, to frame (something) again and often in a different way, to enclose in a frame, to fit or adjust especially to something or for an end.
+- relayout - the process of arranging or laying out again or differently
+- reshape - shape or form (something) differently or again, to give a new form or orientation to.
+- reposition - place in a different position; adjust or alter the position of.
+- relocate - move to a new place and establish one's home or business there.
 - retract - to draw back or in or pull back
 - rig - particular way in which a sailboat's masts, sails, and rigging are arranged.
 - rigging - network used for support and manipulation (as in theater scenery). The system of ropes, cables, or chains employed to support a ship's masts.

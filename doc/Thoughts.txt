@@ -1403,6 +1403,31 @@ Distributing inner points across adjusted outer bounds:
 
     NAMING: distribute? rebalance? warp? stretch? stretchLinear? stretchCorners? spread? between?
 
+Virtual shape anchors inside shapes:
+
+    Every geometric shape has 8 implicit pseudoanchors that define the frame: left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight
+    It's kinda as-if you specified them manually:
+
+    <rect id="selfClip" x="50" y="50" width="500" height="500" reframe="$shapedAdjustment$">
+        <anchor id="topLeft"     x="0%"   y="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="topRight"    x="100%" y="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="bottomLeft"  x="0%"   y="100%" adjust="$shapedAdjustment$" />
+        <anchor id="bottomRight" x="100%" y="100%" adjust="$shapedAdjustment$" />
+
+        <anchor id="left"   x="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="right"  x="100%" adjust="$shapedAdjustment$" />
+        <anchor id="top"    y="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="bottom" y="100%" adjust="$shapedAdjustment$" />
+
+        <!-- Adjusting these only affect that edge, no shape translation -->
+        <anchor id="leftOnly"   x="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="rightOnly"  x="100%" adjust="$shapedAdjustment$" />
+        <anchor id="topOnly"    y="0%"   adjust="$shapedAdjustment$" />
+        <anchor id="bottomOnly" y="100%" adjust="$shapedAdjustment$" />
+    </rect>
+
+    TODO: adjustShape? reframe? adjustFrame?
+
 Different ways of rounding rounded rectangle paths with anchors:
 
     Which of these is simplest, most concise, and/or most flexible?
