@@ -65,6 +65,7 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 - alignment - arrangement in a straight line, or in correct or appropriate relative positions. (see [text-align](https://developer.mozilla.org/en-US/docs/Web/CSS/text-align))
 - alteration - the act or process of altering something, such as a change made in fitting a garment.
 - anchor - provide with a firm basis or foundation. A heavy object attached to a rope or chain and used to moor a vessel to the sea bottom. (see [text-anchor](https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/text-anchor)). *One downside is that Adobe Illustrator uses anchor point to mean *any* point along a curve, which could confuse graphic designers. -_-
+- arrange - put (things) in a neat, attractive, or required order.
 - arrangement - action, process, or result of arranging or being arranged.
 - attachment - an extra part or extension that is or can be attached to something to perform a particular function.
 - attenuate - reduce in thickness; make thin.
