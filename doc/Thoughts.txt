@@ -646,7 +646,7 @@ Adjustments:
                     y-ceil
 
 Example:
-    Grid alignment cannot be part of the existing transform="..." attribute, because browsers (Chrome and Edge anyway) ignore the remainder of the transforms upon seeing any unrecognized calls.
+    Grid alignment cannot be folded into the existing transform="..." attribute, because browsers (Chrome and Edge anyway) ignore the remainder of the transforms upon seeing any unrecognized calls.
         e.g. transform="scale(3) grid-align(plusSignCenter) translate(13 24)"
         Chrome ignores scale and translate. LunaSvg respects everything before the unrecognized token, meaning scale but not translate.
         So (short of changing browser behavior) it must be a separate attribute, like transform-adjust.
