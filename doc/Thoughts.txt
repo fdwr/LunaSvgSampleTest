@@ -372,7 +372,7 @@ Attributes:
     *.strokeWidthAdjustment - like grid-rounding and anchor-rounding but specific to stroke width. Useful for ensuring minimum 1px strokes and pixel integer stroke widths. e.g. <circle stroke="..." stroke-rounding="ceil" /> TODO: Just combine with normal adjust? e.g. adjust="ceil(stroke-width)"
     *.anchorPoints - shorthand inline form rather than declaring a separate <anchor/> with id and grid-fit/grid-align attribute in the shape. The shorthand accepts % relative to the shape bounds.
         direction keyword | <length> | <percentage>
-        Maybe accept keywords left/top/center/right/bottom too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
+        Maybe accept keywords "left"/"top"/"center"/"right"/"bottom" too like https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform-origin.
     path.anchorList - list of anchor id's used within the path (referred to by number 0 to N-1 in the path string).
         NAMING: anchors? adjustment-list? adjustments?
     path.d - augmented to include new per-point anchors. Existing path letters include "MmLlHhVvCcSsQqTtAaZz". So maybe use "ga" and "gf" (grid align and grid fit) or "Gg" (for grid) or "f" (for fit) or "ps" (for pixel snap) or "an" for "anchor". "r" for rounding?
@@ -1121,6 +1121,22 @@ Example:
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustLinear(0% 50% 100% 50% nearest)" />
         <rect x="1" y="2" w="3" h="4" shapeAdjust="adjustBounds(nearest)" />
 
+    Rounding sizes:
+        It would be nice to concisely and declaratively round/floor/ceil the object's size, and accordingly round the object midpoint too.
+        The need is common enough that maybe an operator should exist for it.
+
+        <rect x="100" y="100" width="500" height="500" sizeAdjustment="round" sizeOrigin="center center" />
+
+        <anchor id="topLeft"     x="300" y="300" />
+        <anchor id="bottomRight" x="500" y="500" />
+        <rect x="100" y="100" width="500" height="500" adjust="alignCorners(#topLeft #bottomRight bias=0.5 rounding=ceil)"/>
+
+        <anchor id="midpoint"    x="450" y="450" />
+        <rect x="100" y="100" width="500" height="500" adjust="round(width spacing=0.5 origin=midpoint) round(midpoint)"/>
+
+        Take two rounding modes, one for the dimensions (ceil/floor/nearest) and another for the origin.
+        <rect x="100" y="100" width="500" height="500" adjust="alignSize(ceil nearest center)"/>
+
     Interaction with elements:
         circle cx cy rx ry - rounded how exactly?
         ellipse cx cy rx ry - rounded how exactly?
@@ -1408,22 +1424,22 @@ Virtual shape anchors inside shapes:
     Every geometric shape has 8 implicit pseudoanchors that define the frame: left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight
     It's kinda as-if you specified them manually:
 
-    <rect id="selfClip" x="50" y="50" width="500" height="500" reframe="$shapedAdjustment$">
-        <anchor id="topLeft"     x="0%"   y="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="topRight"    x="100%" y="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="bottomLeft"  x="0%"   y="100%" adjust="$shapedAdjustment$" />
-        <anchor id="bottomRight" x="100%" y="100%" adjust="$shapedAdjustment$" />
+    <rect x="100" y="100" width="500" height="500" reframe="$shapeAdjustment$">
+        <anchor id="topLeft"     x="0%"   y="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="topRight"    x="100%" y="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="bottomLeft"  x="0%"   y="100%" adjust="$shapeAdjustment$" />
+        <anchor id="bottomRight" x="100%" y="100%" adjust="$shapeAdjustment$" />
 
-        <anchor id="left"   x="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="right"  x="100%" adjust="$shapedAdjustment$" />
-        <anchor id="top"    y="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="bottom" y="100%" adjust="$shapedAdjustment$" />
+        <anchor id="left"   x="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="right"  x="100%" adjust="$shapeAdjustment$" />
+        <anchor id="top"    y="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="bottom" y="100%" adjust="$shapeAdjustment$" />
 
         <!-- Adjusting these only affect that edge, no shape translation -->
-        <anchor id="leftOnly"   x="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="rightOnly"  x="100%" adjust="$shapedAdjustment$" />
-        <anchor id="topOnly"    y="0%"   adjust="$shapedAdjustment$" />
-        <anchor id="bottomOnly" y="100%" adjust="$shapedAdjustment$" />
+        <anchor id="leftOnly"   x="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="rightOnly"  x="100%" adjust="$shapeAdjustment$" />
+        <anchor id="topOnly"    y="0%"   adjust="$shapeAdjustment$" />
+        <anchor id="bottomOnly" y="100%" adjust="$shapeAdjustment$" />
     </rect>
 
     TODO: adjustShape? reframe? adjustFrame?
