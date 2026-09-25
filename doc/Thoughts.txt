@@ -295,6 +295,7 @@ Elements:
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
         e.g. <adjustments id="foo" values="centerRound #boundsOutward displace(1)"/>
     ?<contourOffset/> - similar to round but along the normal of the contour to expand or contract it. Can it be joined? Should it be joined? The math term is "inward/outward polygon offseting" or "normal displacement", to expand a contour (polygon or path).
+        NAMING: recontour?
         id = name of element, which can be referred by other object's grid-round attribute.
         ?axes = xy, x, y.
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
@@ -321,8 +322,15 @@ Elements:
         https://helpx.adobe.com/after-effects/using/use-offset-paths.html
         Note this displaces individual points along their normal vector, expanding the whole contour. The new point is the intersection of their displaced parallel lines (usually along the angle bisector), not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments.
         Hard corners remain hard (like stroke-linejoin = miter), and round corners remain round (like stroke-linejoin = round), just pushing the *existing* points out along the path normal vector, not generating any new points. So a miter does not become bevel or butt or rounded.
-    ?<roundParity/> - very similar to round. Can it be joined? Should it be joined? [naming] doubleRounding? multipleRounding?
-    ?<constraint/> - a minimum/maximum geometric range or distance from another point. [naming] clamping? distance? relativeDistance? range? difference? separation? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
+    ?<roundParity/> - very similar to round. Can it be joined? Should it be joined or kept separate for clarity?
+        NAMING: halfRounding? centerRounding? doubleRounding? multipleRounding?
+    ?<roundAlongTangent/> - Round points with the displacement along each current point's tangent. For symmetry, it can also accept a displacement or half stroke width parameter. It's similar to recounter, except that it shifts points along the tangent (either in or out depending on the rounding direction) rather than widening strokes (always pushing outward). No shift occurs perpendicular. Any linked arcs (like the rounded corners of rectangles) are shifted to preserve proportion. So this alone would only make stroked lines more balanced, but not necessarily crisp.
+        TODO: Could this just be a named adjustment def using the right combination of parameters to <round>?
+    ?<recontourAndCenterFill/> - nudges the points along the path's normal vectors (rounding out to nearest integer by default, not floor/ceil) and recenters the points based on the passed desired path width, which serves as an inner displacement. Arc ratios are preserved.
+    ?<centerAndRoundStroke/> - nudges the points along the path's normal vectors via roundAlongTangent (rounding to nearest integer by default, not floor/ceil) and recenters the points based on the passed desired path width, which serves as an inner displacement. Arc ratios are preserved.
+    ?<roundAndCenter/> - rounds the size of a shape's frame (corners for anchors, but not the graphical transform) to the nearest whole pixel, then centers on half pixel if odd size or pixel corner if even size.
+    ?<constraint/> - a minimum/maximum geometric range or distance from another point.
+        NAMING: clamping? distance? relativeDistance? range? difference? separation? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
         max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3] I'm not sure this is ever needed, as there really shouldn't be a maximum distance if you scale up the image.
