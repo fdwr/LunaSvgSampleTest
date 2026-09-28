@@ -48,14 +48,16 @@ TODO: Should adjustment use `values=` or `adjust=`?
 
 ### Adjustment operators:
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
-TODO: Just use translate? e.g. `translate(#anchorName)` `translate(#anchorName1ForX #anchorName2ForY)`
-TODO: Support multinudge to average an anchor between two others? You could achieve this with two fractional nudges `nudge(x #anchor1 0.5) nudge(x #anchor2 0.5)` but `nudgeAverage(x #anchor1 #anchor2)` would be more concise. Maybe nudge is variadic rather than taking more positional parameters `nudge(x #anchor1 #anchor2)` or it takes a list `nudge(x [#anchor1 #anchor2])`.
-- `round(attributeName bias=0 spacing=1 prebias=bias postbias=bias mode=nearestLow reorient=[1 0] keepTangent=false requireAxisAlignment=true transformReinterprets=false directionInverts=false windingInverts=false)` - round attribute to nearest whole value, with halves toward negative infinity (not round to nearest even, which would introduce a staggered appearance).
+TODO: Just use translate? e.g. `translate(#anchorName)` `translate(#anchorName1ForX #anchorName2ForY)` It may be confusing though because it differs from transform`s translation, and it may not be clear that it's translating by the tiny displacement of the anchor, rather than the x,y coordinate of the anchor.
+TODO: Support multinudge to average an anchor between two others? You could achieve this with two fractional nudges `nudge(x #anchor1 0.5) nudge(x #anchor2 0.5)` but `nudgeAverage(x #anchor1 #anchor2)` would be more concise. Maybe nudge is variadic rather than taking more positional parameters `nudge(x #anchor1 #anchor2)` or it takes a list `nudge(x [#anchor1 #anchor2])`. Using another operator like `stretch` may be better.
+- `round(attributeName bias=0 spacing=1 prebias=bias postbias=bias mode=nearestLow reorient=[1 0] keepTangent=false requireAxisAlignment=true transformReinterprets=false directionInverts=false windingInverts=false)` - round attribute to nearest whole value, with halves toward negative infinity (not round to nearest even, which would introduce a staggered appearance). requireAxisAlignment means a pure scale+translate transform (no rotation or shear).
 - `floor(... mode=low ...)` - round attribute toward negative infinity.
 - `ceil( ... mode=high  ...)` - round attribute toward positive infinity.
 - `recontour(attributeName originalThickness=1 bias=0 spacing=1 mode=ceil scale=0.5)` - push the contour in or out by the scaled amount, displacing individual points along their normal vectors to expand or contract the contour. The new point is at the intersection of their displaced parallel lines/curves (usually along the angle bisector, not expansion of the less useful form here https://en.wikipedia.org/wiki/Expansion_(geometry) which just inserts new edge segments). Recontouring should occur before edge/vertex rounding, because recontouring *after* rounding would just misalign edges. Depending on the path shape, it may make more sense to recontour half on either side of a stem, or to recounter just one side (such as the inside, leaving the outside alone).
-- `roundParity(...)` - round to either pixel centers or pixel corners depending on whether the scaled input value is odd or even.
-- `grid(xScale=1 yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, hexagonal, rhombic, oblique. A common one is grid(1 1) to map to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale sqrt(2)); grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1) is identity (or just grid()).
+- `roundParity(size roundingMode)` - round to either pixel centers or pixel corners depending on whether the input size is odd or even (after scaled to screen space and rounded). The size value is in local user coordinates, and it may use special keywords {fillBox, strokeBox, markerBox, clipBox}. The screenspace bounding box is that of the current shape when used on a shape, the union of the contained shapes when used on a group, or the parent shape's bounding box when used on an anchor (because the bounding box of an anchor would be useless emptiness).
+NAMING: `recenter` would be good, given recentering a shape is exactly the intended use case for this operation (describes higher-level intent more than the low-level operation).
+TODO: Centering whole shapes is typically more useful than centering individual points within a path (that's also useful, but it's best combined with recontouring anyway to adjust the stem thicknesses). So an explicit `recenterShape` would be useful that centers the midpoint of the shape fillbox and translates the whole shape. For distinction, maybe renamed `recenter` to `recenterPoints` when adjusting individual points.
+- `grid(xScale=1 yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, rhombic, oblique. grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1)/grid() is identity. Another common one is grid(0.5 0.5) which is {45 degrees * sqrt(2) / 2} to align to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale ).
 - `separate(attributeName #anchorName distance)` - ensure coordinates are separated by at least the given absolute distance.
 - `<switch><$ ppuRange="low high"></$></switch>` - conditional pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
@@ -75,6 +77,7 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 - constraint - geometric constraints specify a direction or a distance relative to existing geometry.
 - contour - an outline, especially one representing or bounding the shape or form of something.
 - contract - decrease in size, number, or range.
+- counterpoise - a factor, force, or influence that balances or neutralizes another.
 - delta - difference between two things or values.
 - difference - difference in math is the result of subtracting one number from another.
 - dilate - make or become wider, larger, or more open. (common binary image operation https://hcimage.com/help/Content/Quantitation/Measurements/Processing%20and%20Analysis/Modify/Copy%20of%20Binary_Operations.htm)
@@ -95,6 +98,7 @@ TODO: Support multinudge to average an anchor between two others? You could achi
 - grapnel - Device consisting essentially of one or more hooks or clamps, for grasping or holding something.
 - grow - become larger or greater over a period of time; increase.
 - hook - piece of metal or other material, curved or bent back at an angle, for catching hold of or hanging things on.
+- inset - a thing that is put in or inserted.
 - interval - a space between two things; a gap.
 - keypoint - Characteristic point of interest.
 - latitude - the angular distance of a place north or south of the earth's equator, or of a celestial object north or south of the celestial equator, usually expressed in degrees and minutes.

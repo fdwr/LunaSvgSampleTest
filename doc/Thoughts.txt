@@ -212,7 +212,7 @@ Elements:
     <svg gridFittingSizeThreshold="300"> - an author recommended threshold where grid fitting matters, with fitting applied for any SVG size below this, and safely disabled for any size equal to or above it. A renderer might have additional control flags to explicitly enable it anyway or to disable it for other reasons, such as for animation. The default value is "infinity", meaning grid-fitting attributes (if present) are enabled for all sizes.
     <anchor/> - invisible point for other shapes to align/fit to. Can be used directly in an adjustment attribute (simple translation) or as part of an <anchorAdjustment/>.
         id = name of element, which can be referred by other object's grid adjust attribute.
-        x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport).
+        x = horizontal coordinate. Can be a number (user coordinates), percentage (relative to containing object or viewport), or keyword (top/bottom/left/right, relative to containing object or viewport). Defaulting to the containing object makes the most sense, like transform-box: fill-box;
         y = vertical coordinate. Like x.
         transform = standard transform, affecting anchor point.
         ?postTransform = transform after screen space
@@ -244,7 +244,7 @@ Elements:
     <rounding/> - rounding adjustment via floor/ceiling, bias, scale multiplier, and optional transform to round along a specific vector rather than purely axis aligned. Rounding definitions in the <defs> section can be used by named id. Then you can just say <rect transform-adjust="#adjustmentname1" point-adjust="#adjustmentname2" .../>
         NAMING: Adjustment? Should rounding and adjustment be unified somehow? They are basically the same thing except that rounding applies to points inside a polygon, but adjustments apply to a whole shape and yield a transform.
         id = name of element, which can be referred by other object's grid-round attribute.
-        axes = xy, x, y, stroke-width.
+        axes = xy, x, y, all, stroke-width (should stroke-width be specified in a separate attribute, rather than as a keyword property here?).
             NAMING: variable? attributeName? property? The animate element uses attributeName.
         mode = none/floor/ceil/towardZero/towardInfinity (no round to nearest evens, which yields an uneven staggered appearance)
             none - no grid rounding along x or y. e.g "x none; y floor"
@@ -262,17 +262,29 @@ Elements:
             NAMING: preTransform? preOffset? What about 1D cases?
         postbias = amount to add (subtract?) to coordinate after applying rounding and scale. If single parameter, then it's the x/y/xy value. If two passed, x then y. If 6 passed, then it is the full transform including proportional shift. Passing 6 values doesn't feel like just a "bias" anymore; maybe rename to "transform" there.
             NAMING: postTransform? postOffset?
-        unscaledBias = ...
+        unscaledBias = ... Err, why did I want this? I forget the use case.
         spacing/multiple/interval = a scale factor to divide by before flooring/ceiling, and then remultiply (e.g. to floor to the nearest multiple of 2). There is no prescale/postscale equivalent to bias, as it would yield nonsense. [naming] Prefer multiple over divisor (used in feConvolveMatrix) even though it is used as a divisor, because it's also used as a multiplier later.
             TODO: Can "multiple" accept separate x and y parameters, or just one for both? If separate (e.g. x=2 and y=1), then how does a 90 degree affect it? I think it should swap axes.
         transform = a transform to multiply the 1D or 2D point in pixel space by before rounding. The value transform=matrix(1 1 -1 1 0 0) turns it 45 degrees CCW to align along diagonal lines (equal to rotate(45deg) scale(1.414213562)). Similarly transform=[rotate(26.565051177) scale(1.118033989)] and transform=matrix(2 1 -1 2 0 0) aligns points along a 2:1 slope.
             NAMING: gridTransform? screenTransform? It does not apply in user coordinate space like the normal "transform" attribute.
+            TODO: Use `grid` operation beforehand, so multiple following operators share this rather than needing to repeat it inside each one?
             If preTransform/postTransform are specified, they are concatenated, combining preTransform and transform, round, then inverse transform and postTransform.
             TODO: How to align 2:1 slopes to other edges, like the bottom? Is a transform-origin needed?
             The transform is affected by the parent element transform if transformReinterprets is true.
             TODO: Combine with `bias`?
-            NAMING: orientation?
-        fraction = fractional amount (0 to 1, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway.
+            NAMING: orientation? reorient?
+        followsNormal = whether to follow the normal when rounding, using for nudging shapes in or out. If normalDistance is nonzero, then the offset point is computed before rounding.
+            true = only round along the normal
+            false = round all axes
+        normalDistance = world distance to displace the rounding point (along the normal if followsNormal=true) before rounding, useful for rounding a path point relative to an inset amount rather than the point itself. Typically the passed value should be half the path width (e.g. if the path stem was 2 world units thick, then pass 1).
+            NAMING: insetDistance? offset?
+            default = 0 (which is equivalent to just directly rounding the point)
+            TODO: I'm unsure how useful this is when followsNormal=false? Should it just be an (x,y) displacement in that case? projectedRoundingPoint = point + offset
+            Formula:
+                projectedRoundingPoint = point + (normalDistance * normalVector)
+                point += round(projectedRoundingPoint) - projectedRoundingPoint
+        displacementFraction = fractional amount (0 to N, default = 1) to linearly interpolate between the original position and the rounded position. This is mainly used to round halfway, but it could also be used to project/nude a point out by some multiple (like say for keyboard caps, to ensure equidistant spacing)
+            TODO: Better to use transform dx/dy instead?
         transformReinterprets = true/false - the world transform reinterprets the rounding mode when rotated or mirrored, swapping axes for 90/270 or reversing floor/ceil for 180 or mirroring.
             *naming: transform-inversion:applied/ignored, reorient-by-transform, transform-reorients
             NAMING: transformEffect? enums: applies, axisAligned, none
@@ -282,9 +294,12 @@ Elements:
         directionInverts = true/false - the line direction reverses interpretation. e.g. floor(x) is treated as ceil(x) for a line going up (negative) vs down (positive). Otherwise ceil is ceil, floor is floor. *naming: invert-by-direction?
         windingInverts = true/false - treat direction-inverted so that lines going down as reverse interpretation. Unclosed paths or polylines are treated as if closed. Note the original path winding in design space is used (not the path winding after world transformation, which flips when mirrored).
             NAMING: windingAffect=invert/none directionAffect=invert/none axisAlignmentment=required or axisAffect=alignedOnly or orthogonality=required
+            If followsNormal is true, then the normal offset is reflected before rounding and computing the displacement.
+            TODO: Should this be a list for each x,y axis, allowing one to be true and another false, so you could say ignore winding along the vertical but follow it along the horizontal - say the inside top path of a book, where the outside pa thof the book rounds outward, but the top path rounds mostly outward except for the base goes up/inward. The alternative would be specify two separate round statements with axis=x and axis=y, but that would duplicate effort and might encounter order dependency issues.
         proportionalShear = true/false. Adjust the axis proportional to the displacement of the other axis, following the contour of the vertex. e.g. Consider the letter A's T-junction on the horizontal bar, where aligning y vertically to a whole pixel without also adjusting x would distort the shape and give an awkwardly thin/thick stem near that T junction. proportion(0.2 1)
             Although this could be done manually by specifying an explicit displacement orientation/transform, that's brittle if you ever change the geometry later, needing to update the path rounding statements. Additionally this enables a single rounding statement to apply to multiple vertices.
-            NAMING: keepTangent?
+            TODO: Rather than explicitly passing this, just add an attribute that automatically uses the normal/tangent? keepTangent? preserveTangent?
+            TODO: Preserving arcs would also be useful, but that might be too complex for round, since it influences neighbors. Maybe defer that to the broader recontour operator.
     <transform/> - element in defs to define a named series of transformations. That named transform can then be used in any transform attribute, including the transform of rounding.
         id = name of element, which can be referred by other object's transform attribute.
         value = a series of operations (e.g. scale, translate, rotate, shear) that modify the transformation.
@@ -328,8 +343,14 @@ Elements:
     ?<recontourAndCenterFill/> - nudges the points along the path's normal vectors (rounding out to nearest integer by default, not floor/ceil) and recenters the points based on the passed desired path width, which serves as an inner displacement. Arc ratios are preserved.
     ?<centerAndRoundStroke/> - nudges the points along the path's normal vectors via roundAlongTangent (rounding to nearest integer by default, not floor/ceil) and recenters the points based on the passed desired path width, which serves as an inner displacement. Arc ratios are preserved.
     ?<roundAndCenter/> - rounds the size of a shape's frame (corners for anchors, but not the graphical transform) to the nearest whole pixel, then centers on half pixel if odd size or pixel corner if even size.
-    ?<constraint/> - a minimum/maximum geometric range or distance from another point.
-        NAMING: clamping? distance? relativeDistance? range? difference? separation? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
+        NAMING: recenter? recenterShape?
+        Note the shape is first transformed to screen space (see SVGGraphicsElement: getScreenCTM https://developer.mozilla.org/en-US/docs/Web/API/SVGGraphicsElement/getScreenCTM) before evaluating whether the size is even or odd.
+        Parameters: which size to use: fillBounds/strokeBounds/markerBounds
+            Defaults to the fill box.
+            NAMING: Maybe fill, stroke, markers, clip. See SVGGraphicsElement.getBBox https://developer.mozilla.org/en-US/docs/Web/API/SVGGraphicsElement/getBBox
+                    Maybe fill-box (content-box), stroke-box (border-box), view-box. See transform-box https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/transform-box
+    ?<constraint/> - a minimum/maximum geometric range or separation distance from another point.
+        NAMING: separate? clamping? distance? relativeDistance? range? difference? separation? Distance is a scalar, whereas difference is the result of a subtraction (e.g. the vector from two points subtracted)
         id = name of element, which can be referred within other object's adjust attributes.
         min/low = the smallest allowed value. Can be 1D or 2D. e.g. min=42, min=[2 3]
         max/high = the largest allowed value. Can be 1D or 2D. e.g. max=42, max=[2 3] I'm not sure this is ever needed, as there really shouldn't be a maximum distance if you scale up the image.
@@ -435,16 +456,16 @@ Adjustments:
             if direction inversion matters
                 if line direction negative xor winding direction inverted
                     reverse mode function (ceil<->floor)
-            if explicit vector given (not just [1 0])
+            if explicit reorientation vector given (not just unit vector [1 0])
                 build 2D transform matrix from vector by rotating 90 CW matrix [[0 1],[-1 0]].
                     [1 0]->[0 1], yielding [[1 0],[0 1]] which is identity.
                     [1 1]->[-1 1], yielding [[1 1],[-1 1]] which rotates 45 CW and scales 1.414x.
                 multiply coordinates by built transform
-            if unscaled bias given
+            if unscaled bias given TODO: What was this even useful for?
                 scaled-bias = ppu * unscaled-bias
                 prebias += scaled-bias
                 postbias += scaled-bias
-                todo: Where does "bias-modulo" fit into this? Should it apply to just (ppu * unscaled-bias) or the whole (prebias + scale-bias)?
+                TODO: Where does "bias-modulo" fit into this? Should it apply to just (ppu * unscaled-bias) or the whole (prebias + scale-bias)?
                 should this be a separate function, not jamming it into the already complex round?
             roundedCoordinateValue = modeFunction((originalCoordinateValue - prebias) / scale) * scale + postbias
                 or rather  modeFunction((((originalCoordinateValue - prebias) / scale) - midbiasForNearest) * scale + postbias  for including completeness with nearest mode
@@ -452,10 +473,10 @@ Adjustments:
             if should apply shear based on edge angle (proportional-shear=true)
                 orthogonalAxisValue += (roundCoordinateValue - originalCoordinateValue) * slope of perpendicular edge
             zero delta for locked axis values
-            todo: consider minimum delta (e.g. ensuring at least one pixel displacement for line thickness)
+            TODO: consider minimum delta (e.g. ensuring at least one pixel displacement for line thickness). Should that be a separate operation instead?
             newCoordinateValue = lerp(roundedCoordinateValue, newCoordinateValue, fraction) // where default fraction = 1
             readd grid origin (if present)
-            todo: consider a means to round shapes to nearest left or right edge depending on which is nearer (e.g. a 1.5 pixel wide vertical line left or right)
+            TODO: consider a means to round shapes to nearest left or right edge depending on which is nearer (e.g. a 1.5 pixel wide vertical line left or right). Would that be better placed on recontour? Would it be better to always prefer a direction floor/ceil?
     contour offset displacement
         main equation of displacement:
             create two temporary points at the current vertex
@@ -487,14 +508,14 @@ Adjustments:
         4.  anchor delta multiplier      [sx, hy ], [hx, sy ], [0,  0  ] perpendicular to line segments, used to push out vertices proportional to anchor displacement
         5.  ?scaled prebias(sx hy hx sy) [sx, hy ], [hx, sy ], [0,  0  ] possibly a way to implement grid snapping to 45 degree angles like a checkmark?
         6.  prebias(dx dy)               [1,  0  ], [0,  1  ], [dx, dy ] nop if dx = 0 and dy = 0
-        7.  inverse scale(s)             [1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
+        7.  inverse spacing scale(s)     [1/s,0  ], [0,  1/s], [0,  0  ] nop if s = 1 todo: *is s affected by MSAA multisampled antialiasing?
         8.  floor/ceil/none              [1,  0  ], [0,  1  ], [dx, dy ] nop if 'none' rounding mode
         9.  size scale(s)                [s,  0  ], [0,  s  ], [0,  0  ] nop if s = 1
         10. delta multiplier(dx dy)      [sx, hy ], [hx, sy ], [0,  0  ] nop if identity (useful for proportional delta multiple)
         11. postbias(dx dy)              [sx, hy ], [hx, sy ], [dx, dy ] nop if identity todo: *scale by MSAA factor?
         12. minimum distance             [1,  0  ], [0,  1  ], [dx, dy ] not useful unless a relative grid-origin is specified
         ? can prebias/postbias refer to an anchor name? e.g. prebias(someAnchor) It could be useful to align one shape to another or to force a minimum distance.
-    operators:
+    operators/attributes:
         even - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
         odd - todo: somehow turn this into evenodd scaled by current ppu (pixels per unit/user coordinate).
             compute an additional bias to add to prebias and postbias based on the PPU-scaled value of some other length metric (e.g. stroke width or shape height).
@@ -519,8 +540,7 @@ Adjustments:
                 useful for icons8-fluency-windows-calendar.svg to ensure dots are even spaced apart, so the outer dots are spaced as much as the distance between the inner dots.
             ?round proportionally based on adjacent line segment angle rather explicit proportion keyword which would require a different value per each point and be far more tedious?
         additive? - add the delta to the coordinate rather rounding the coordinate and delta together. So x = x + round(delta) rather than x = round(delta + x). todo: Is there a better name? Both cases are additive, but one is outside the rounding. roundDeltaOnly? unroundedCoordinate?
-            todo: What the use case for this?
-            Was it to implement relative contour offset displacement, which would unify `round` instead of needing a separate element which is mostly the same.
+            TODO: What was the use case for this? Was it to implement relative contour offset displacement, which would unify `round` instead of needing a separate element which is mostly the same.
         position based on object size? e.g. anchor-position="0% 100%" for left top. Or maybe anchor-points="0,0 40,0 40,20" to directly use an implicit anchor.
         scaleDelta/deltaScale - subset of proportional scale that applies only to the current delta. e.g. scaleDelta(2 3) scales x by 2 and y by 3.
             How to scale x coordinate by an anchor? The typewriter keys in icons8-blog.svg could use this to space all the keys equidistantly.
@@ -1511,6 +1531,32 @@ Different ways of rounding rounded rectangle paths with anchors:
         d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z"
         adjustments="nudgeByRoundedPoint(xy [left top]); nudgeByRoundedPoint(xy [left bottom]); nudgeByRoundedPoint(xy [right top]); nudgeByRoundedPoint(xy [right bottom]);"
     />
+
+Different ways of centering circles:
+
+    Centering entire shapes (and also aligning to left/right/top/bottom edges) is so common that a dedicated operator seems warranted, without the need to explicitly include anchors.
+
+    Round circle to pixel corner:
+        <circle cx="60" cy="40" r="3" fill="red" grid:adjust="attach(#innerAnchor)">
+            <anchor id="innerAnchor" x="center" y="center" grid:adjust="round()">
+        </circle>
+
+    Round circle to pixel corner or pixel center depending on fillbox size:
+    *Within the context of a shape, maybe recenterPoint/recenterShape should by default refer to the parent fillbox, since referring to the fillbox of the anchor itself (a mere point) is useless.
+        <circle cx="60" cy="40" r="3" fill="red" grid:adjust="attach(#innerAnchor)">
+            <anchor id="innerAnchor" x="center" y="center" grid:adjust="recenterPoint(parentFillBounds)">
+        </circle>
+
+    Centering the circle (pixel corner or pixel center) directly in adjustment statement:
+        <circle cx="60" cy="40" r="3" fill="red" adjust="recenterShape()">
+
+    Recontouring the circle's path to align to pixels:
+    *The defaults for contour should probably be like these, so that just saying "contour()" favors the common case.
+        <circle cx="60" cy="40" r="3" fill="red" adjust="recenterShape() recontour(mode=nearest spacing=1 windingInverts=true followNormal=true normalDistance=1)">
+
+    Aligning an entire shape, using center or topLeft:
+        <circle cx="60" cy="40" r="3" fill="red" adjust="alignShape(point=center mode=nearest 0.5)">
+        <circle cx="60" cy="40" r="3" fill="red" adjust="alignShape(bounds=strokeBox point=topLeft mode=floor 1)">
 
 Reference:
     TrueType
