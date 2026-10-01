@@ -58,6 +58,7 @@ TODO:
         - icons8-violin.svg 36px the handle would be better stretched via transform along the diagonals outward.
         - transform-heart.svg has little nub on left for 24px and blurry right edge 28px.
         - icons8-fluency-document.svg 28px top right corner, round to nearest would cause corner to be slanted (not 45 degrees anymore).
+        - icons8-fluency-blueprint.svg 24px the grid appears unevenly spaced with 2 or 3 pixels between them.
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
