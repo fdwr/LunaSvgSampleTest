@@ -33,7 +33,7 @@ TODO:
         - icons8-fluency-fill-color.svg has a dark horizontal band at the lavender/blue paint level. It needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left. Rounding the bottom diagonal point to pixel centers or pixel corners would work (but not pixel mid-edges).
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
         - icons8-fluency-afro-pick 28x28 bad (24x24 good)
-        - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this)
+        - icons8-fluency-bar-chart 32x32 on black background has visible dark vertical lines due to antialiasing (MSAA would fix this). To evenly uniformly size (say 28px) the vertical bars rather than rounding each edge to nearest which could leave to uneven spacing, you can assign two anchors (bottom left of bar chart and bottom left of second bar), floor the first anchor for the whole group, round the 2nd anchor to nearest, stretch all bars based on the displacement between them, then recounter to nearest. 
         - icons8-google-play boundaries are dark between blue and red, needing MSAA
         - icons8-fluency-add-to-clipboard horizontal rows too much detail 16x16, needs conditional reduction
         - icons8-color-check-circle checkmark can round points only to pixel corners or centers on both axes or else 45 angle would distort. If each checkmark point is rounded independently to pixel corners, the lines can become misaligned, but if each point is rounded to pixel diagonals (corners or centers, but not midedges), it should work fine. The circle height must be computed by rounding the edges. If you round the top and then round the height separately, you'll have an imbalance (see 32x32 where you have 3 pixels on top and 2 on the bottom if you round, or 40x40 where you have the opposite problem).
@@ -59,6 +59,7 @@ TODO:
         - transform-heart.svg has little nub on left for 24px and blurry right edge 28px.
         - icons8-fluency-document.svg 28px top right corner, round to nearest would cause corner to be slanted (not 45 degrees anymore).
         - icons8-fluency-blueprint.svg 24px the grid appears unevenly spaced with 2 or 3 pixels between them.
+        - icons8-fluency-artificial-intelligence.svg 40px needs different recentering logic for the gray stems than than the blue balls, because you want the 1.66px thick stems to be centered on 2px even pixels, but you want the 3.33px blue balls to be aligned to the gray stems and thus also centered on even pixels, then rounded out to 4px rather than down to 3px and centered on n.5.
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
