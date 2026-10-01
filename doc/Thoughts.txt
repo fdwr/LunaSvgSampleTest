@@ -449,7 +449,8 @@ Adjustments:
         main equation of uberround:
             if rounding requires axis alignment (axis orthogonality)
                 if neither edge adjacent to point is axis aligned (0, 90, 180, 270), return
-                otherwise at least one edge is axis aligned, and so proceed, locking the other one
+                TODO: Should this mean the edges in screen space are axis aligned, or aligned to the grid, or the world-to-screen transform is pure translation-scaling?
+                otherwise at least one edge is axis aligned, and so proceed, locking the other one TODO: Should it nudge by the 
             subtract grid origin (if present)
             if transform reinterpretation matters
                 swap axes if rotated 90 or 270 (x<->y)
@@ -485,10 +486,11 @@ Adjustments:
             determine rounding using similar rules to rounding (rounding mode, bias, scale...)
             adjust each point along the normal vector, respecting the applies=before/after
             compute the new vertex using the intersection of the two adjusted points
-            todo: prevent shape inversions by clamping if the edge would become negative?
-            todo: should be a similar equation to uberround, maybe even the same but with one additional boolean parameter to follow the path perpendicular automatically rather than an explicit vector
-            todo: for minimum displacement (e.g. keep path at least 1px thick), how should it interact with bias and unscaled bias? With vector? Before or after the vector scaling?
+            TODO: prevent shape inversions by clamping if the edge would become negative?
+            TODO: should be a similar equation to uberround, maybe even the same but with one additional boolean parameter to follow the path perpendicular automatically rather than an explicit vector
+            TODO: for minimum displacement (e.g. keep path at least 1px thick), how should it interact with bias and unscaled bias? With vector? Before or after the vector scaling?
     constraint/clamp
+        NAMING: separate
         clamp(origin=#anchor min=[x y] max=[x y])
         main equation:
             transform distance (what about a global transform if transform reinterpretation matters?)
@@ -1470,7 +1472,15 @@ Virtual shape anchors inside shapes:
         <anchor id="bottomOnly" y="100%" adjust="$shapeAdjustment$" />
     </rect>
 
-    TODO: adjustShape? reframe? adjustFrame?
+    TODO: adjustShape? reframe? adjustFrame? alignShape?
+
+    Recentering shapes is a common enough case (using the shape's fill bounds or stroke) that there should be a direct operator for it rather than requiring anchors and repeating the shape's size (which is brittle if they ever diverge). So rather than:
+    
+        <rect width="400" ... adjust="attach(#innerAnchor)"><anchor ... adjust="recenter(400)"></rect>
+
+    Or:
+
+        <rect width="400" ... adjust="recenterShape()" /> // Defaults to fillBounds
 
 Different ways of rounding rounded rectangle paths with anchors:
 
