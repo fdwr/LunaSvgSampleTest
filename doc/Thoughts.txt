@@ -29,6 +29,7 @@ TODO:
         - Try updating Chromium or Skia renderer third_party/blink/renderer/core/svg/* https://source.chromium.org/chromium/chromium/src/+/main:ui/gfx/vector_icon_types.h;drc=b9bf332694f083c6767416b69d0f8539d1c44707;l=22
         - Implement Javascript polyfill library. Test with Blink/Chromium (Chrome/Edge/Opera), Gecko (FireFox), WebKit (Safari).
         - Perhaps augment https://pypi.org/project/svgpathtools/ and/or ImageMagick https://imagemagick.org/script/display.php
+        - Reach out to Dan to find interested people https://github.com/web-platform-tests/interop/issues/1469
     - Documentation screenshot candidates
         - icons8-fluency-fill-color.svg has a dark horizontal band at the lavender/blue paint level. It needs proportional shear to maintain shape 24x24. The bottom edges look asymmetric at 40x40, dark purple on left. Rounding the bottom diagonal point to pixel centers or pixel corners would work (but not pixel mid-edges).
         - icons8-fluency-select-none.svg dashed dots become solid gray line 24x24
@@ -60,6 +61,7 @@ TODO:
         - icons8-fluency-document.svg 28px top right corner, round to nearest would cause corner to be slanted (not 45 degrees anymore).
         - icons8-fluency-blueprint.svg 24px the grid appears unevenly spaced with 2 or 3 pixels between them.
         - icons8-fluency-artificial-intelligence.svg 40px needs different recentering logic for the gray stems than than the blue balls, because you want the 1.66px thick stems to be centered on 2px even pixels, but you want the 3.33px blue balls to be aligned to the gray stems and thus also centered on even pixels, then rounded out to 4px rather than down to 3px and centered on n.5.
+        - LunaSvgTestData\Google Chrome\Chrome Logo.svg the horizontal edge between red and yellow is surprisingly aligned perfectly at all common sizes (8, 12, 16, 20, 28, 32...).
 
 Gridfitting prototype - add extended SVG attributes for gridfitting
     Anchor points
@@ -1570,6 +1572,8 @@ Different ways of centering circles:
     Aligning an entire shape, using center or topLeft:
         <circle cx="60" cy="40" r="3" fill="red" adjust="alignShape(point=center mode=nearest 0.5)">
         <circle cx="60" cy="40" r="3" fill="red" adjust="alignShape(bounds=strokeBox point=topLeft mode=floor 1)">
+        <defs><rounding id=#defaultRounding adjust="floor(bias=0.5 spacing=2)"/></defs> // Round to pixel center at odd pixel
+        <circle cx="60" cy="40" r="3" fill="red" adjust="align(topLeft #defaultRounding)">
 
 Reference:
     TrueType

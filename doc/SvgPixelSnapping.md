@@ -1,10 +1,43 @@
 # SVG Pixel Snapping / Grid Fitting
 
-Dwayne Robinson 2026-10-01
+🚧 Dwayne Robinson 2026-10-01 🚧
 
 ## What
 
-This document extends SVG with new elements/attributes for pixel snapping to improve geometric clarity on medium DPI displays, which would otherwise show fuzzy shapes and blurry details. SVG has increasingly been used for iconography (in toolbars, menus, webpage links), but 96 DPI is still very common, with many 1920x1080 displays remaining and 4k monitors being visually larger which yields a similar visual angle. This specification is freely available to adopt without patent or copyright concern, but beware it's subject to change until I validate the implementation details and end-to-end tooling (might realize there's a better way to do things).
+This document extends SVG with microadjustment attributes to snap to pixels and remedy those fuzzy edges/smudgy details when the graphic is rendered at a scale it wasn't specifically designed for, especially for small resolution scenarios (e.g. iconography in toolbars, menus, webpage links) on medium-DPI displays (e.g. 24x24px, 32x32px, 48x48px). Although monitor resolutions *have* increased over the decades, especially for small phone screens, the PPI for desktop monitors still yields visible artifacts, and the most common monitor resolution in 2026 is only 1920x1080.
+
+TrueType glyphs offer an alternative to SVG with powerful grid fitting capabilities, but it has many caveats: hinting is very challenging to graphic designers given the low-level bytecode instruction set, integration into the workflow is more awkward than just adding some lose SVG files (you need append glyphs to the file, assign a numeric id, and reference that opaque number to draw it), and it only supports monochrome color unless the rasterizer supports the latest COLR table with multiple layers and gradients. Additionally, OpenType supports SVG glyphs (not just TrueType glyphs), but there is no equivalent grid fitting support for SVG outlines.
+
+This specification is freely available to adopt without patent or copyright concern, but beware it's subject to change until I validate the implementation details and end-to-end tooling (might realize there's a better way to do things).
+
+At a glance:
+```xml
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:grid="https://github.com/fdwr/LunaSvgSampleTest"
+    viewBox="0 0 48 48"
+    width="48px"
+    height="48px"
+    >
+    <!-- Use a free anchor to round the bottom-left to the nearest whole pixel corner -->
+    <anchor id="bottom-left-anchor" x="10" y="38" grid:adjust="round()">
+    <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#bottom-left-anchor)" />
+
+    <!-- Use an inner anchor to round the bottom-left corner horizontally to the nearest pixel and vertically down -->
+    <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#inner-anchor)">
+        <anchor id="inner-anchor" x="left" y="bottom" grid:adjust="ceil(axis=y) nearest(axis=x)">
+    </rect>
+
+    <!-- Recenter a shape using the default fill bounds on either a pixel center or pixel corner depending on the size.
+         This is essentially a microtranslation, and it does not deform the shape. -->
+    <circle x="10" y="10" r="10" grid:adjust="recenterShape()" />
+
+    <!-- TODO: Complete the path case here -->
+    <!-- Recontour the path so the 2-unit wide stem is properly aligned on either pixel center or pixel corner and
+         thickened to a whole pixel -->
+    <path d="..." grid:adjust="recontour(2)"/>
+</svg>
+```
 
 ## Why
 
@@ -14,11 +47,11 @@ TODO: Insert image showing problems. Include cases of: blurry lines, excess deta
 
 Notice the blurry borders and collapsed lines of text on the page:
 
-![Blurry lines](comparison-icons8-fluency-paste.png)
+![Blurry lines of text on page](comparison-icons8-fluency-paste.png)
 
 Notice the asymmetric connectors with a mix of crisp lines and muddy gray lines:
 
-![Asymmetric edges](comparison-icons8-fluency-ungroup-objects.png)
+![Asymmetric edges between connectors](comparison-icons8-fluency-ungroup-objects.png)
 
 TODO: Add Pencil for 45 degree angle:
 LunaSvgTestData\icons8.com\icons8-office-edit XS 16x16.svg
@@ -50,12 +83,12 @@ It doesn't ensure:
 
 ## How
 
-SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting) on the problem, and [OpenType/TrueType typography](https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01) already solved these problems decades ago for glyphs, but implementing a complex Turing complete programming language is overkill here (which would hamper adoption and likely increase software security risks), as the problems can be satisfied by a set of new elements and attributes for the following aspects:
+The SVG working group had some [previous ponderings](https://www.w3.org/Graphics/SVG/WG/wiki/Proposals/SVG_hinting) on the problem, and [OpenType/TrueType typography](https://docs.microsoft.com/en-us/typography/opentype/spec/ttch01) already solved these problems decades ago for glyphs, but implementing a complex nearly Turing-complete instruction language is overkill here (which would hamper adoption and likely increase software security risks), as the problems can be satisfied by a set of new elements and attributes for the following aspects:
 
 1. Rounding points to pixels (e.g. rounding to nearest, floor, ceil, pixel corners, pixel centers, half pixels...)
 2. Microadjustment transforms constructed from anchor points (e.g. translating and stretching entire shapes to the pixel grid)
 3. Contour displaced offsets (e.g. thickening a path edge to whole pixels)
-4. Geometric constraints between components (e.g. keeping two lines at least 1 pixel apart)
+4. Geometric constraints between components (e.g. separating two lines at least 1 pixel apart)
 5. Shape visibility based on pixel density (e.g. selectively hiding complex geometry at low pixel resolutions)
 
 ### Elements
@@ -64,8 +97,10 @@ SVG had some [previous pondering](https://www.w3.org/Graphics/SVG/WG/wiki/Propos
 - `<transformation/>` - defines a reuseable transform via `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]). e.g. `<transformation id="myTransform" transform="scale(2) translate(100 300)" />` and `<g transform="#myTransform"> ...` or `<transformation id="turn45" transform="matrix(1 1)" />` and `<line adjust="grid(#turn45) round(xy)" x1=...>` (naming note: using noun form rather than verb to avoid confusion with "transform", in that it's not an action applied to the scene, but rather a reusable component useable later by a "transform" statement)
 - `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms (nudges), contour offsets, and separation contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. e.g. `<adjustment id="myAdjustment" adjust="round(x) floor(y)" />` and `<polygon adjust="#myAdjustment" points="..."/>`
 TODO: Should adjustment use `values=` or `adjust=`?
+- `<switch><someShape ppuRange="low high"/><anotherShape ppuRange="low high"/></switch>` - conditionally selects the first shape that matches the given pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
 ### Adjustment operators:
+
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
 TODO: Just use translate? e.g. `translate(#anchorName)` `translate(#anchorName1ForX #anchorName2ForY)` It may be confusing though because it differs from transform`s translation, and it may not be clear that it's translating by the tiny displacement of the anchor, rather than the x,y coordinate of the anchor.
 TODO: Support multinudge to average an anchor between two others? You could achieve this with two fractional nudges `nudge(x #anchor1 0.5) nudge(x #anchor2 0.5)` but `nudgeAverage(x #anchor1 #anchor2)` would be more concise. Maybe nudge is variadic rather than taking more positional parameters `nudge(x #anchor1 #anchor2)` or it takes a list `nudge(x [#anchor1 #anchor2])`. Using another operator like `stretch` may be better.
@@ -78,7 +113,6 @@ NAMING: `recenter` would be good, given recentering a shape is exactly the inten
 TODO: Centering whole shapes is typically more useful than centering individual points within a path (that's also useful, but it's best combined with recontouring anyway to adjust the stem thicknesses). So an explicit `recenterShape` would be useful that centers the midpoint of the shape fillbox and translates the whole shape. For distinction, maybe renamed `recenter` to `recenterPoints` when adjusting individual points.
 - `grid(xScale=1 yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, rhombic, oblique. grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1)/grid() is identity. Another common one is grid(0.5 0.5) which is {45 degrees * sqrt(2) / 2} to align to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale ).
 - `separate(attributeName #anchorName distance)` - ensure coordinates are separated by at least the given absolute distance.
-- `<switch><$ ppuRange="low high"></$></switch>` - conditional pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
 # Terms for bikeshed naming
 
