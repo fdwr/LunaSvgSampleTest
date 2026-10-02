@@ -1,16 +1,30 @@
 # SVG Pixel Snapping / Grid Fitting
 
-Dwayne Robinson 2022-07-28
+Dwayne Robinson 2026-10-01
 
 ## What
 
-This document extends SVG with new elements and attributes for grid fitting/pixel snapping to improve rendering on low to medium DPI displays, where edges become fuzzy and blurry details become overcrowded in toolbars, menus, and webpages. SVG has increasingly been used for iconography, but tales of the demise of 96 DPI have been greatly exaggerated, as such monitors persist to this day, with 1920x1080 being the most common monitor size in 2022. This specification is freely available to adopt without patent or copyright concern, but beware it's subject to change until I validate the implementation details and end-to-end tooling (might realize there's a better way to do things).
+This document extends SVG with new elements/attributes for pixel snapping to improve geometric clarity on medium DPI displays, which would otherwise show fuzzy shapes and blurry details. SVG has increasingly been used for iconography (in toolbars, menus, webpage links), but 96 DPI is still very common, with many 1920x1080 displays remaining and 4k monitors being visually larger which yields a similar visual angle. This specification is freely available to adopt without patent or copyright concern, but beware it's subject to change until I validate the implementation details and end-to-end tooling (might realize there's a better way to do things).
 
 ## Why
 
 A picture speaks a thousand words...
 
 TODO: Insert image showing problems. Include cases of: blurry lines, excess detail which becomes a blurry mess, detail collapse, minimum pixel distance, contour offset.
+
+Notice the blurry borders and collapsed lines of text on the page:
+
+![Blurry lines](comparison-icons8-fluency-paste.png)
+
+Notice the asymmetric connectors with a mix of crisp lines and muddy gray lines:
+
+![Asymmetric edges](comparison-icons8-fluency-ungroup-objects.png)
+
+TODO: Add Pencil for 45 degree angle:
+LunaSvgTestData\icons8.com\icons8-office-edit XS 16x16.svg
+
+TODO: Dotted gridlines that collapse at 24px:
+LunaSvgTestData\icons8.com\icons8-fluency-select-all.svg
 
 These extensions help:
 
@@ -28,6 +42,11 @@ It doesn't ensure:
 - Identical pixel results under different rasterizers.
 - Preserved geometry and aspect ratio after grid fitting.
 - Automatic good fitting without author intervention.
+
+### Nonsolutions
+
+- [shape-rendering](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/shape-rendering) with `crispEdges` gives you jagged geometry, whereas you really want smoothly rendered circles and lines, with their bounds aligned to the pixel grid.
+- Designing your SVG files on a grid works well if you always display the SVG at that size, but that defeats the point of SVG, and showing a 24x24 icon at 32x32 is problematic.
 
 ## How
 

@@ -1543,12 +1543,13 @@ Different ways of rounding rounded rectangle paths with anchors:
         d="f3 M-80,-60 L80,-60   f1 A20,20 0 0 1 100,-40 L100,40   f2 A20,20 0 0 1 80,60 L-80,60   f3 A20,20 0 0 1 -100,40 L-100,-40   f0 A20,20 0 0 1 -80,-60 Z"
         adjustments="nudgeByRoundedPoint(xy [left top]); nudgeByRoundedPoint(xy [left bottom]); nudgeByRoundedPoint(xy [right top]); nudgeByRoundedPoint(xy [right bottom]);"
     />
+    ** I think I could just use adjust="recontour(mode=ceil)"
 
 Different ways of centering circles:
 
     Centering entire shapes (and also aligning to left/right/top/bottom edges) is so common that a dedicated operator seems warranted, without the need to explicitly include anchors.
 
-    Round circle to pixel corner:
+    Round circle's center to pixel corner:
         <circle cx="60" cy="40" r="3" fill="red" grid:adjust="attach(#innerAnchor)">
             <anchor id="innerAnchor" x="center" y="center" grid:adjust="round()">
         </circle>
@@ -1563,7 +1564,7 @@ Different ways of centering circles:
         <circle cx="60" cy="40" r="3" fill="red" adjust="recenterShape()">
 
     Recontouring the circle's path to align to pixels:
-    *The defaults for contour should probably be like these, so that just saying "contour()" favors the common case.
+    *The defaults for contour should probably be like these, so that just saying "recontour()" favors the common case of following the normal, a stroke thickness of one.
         <circle cx="60" cy="40" r="3" fill="red" adjust="recenterShape() recontour(mode=nearest spacing=1 windingInverts=true followNormal=true normalDistance=1)">
 
     Aligning an entire shape, using center or topLeft:
@@ -1573,22 +1574,21 @@ Different ways of centering circles:
 Reference:
     TrueType
         https://docs.microsoft.com/en-us/typography/opentype/spec/tt_instructions#round-to-half-grid
-        RTHG - round to half grid
-        RTG - round to grid
-        RTDG - Round To Double Grid
-        RDTG - Round Down To Grid
-        RUTG - Round Up To Grid
+        RTHG - round to half grid (1.5, 2.5, 3.5, 4.5...)
+        RTG - round to grid (1, 2, 3, 4...)
+        RTDG - Round To Double Grid (1, 1.5, 2, 2.5...)
+        RDTG - Round Down To Grid (floor)
+        RUTG - Round Up To Grid (ceil)
         ROFF - Round OFF
         SROUND - Super ROUND
-        Threshold = prebias
-        Phase = postbias
-        roundedValue = floor(x - phase - threshold) + phase
+            Threshold = prebias
+            Phase = postbias
+            Period = spacing
+            roundedValue = floor(x - phase - threshold) + phase
+        S45ROUND - Super 45 degrees ROUND https://learn.microsoft.com/en-us/typography/opentype/spec/tt_instructions#super-round-45-degrees
     Direct3D 11
         https://microsoft.github.io/DirectX-Specs/d3d/archive/D3D11_3_FunctionalSpec.htm#3.4.2.1%20Top-Left%20Rule
         In graphics triangle rasterization, ties round down (e.g. 1.5->1.0, 2.5->2.0)
-
-
-
 
 Related:
     SVG
@@ -1617,14 +1617,15 @@ Related:
             The magnificent 2d matrix - https://ncase.me/matrix/
             Yuri Sulyma's Matrix Visualizer - https://web.ma.utexas.edu/users/ysulyma/matrix/
         Path visualizers
+            SVG Path Editor - https://yqnn.github.io/svg-path-editor/ ⭐
             SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
             SVG Path Visualizer - https://nutilz.com/svg-path-visualizer
             SVG Path Inspector - https://onedevtoolkit.com/css-tools/svg-path-inspector
-            SVG Path Editor - https://yqnn.github.io/svg-path-editor/ ⭐
     Libraries
         parse-svg-path - https://www.npmjs.com/package/parse-svg-path
         normalize-svg-path - https://www.npmjs.com/package/normalize-svg-path
     Guidance
+        Interactive Guide to Paths https://www.joshwcomeau.com/svg/interactive-guide-to-paths/
         Material Design "Clarity (Pixel perfection)" - https://material.io/design/iconography/system-icons.html#grid-and-keyline-shapes
         Adobe Spectrum Iconography - https://spectrum.adobe.com/page/iconography/#Characteristics
         Adobe Draw pixel-perfect art https://helpx.adobe.com/illustrator/using/pixel-perfect.html
