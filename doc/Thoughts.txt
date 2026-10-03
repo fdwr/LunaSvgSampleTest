@@ -1,1 +1,53 @@
-Moved to: https://github.com/fdwr/SvgGridFitting/blob/master/Thoughts.txt
+Most content moved to: https://github.com/fdwr/SvgGridFitting/blob/master/Thoughts.txt
+
+Random unpolished thoughts for the future:
+
+TODO:
+    - Add option to display size label or not
+    - LunaSvg changes:
+        - (fixed locally) Blank canvas treated as blank
+        - (fixed locally) Missing em and ex from switch statement property.cpp Length::value
+        - (defer until SVG2 published?) Unknown elements treated as g
+        - (fixed locally) Clear faster
+        - (added locally) enumerate contours
+        - Fix gradient stop offset https://github.com/fdwr/LunaSvgSampleTest/commit/8df84b5b75954ef6b439ac35427c4dd6766777fe
+        - Eventually grid fitting
+        - Fix "transparent" color keyword missing. Works in Chrome for SVG's exported via GraphViz. https://developer.mozilla.org/en-US/docs/Web/CSS/color_value#transparent_keyword
+        - Verify bounding box in LunaSvg https://svgwg.org/svg2-draft/single-page.html#coords-BoundingBoxes
+        - Add 'switch' element too.
+        - Fix void Canvas::rgba() to use macros. canvas.cpp line 195
+            plutovg-private.h
+            #define plutovg_alpha_shift 24
+            #define plutovg_red_shift 0
+            #define plutovg_green_shift 8
+            #define plutovg_blue_shift 16
+
+Investigate callstack for pixel coordinate rounding / grid-fitting:
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path* path, const plutovg_matrix_t* matrix) Line 128
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t* rle, const plutovg_path* path, const plutovg_matrix_t* matrix, const plutovg_rect_t* clip, const plutovg_stroke_data_t* stroke, plutovg_fill_rule_t winding) Line 268
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg* pluto) Line 464
+    lunasvgtest.exe!plutovg_fill(plutovg* pluto) Line 426
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path& path, const lunasvg::Transform& transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 111
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState& state, const lunasvg::Path& path) Line 332
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState& state) Line 409
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState& state) Line 88
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState& state) Line 180
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState& state) Line 88
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState& state) Line 160
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix& matrix, unsigned int backgroundColor) Line 212
+
+    lunasvgtest.exe!lunasvg::to_plutovg_path(plutovg* pluto, const lunasvg::Path& path) Line 293
+    lunasvgtest.exe!lunasvg::Canvas::fill(const lunasvg::Path& path, const lunasvg::Transform& transform, lunasvg::WindRule winding, lunasvg::BlendMode mode, double opacity) Line 106
+    lunasvgtest.exe!lunasvg::FillData::fill(lunasvg::RenderState& state, const lunasvg::Path& path) Line 332
+    lunasvgtest.exe!lunasvg::LayoutShape::render(lunasvg::RenderState& state) Line 409
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState& state) Line 88
+    lunasvgtest.exe!lunasvg::LayoutGroup::render(lunasvg::RenderState& state) Line 180
+    lunasvgtest.exe!lunasvg::LayoutContainer::renderChildren(lunasvg::RenderState& state) Line 88
+    lunasvgtest.exe!lunasvg::LayoutSymbol::render(lunasvg::RenderState& state) Line 160
+    lunasvgtest.exe!lunasvg::Document::render(lunasvg::Bitmap bitmap, const lunasvg::Matrix& matrix, unsigned int backgroundColor) Line 212
+
+    lunasvgtest.exe!plutovg_matrix_map_point(const plutovg_matrix_t* matrix, const plutovg_point_t* src, plutovg_point_t* dst) Line 128
+    lunasvgtest.exe!sw_ft_outline_convert(const plutovg_path* path, const plutovg_matrix_t* matrix) Line 108
+    lunasvgtest.exe!plutovg_rle_rasterize(plutovg_rle_t* rle, const plutovg_path* path, const plutovg_matrix_t* matrix, const plutovg_rect_t* clip, const plutovg_stroke_data_t* stroke, plutovg_fill_rule_t winding) Line 268
+    lunasvgtest.exe!plutovg_fill_preserve(plutovg* pluto) Line 464
+    lunasvgtest.exe!plutovg_fill(plutovg* pluto) Line 426
