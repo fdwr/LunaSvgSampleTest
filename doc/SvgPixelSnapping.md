@@ -3,7 +3,7 @@ Dwayne Robinson 2026-10-01
 
 # Why - The Problem
 
-SVG is great for resolution independence, but try rendering icons to sizes they weren't designed for, and notice...
+SVG is great for resolution independent iconography, but try rendering icons to sizes they weren't designed for, and notice...
 
 - The blurry borders and collapsed lines of text on the page:
 
@@ -19,7 +19,7 @@ TODO: Dotted gridlines that collapse at 24px - LunaSvgTestData\icons8.com\icons8
 
 # What
 
-This document extends SVG with microadjustment attributes to snap to pixels and remedy those fuzzy edges/smudgy details when the graphic is rendered at a size it wasn't an intended multiple of, especially for small resolution scenarios (e.g. iconography in toolbars, menus, webpage links) on medium-DPI displays (e.g. 24x24px, 32x32px, 48x48px). Although monitor resolutions *have* increased over the decades, especially for small phone screens, the PPI for desktop monitors still yields visible artifacts, and the most common monitor resolution in 2026 is only 1920x1080.
+This document extends SVG with microadjustment attributes to snap to pixels and remedy those fuzzy edges/smudgy details when the graphic is rendered at sizes it wasn't an intended multiple of, especially for small resolution scenarios (e.g. iconography in toolbars, menus, webpage links) on medium-DPI displays (e.g. 24x24px, 32x32px, 48x48px). Although monitor resolutions *have* increased over the decades, especially for small phone screens, the PPI for desktop monitors still yields visible artifacts, and the most common monitor resolution in 2026 is only 1920x1080.
 
 ## Nonsolutions
 
@@ -39,17 +39,17 @@ This document extends SVG with microadjustment attributes to snap to pixels and 
     <!-- Simplest case - Round all points in the shape to the nearest pixel corner -->
     <rect x="10" y="10" width="28" height="28" grid:adjust="round()"/>
 
-    <!-- Use a free anchor to round the bottom-left to the nearest whole pixel corner -->
+    <!-- Use a free anchor to round the rectangle's bottom-left to the nearest whole pixel corner -->
     <anchor id="bottom-left-anchor" x="10" y="38" grid:adjust="round()">
     <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#bottom-left-anchor)" />
 
-    <!-- Use an inner anchor to round the bottom-left corner horizontally to the nearest pixel and vertically down -->
+    <!-- Use an inner anchor to round the bottom-left corner to the nearest pixel horizontally and down vertically -->
     <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#inner-anchor)">
         <anchor id="inner-anchor" x="left" y="bottom" grid:adjust="nearest(axis=x) ceil(axis=y)">
     </rect>
 
-    <!-- Recenter a shape using the default fill bounds on either a pixel center or pixel corner depending on the size.
-         This is essentially a microtranslation, and it does not deform the shape. -->
+    <!-- Recenter an entire shape using the default fill bounds on either a pixel center or pixel corner depending on the size.
+         This is essentially a microtranslation of the entire path, and it does not deform the shape. -->
     <circle x="10" y="10" r="10" grid:adjust="recenterShape()" />
 
     <!-- TODO: Complete the path case here -->
@@ -59,14 +59,14 @@ This document extends SVG with microadjustment attributes to snap to pixels and 
 </svg>
 ```
 
-It can yield:
+It can help achieve:
 
 - Crisp horizontal and vertical edges
 - Consistent stem thickness
 - Shape symmetry around centers
 - Equal shape spacing and gaps
-- Selective removal of small details at smaller PPU's
 - Alignment between separate shapes that are part of a large object
+- Selective removal of small details at smaller PPU's
 - Ensure minimal gaps between items so they don't abut and appear merged
 
 It doesn't ensure:
@@ -78,26 +78,26 @@ It doesn't ensure:
 
 # How
 
-1. Declaring **anchor** points that can be shared and referenced in microadjustments.
+1. Declaring **anchor** points that can be shared and referenced in microadjustments
 2. Applying micro**adjust**ments:
     1. **Round**ing point coordinates to pixels (e.g. rounding to nearest, floor, ceil, pixel corners, pixel centers, half pixels...)
-    2. **Align**ing shape points to rounded anchors.
-    3. Appyling microtransforms to **nudge** and **stretch** points.
+    2. **Align**ing shape points to rounded anchors
+    3. Appyling microtransforms to **nudge** and **stretch** points
     4. Displacing **contour**s (e.g. thickening a path edge to whole pixels and centering it)
     5. Applying geometric constraints to **separate** components (e.g. separating two lines at least 1 pixel apart)
 3. **Switch**ing shape visibility based on pixel density (e.g. selectively hiding complex geometry at low pixel resolutions)
 
 ## Elements
 
-- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchors coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`. An unspecified x or y defaults to 0.
+- `<anchor/>` - an invisible point to help align shapes to and construct microtransforms to adjust shapes. Anchor coordinates can be individually rounded and shared by multiple geometries for tiny translations and scaling. Anchors are typically defined soon before the shape they apply to via `id` in an adjustment attribute or an `anchorTransform`. An unspecified x or y defaults to 0.
 - `<adjustment/>` - a reusable series of adjustments, including rounding, anchor transforms (nudges), contour offsets, and separation contraints, with each adjustment executed in order. Multiple adjustments can be separated by semicolons to form a list of adjustment groups, useful for `<path>` where each group of adjustments is referenced by index 0 to n-1. e.g. `<adjustment id="myAdjustment" adjust="round(x) floor(y)" />` and `<polygon adjust="#myAdjustment" points="..."/>`
 TODO: Should adjustment use `values=` or `adjust=`?
-- `<transformation/>` - defines a reuseable transform via `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]). e.g. `<transformation id="myTransform" transform="scale(2) translate(100 300)" />` and `<g transform="#myTransform"> ...` or `<transformation id="turn45" transform="matrix(1 1)" />` and `<line adjust="grid(#turn45) round(xy)" x1=...>` (naming note: using noun form rather than verb to avoid confusion with "transform", in that it's not an action applied to the scene, but rather a reusable component useable later by a "transform" statement)
+- `<transformation/>` - defines a reuseable transform via `id`, including the standard `scale`, `translate`, `rotate`, and `shear` operations, plus the new `origin` which is equivalent to `transform-origin` folded directly into the `transform`. Defined transforms may be used in any `transform` attribute, including those on normal geometry along with those in rounding and constraints. The `matrix` function now takes an abbreviated form with just the first two elements, useful for expressing a uniform scale+rotation using a single 2D vector, where  `matrix(scaleX shearXToY)` expands `matrix(scaleX shearXToY -shearXToY scaleX 0 0)` (e.g. rotating by 30 degrees yields [0.866025404 0.5] and expands to [0.866025404 0.5 -0.5 0.866025404 0 0]). e.g. `<transformation id="myTransform" transform="scale(2) translate(100 300)" />` and `<g transform="#myTransform"> ...` or `<transformation id="turn45" transform="matrix(1 1)" />` and `<line adjust="grid(#turn45) round(xy)" x1="10" y1="10" x2="40" y2="40">` (naming note: using noun form rather than verb to avoid confusion with "transform", in that it's not an action applied to the scene, but rather a reusable component useable later by a "transform" statement)
 - `<switch><someShape ppuRange="low high"/><anotherShape ppuRange="low high"/></switch>` - conditionally selects the first shape that matches the given pixel-per-unit range. Anything in the [`switch`](https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/switch) outside that range (upper end exclusive) is hidden, just like with `requiredExtensions` and `systemLanguage`.
 
 ## Adjustment operators:
 
-These occur inside an `adjust` attribute, a screen-space cousin to the `transform` attribute.
+These occur inside an `adjust` attribute (a screen-space cousin to the `transform` attribute).
 
 - `nudge(attributeName #anchorName reorient=[1 0])` - displace specific attribute by the anchor's displacement from its original position.
 TODO: Just use translate? e.g. `translate(#anchorName)` `translate(#anchorName1ForX #anchorName2ForY)` It may be confusing though because it differs from transform's translation, and it may not be clear that it's translating by the tiny displacement of the anchor, rather than the x,y coordinate of the anchor.
@@ -111,6 +111,10 @@ NAMING: `recenter` would be good, given recentering a shape is exactly the inten
 TODO: Centering whole shapes is typically more useful than centering individual points within a path (that's also useful, but it's best combined with recontouring anyway to adjust the stem thicknesses). So an explicit `recenterShape` would be useful that centers the midpoint of the shape fillbox and translates the whole shape. For distinction, maybe renamed `recenter` to `recenterPoints` when adjusting individual points.
 - `grid(xScale=1 yShear=0 xShear=-yShear yScale=xScale xDelta=0 yDelta=0)` - the lattice could be: square, rectangular, rhombic, oblique. grid(0.5) snaps to half pixels; grid(2) spans every 2; and grid(1)/grid() is identity. Another common one is grid(0.5 0.5) which is {45 degrees * sqrt(2) / 2} to align to either pixel centers or pixel corners, but not pixel mid-edges (essentially a 45-degree rotation and scale ).
 - `separate(attributeName #anchorName distance)` - ensure coordinates are separated by at least the given absolute distance.
+
+# Considerations
+
+- Why use imperative operations in `adjust` like `transform` rather than purely declarative attributes? Originally I used a declarative approach, but the interactions and ambiguity of operations became too fuzzy.
 
 # Related
 
