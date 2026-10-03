@@ -19,7 +19,7 @@ TODO: Dotted gridlines that collapse at 24px - LunaSvgTestData\icons8.com\icons8
 
 # What
 
-This document extends SVG with microadjustment attributes to snap to pixels and remedy those fuzzy edges/smudgy details when the graphic is rendered at sizes it wasn't an intended multiple of, especially for small resolution scenarios (e.g. iconography in toolbars, menus, webpage links) on medium-DPI displays (e.g. 24x24px, 32x32px, 48x48px). Although monitor resolutions *have* increased over the decades, especially for small phone screens, the PPI for desktop monitors still yields visible artifacts, and the most common monitor resolution in 2026 is only 1920x1080.
+This document extends SVG with microadjustment attributes to snap to pixels and remedy those fuzzy edges/smudgy details when the graphic is rendered at sizes it wasn't an intended multiple of, especially for small size scenarios (e.g. iconography in toolbars, menus, webpage links) on medium-DPI displays (e.g. 24x24px, 32x32px, 48x48px). Although monitor resolutions *have* increased over the decades, notably with phone screens, the PPI for desktop monitors still yields visible artifacts, and the most common monitor resolution in 2026 is only 1920x1080.
 
 ## Nonsolutions
 
@@ -28,34 +28,77 @@ This document extends SVG with microadjustment attributes to snap to pixels and 
 - TrueType glyphs offer an alternative to SVG with powerful grid fitting capabilities, but it has many caveats: hinting is very challenging to graphic designers given the low-level bytecode instruction set, integration into the workflow is more awkward than just adding some lose SVG files (you need append glyphs to the file, assign a numeric id, and reference that opaque number to draw it), and it only supports monochrome color unless the rasterizer supports the latest COLR table with multiple layers and gradients. Additionally, OpenType supports SVG glyphs (not just TrueType glyphs), but there is no equivalent grid fitting support for SVG outlines.
 
 ## At a glance
-```xml
-<svg
-    xmlns="http://www.w3.org/2000/svg"
-    xmlns:grid="https://github.com/fdwr/LunaSvgSampleTest"
-    viewBox="0 0 48 48"
-    width="48px"
-    height="48px"
-    >
-    <!-- Simplest case - Round all points in the shape to the nearest pixel corner -->
-    <rect x="10" y="10" width="28" height="28" grid:adjust="round()"/>
 
-    <!-- Use a free anchor to round the rectangle's bottom-left to the nearest whole pixel corner -->
-    <anchor id="bottom-left-anchor" x="10" y="38" grid:adjust="round()">
-    <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#bottom-left-anchor)" />
+Grid fitting attributes reside in the `grid:` namespace (or maybe `ps:` for pixel snapping, if you like that more). Here's a simple octagon with every path vertex rounded:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:grid="https://github.com/fdwr/LunaSvgSampleTest" viewBox="0 0 40 40" width="36px" height="36px">
+    <!-- Simplest case - Round all points in the shape to the nearest pixel corner. -->
+    <polygon
+      fill="red"
+      stroke="none"
+      points="12,1 28,1 39,12 39,28 28,39 12,39 1,28, 1,12"
+      grid:adjust="round()"
+    />
+    <!-- Round the path such that the stroke is well aligned (about 2 pixels wide). -->
+    <polygon
+      fill="none"
+      stroke="white"
+      stroke-width="3"
+      points="16,9 24,9 31,16 31,24 24,31 16,31 9,24, 9,16"
+      grid:adjust="roundStroke()"
+    />
+</svg>
+```
+
+Adjustments apply to all points within a shape, and `adjust` can take a *sequence* of microadjustment operations (like `transform`):
+
+```xml
+<svg xmlns:grid="https://github.com/fdwr/LunaSvgSampleTest" viewBox="0 0 48 48" width="40px" height="40px">
+    <!-- Round the four points of a rectangle upward (ceil for y) and leftward (floor of x). -->
+    <rect x="6" y="6" width="28" height="28" fill="blue" grid:adjust="floor(x) ceil(y)"/>
+
+    <!-- Use a free anchor to round the rectangle's bottom-left to the nearest whole pixel corner
+         while leaving the size alone and right edge potentially fuzzy. -->
+    <grid:anchor id="bottom-left-anchor" x="10" y="38" grid:adjust="round()" />
+    <rect x="16" y="16" width="28" height="28" fill="red" grid:adjust="attach(#bottom-left-anchor)" />
 
     <!-- Use an inner anchor to round the bottom-left corner to the nearest pixel horizontally and down vertically -->
-    <rect x="10" y="10" width="28" height="28" grid:adjust="attach(#inner-anchor)">
-        <anchor id="inner-anchor" x="left" y="bottom" grid:adjust="nearest(axis=x) ceil(axis=y)">
+    <rect x="16" y="16" width="18" height="18" fill="green" grid:adjust="attach(#inner-anchor)">
+        <grid:anchor id="inner-anchor" x="left" y="bottom" grid:adjust="nearest(axis=x) ceil(axis=y)"/>
     </rect>
 
     <!-- Recenter an entire shape using the default fill bounds on either a pixel center or pixel corner depending on the size.
          This is essentially a microtranslation of the entire path, and it does not deform the shape. -->
-    <circle x="10" y="10" r="10" grid:adjust="recenterShape()" />
+    <circle cx="30" cy="30" r="10" fill="yellow" grid:adjust="recenterShape()" />
 
     <!-- TODO: Complete the path case here -->
     <!-- Recontour the path so the 2-unit wide stem is properly aligned on either pixel center or pixel corner and
          thickened to a whole pixel -->
-    <path d="..." grid:adjust="recontour(2)"/>
+    <path d="M0,16 L12,16 L12,28 Z
+             M4,18 L10,23 L10,18 Z" fill="orange" grid:adjust="recontour(2)"/>
+</svg>
+```
+
+More complex path cases may need to apply different adjustments to different *components*, where splitting up the path is not feasible, and so `path` supports supports a *list* of semicolon-delimited adjustments:
+
+```xml
+<svg id="ShoppingCart" viewBox="0 0 256 256" width="32" height="32" xmlns:grid="https://github.com/fdwr/LunaSvgSampleTest">
+    <grid:anchor id="cartBottom" x="80" y="180" />
+    <!-- Ensure at least 1 pixel of separation between the wheel and cart -->
+    <grid:anchor id="wheelsTop" x="80" y="196" adjust="separate(#wheelsTop 1)" />
+    <!-- Note the g0 and g1 directives inside the grid:d path data that state which grid adjustment 0 to N-1 to use from
+         the adjustments list. Sadly we can't insert the grid adjustment indices into the standard "d" attribute, or
+         the renderers choke (typically failing the whole path, or the reading the string up to that point).
+         So a duplicate "grid:d" is added, and any grid-aware tooling should produce the backwards-compatible
+         "d" attribute by stripping out the "g#" instructions. If older tooling updates the path, the custom
+         attribute would become desynchronized, or more likely lost. -->
+    <path
+        d="M100,216a20,20,0,1,1-20-20A19.9999,19.9999,0,0,1,100,216Zm84-20a20,20,0,1,0,20,20A19.9999,19.9999,0,0,0,184,196ZM233.252,75.29639
+        l-24.1123,84.3955A28.12,28.12,0,0,1,182.2168,180H81.7832a28.12029,28.12029,0,0,1-26.92285-20.30713L30.81445,75.53271c-.04687-.15234-.09082-.30517-.13183-.46044L21.80566,44H12a12,12,0,0,1,0-24H24.82227A20.08558,20.08558,0,0,1,44.05273,34.50537L51.33691,60h170.377A11.99959,11.99959,0,0,1,233.252,75.29639ZM205.80566,84H58.19434l19.74218,69.09863A4.01838,4.01838,0,0,0,81.7832,156H182.2168a4.01824,4.01824,0,0,0,3.84668-2.90186Z"
+        grid:d="g0 M100,216a20,20,0,1,1-20-20A19.9999,19.9999,0,0,1,100,216Zm84-20a20,20,0,1,0,20,20A19.9999,19.9999,0,0,0,184,196ZM233.252,75.29639
+        g1 l-24.1123,84.3955A28.12,28.12,0,0,1,182.2168,180H81.7832a28.12029,28.12029,0,0,1-26.92285-20.30713L30.81445,75.53271c-.04687-.15234-.09082-.30517-.13183-.46044L21.80566,44H12a12,12,0,0,1,0-24H24.82227A20.08558,20.08558,0,0,1,44.05273,34.50537L51.33691,60h170.377A11.99959,11.99959,0,0,1,233.252,75.29639ZM205.80566,84H58.19434l19.74218,69.09863A4.01838,4.01838,0,0,0,81.7832,156H182.2168a4.01824,4.01824,0,0,0,3.84668-2.90186Z"
+        grid:adjustments="recontour(24); recontour(40) attach(#wheelsTop)"/>
 </svg>
 ```
 
@@ -133,6 +176,10 @@ TODO: Centering whole shapes is typically more useful than centering individual 
     - Cairo rendering API - https://cairographics.org/download/
     - SVG Path Visualizer webpage - https://svg-path-visualizer.netlify.app/
     - SVG Native Viewer - https://github.com/adobe/svg-native-viewer
+- Online tools
+    Basic editors
+        https://editsvgcode.com/
+        https://www.svgviewer.dev/
 
 # License
 
