@@ -25,6 +25,7 @@ enum class BackgroundColorMode
     GrayCheckerboard,
     OpaqueWhite,
     OpaqueGray,
+    OpaqueBlack,
 };
 
 // A single item on the screen, either SVG document or size label.
@@ -2193,10 +2194,15 @@ void RedrawBackground(lunasvg::Bitmap& bitmap)
 
     case BackgroundColorMode::OpaqueWhite:
     case BackgroundColorMode::OpaqueGray:
+    case BackgroundColorMode::OpaqueBlack:
         // Beware LunaSvg uses backwards alpha (RGBA rather than ARGB) whereas
         // typically most pixel formats put the alpha in the *top* byte.
-        bitmap.clear((g_backgroundColorMode == BackgroundColorMode::OpaqueGray) ? 0x808080FF : /*OpaqueWhite*/ 0xFFFFFFFF);
-        break;
+        switch (g_backgroundColorMode)
+        {
+        case BackgroundColorMode::OpaqueWhite: bitmap.clear(0xFFFFFFFF); break;
+        case BackgroundColorMode::OpaqueGray:  bitmap.clear(0x808080FF); break;
+        case BackgroundColorMode::OpaqueBlack: bitmap.clear(0x000000FF); break;
+        }
     }
 }
 
@@ -4193,10 +4199,12 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             case IDM_BACKGROUND_TRANSPARENT_BLACK:
             case IDM_BACKGROUND_OPAQUE_WHITE:
             case IDM_BACKGROUND_OPAQUE_GRAY:
+            case IDM_BACKGROUND_OPAQUE_BLACK:
                 static_assert(IDM_BACKGROUND_GRAY_CHECKERBOARD - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::GrayCheckerboard));
                 static_assert(IDM_BACKGROUND_TRANSPARENT_BLACK - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::TransparentBlack));
                 static_assert(IDM_BACKGROUND_OPAQUE_WHITE - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueWhite));
                 static_assert(IDM_BACKGROUND_OPAQUE_GRAY - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueGray));
+                static_assert(IDM_BACKGROUND_OPAQUE_BLACK - IDM_BACKGROUND_FIRST == static_cast<uint32_t>(BackgroundColorMode::OpaqueBlack));
 
                 g_backgroundColorMode = static_cast<BackgroundColorMode>(wmId - IDM_BACKGROUND_FIRST);
                 RedrawCanvasItemsLater(hwnd);

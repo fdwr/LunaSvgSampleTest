@@ -138,7 +138,8 @@
 #define IDM_BACKGROUND_GRAY_CHECKERBOARD    261
 #define IDM_BACKGROUND_OPAQUE_WHITE         262
 #define IDM_BACKGROUND_OPAQUE_GRAY          263
-#define IDM_BACKGROUND_LAST                 263
+#define IDM_BACKGROUND_OPAQUE_BLACK         264
+#define IDM_BACKGROUND_LAST                 264
 #define IDM_GRID_VISIBLE                    270
 #define IDM_PIXEL_GRID_VISIBLE              271
 #define IDM_ITEM_BORDER_VISIBLE             272
