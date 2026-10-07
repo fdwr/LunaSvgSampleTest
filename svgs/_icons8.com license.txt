@@ -1,4 +1,4 @@
-tldr: Use for free in commercial and non-commercial projects, but link back to icons8.com, and don't resell/redistribute the icons themselves.
+2022-03-20 Snapshot. Basically you can use for free in commercial and non-commercial projects, but link back to icons8.com, attribute them in your About dialog, and don't resell/redistribute the icons themselves. These SVG's in particular were part of a free set including SVG format (whereas most icons in 2026 appear to be PNG only for free).
 
 ----------------------------------------
 
