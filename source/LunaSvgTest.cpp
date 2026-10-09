@@ -2878,33 +2878,20 @@ HRESULT CopyTextToClipboard(std::wstring_view text, HWND hwnd)
 
 HRESULT CopyFilenamesToClipboard(
     std::span<std::wstring const> filenameList,
+    std::optional<std::span<uint32_t const>> filenameListIndices,
     HWND hwnd
     )
 {
     std::wstring concatenatedFilenames;
-    for (size_t i = 0, count = filenameList.size(); i < count; ++i)
-    {
-        concatenatedFilenames.append(filenameList[i]);
-        if (count > 1)
-        {
-            concatenatedFilenames.append(L"\r\n", 2);
-        }
-    }
-    return CopyTextToClipboard(concatenatedFilenames, hwnd);
-}
 
+    // Note the total count can be smaller than the file list (a subset) or larger (if duplicate indices).
+    size_t totalCount = filenameListIndices ? filenameListIndices->size() : filenameList.size();
 
-HRESULT CopyFilenamesToClipboard(
-    std::span<std::wstring const> filenameList,
-    std::span<uint32_t const> filenameListIndices,
-    HWND hwnd
-    )
-{
-    std::wstring concatenatedFilenames;
-    for (size_t i = 0, count = filenameListIndices.size(); i < count; ++i)
+    for (size_t i = 0, count = totalCount; i < count; ++i)
     {
-        assert(filenameListIndices[i] < filenameList.size());
-        concatenatedFilenames.append(filenameList[filenameListIndices[i]]);
+        size_t filenameIndex = filenameListIndices.has_value() ? (*filenameListIndices)[i] : i;
+        assert(filenameIndex < filenameList.size());
+        concatenatedFilenames.append(filenameList[filenameIndex]);
         if (count > 1)
         {
             concatenatedFilenames.append(L"\r\n", 2);
@@ -2918,7 +2905,8 @@ HRESULT CopyFilenamesToClipboard(
     std::span<CanvasItem const> canvasItems,
     std::span<std::wstring const> filenameList,
     RECT const& selectionRect,
-    HWND hwnd
+    HWND hwnd,
+    bool copyAllIfSelectionEmpty
     )
 {
     // Find all the filenames of the canvas items within the selection rect.
@@ -2938,7 +2926,13 @@ HRESULT CopyFilenamesToClipboard(
         }
     }
 
-    return CopyFilenamesToClipboard(filenameList, filenameIndices, hwnd);
+    std::optional<std::span<uint32_t>> optionalFilenameIndices;
+    if (!filenameIndices.empty())
+    {
+        optionalFilenameIndices = filenameIndices;
+    }
+
+    return CopyFilenamesToClipboard(filenameList, optionalFilenameIndices, hwnd);
 }
 
 
@@ -4192,7 +4186,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_COPY_FILE_PATHS:
-                CopyFilenamesToClipboard(g_filenameList, hwnd);
+                CopyFilenamesToClipboard(g_filenameList, std::nullopt, hwnd);
                 break;
 
             case IDM_BACKGROUND_GRAY_CHECKERBOARD:
@@ -4484,7 +4478,7 @@ LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 break;
 
             case IDM_COPY_FILE_PATHS:
-                CopyFilenamesToClipboard(g_canvasItems, g_filenameList, mouseRect, hwnd);
+                CopyFilenamesToClipboard(g_canvasItems, g_filenameList, mouseRect, hwnd, /*copyAllIfSelectionEmpty*/ true);
                 break;
 
             case 0: // User canceled.
